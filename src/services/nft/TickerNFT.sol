@@ -33,7 +33,7 @@ abstract contract TickerNFT is ITickerNFT {
     if (nameBytesLength == 0 || nameBytesLength > MAX_NAME_BYTES_LENGTH) revert InvalidNameLength();
     _renameRequirements(_tokenId);
 
-    // _updateIdentity(_newName);
+    _updateIdentity(_tokenId, _newName);
     _removeOldTickers(_tokenId, false);
     _addNewTickers(_tokenId, _newName);
 
@@ -53,7 +53,7 @@ abstract contract TickerNFT is ITickerNFT {
     }
   }
 
-  function _addNewTickers(uint256 _tokenId, string memory _name) internal {
+  function _addNewTickers(uint256 _tokenId, string memory _name) internal virtual {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory needle = TICKER_START_INDICE.toSlice();
     strings.slice memory substring = nameSlice.find(needle).beyond(needle).split(string(" ").toSlice());
@@ -73,7 +73,7 @@ abstract contract TickerNFT is ITickerNFT {
     linkedTickers[_tokenId] = poolTargets;
   }
 
-  function _updateIdentity(uint256 _tokenId, string memory _name) internal returns (string memory) {
+  function _updateIdentity(uint256 _tokenId, string memory _name) internal virtual {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory needle = TICKER_START_IDENTITY.toSlice();
     strings.slice memory substring = nameSlice.find(needle).beyond(needle).split(string(" ").toSlice());
@@ -82,8 +82,6 @@ abstract contract TickerNFT is ITickerNFT {
 
     if (receiver == address(0)) revert InvalidWalletReceiver();
     identities[_tokenId] = receiver;
-
-    return substring.toString();
   }
 
   function claim(uint256 _tokenId) external {

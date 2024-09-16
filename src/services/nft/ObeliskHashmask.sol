@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import { TickerNFT } from "src/services/nft/TickerNFT.sol";
+import { IObeliskHashmask } from "src/interfaces/IObeliskHashmask.sol";
 
-import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { TickerNFT, ILiteTicker } from "src/services/nft/TickerNFT.sol";
+
+import { IHashmask } from "src/vendor/IHashmask.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-interface IHashmask is IERC721 {
-  function tokenNameByIndex(uint256 _tokenId) external view returns (string memory);
-}
+import { strings } from "src/lib/strings.sol";
 
-contract ObeliskHashmask is TickerNFT, Ownable {
-  error NotActivatedByHolder();
-  error NotHashmaskHolder();
-  error InsufficientActivationPrice();
-  error UseUpdateNameForHashmasks();
-  error TransferFailed();
+contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
+  using strings for string;
+  using strings for strings.slice;
 
-  uint256 public constant ACTIVATION_PRICE = 0.1 ether;
+  string public constant TICKER_SPLIT_HASHMASK = " ";
+  string public constant TICKER_HASHMASK_START_INCIDE = "O";
+
   IHashmask public immutable hashmask;
   address public treasury;
+  uint256 public activationPrice;
 
   mapping(uint256 => address) public activatedBy;
 
@@ -29,10 +29,11 @@ contract ObeliskHashmask is TickerNFT, Ownable {
   {
     hashmask = IHashmask(_hashmask);
     treasury = _treasury;
+    activationPrice = 0.1 ether;
   }
 
   function activate(uint256 _hashmaskId) external payable {
-    if (msg.value != ACTIVATION_PRICE) revert InsufficientActivationPrice();
+    if (msg.value != activationPrice) revert InsufficientActivationPrice();
     if (hashmask.ownerOf(_hashmaskId) != msg.sender) revert NotHashmaskHolder();
 
     activatedBy[_hashmaskId] = msg.sender;
@@ -50,6 +51,38 @@ contract ObeliskHashmask is TickerNFT, Ownable {
 
     _removeOldTickers(_hashmaskId, true);
     _addNewTickers(_hashmaskId, name);
+
+    identities[_hashmaskId] = msg.sender;
+  }
+
+  function _addNewTickers(uint256 _tokenId, string memory _name) internal override {
+    strings.slice memory nameSlice = _name.toSlice();
+    strings.slice memory delim = string(" ").toSlice();
+    strings.slice[] memory potentialTickers = new strings.slice[](nameSlice.count(delim) + 1);
+
+    address[] storage poolTargets = linkedTickers[_tokenId];
+
+    strings.slice memory potentialTicker;
+    address poolTarget;
+    for (uint256 i = 0; i < potentialTickers.length; ++i) {
+      potentialTicker = nameSlice.split(delim);
+
+      if (!potentialTicker.copy().startsWith(string("O").toSlice())) {
+        continue;
+      }
+
+      poolTarget = obeliskRegistry.getTickerLogic(potentialTicker.beyond(string("O").toSlice()).toString());
+      poolTargets.push(poolTarget);
+
+      ILiteTicker(poolTarget).virtualDeposit(_tokenId, msg.sender);
+      emit TickerActivated(_tokenId, poolTarget);
+    }
+
+    if (poolTargets.length == 0) revert NoTickersFound();
+  }
+
+  function _updateIdentity(uint256 _tokenId, string memory _name) internal override {
+    //skip
   }
 
   function _renameRequirements(uint256) internal pure override {
@@ -59,5 +92,10 @@ contract ObeliskHashmask is TickerNFT, Ownable {
   function _claimRequirements(uint256 _tokenId) internal view override returns (bool) {
     bool sameName = keccak256(bytes(hashmask.tokenNameByIndex(_tokenId))) == keccak256(bytes(names[_tokenId]));
     return hashmask.ownerOf(_tokenId) == msg.sender && !sameName;
+  }
+
+  function setActivationPrice(uint256 _price) external onlyOwner {
+    activationPrice = _price;
+    emit ActivationPriceSet(_price);
   }
 }
