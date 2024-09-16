@@ -4,10 +4,33 @@ solc = '0.8.25'
 src = 'src'
 test = 'test'
 out = 'out'
-libs = ['lib']
 via_ir = true
 verbosity = 3
-auto_detect_remappings = true
+evm_version = "paris"
+auto_detect_remappings = false
+libs = [
+    # ./lib are refered in toolbox-foundry/lib
+    'node_modules/@layerzerolabs/toolbox-foundry/lib',
+    'node_modules',
+]
+
+remappings = [
+    'hero-tokens/test/=test/',
+    'ds-test/=node_modules/@layerzerolabs/toolbox-foundry/lib/ds-test/',
+    'forge-std/=node_modules/@layerzerolabs/toolbox-foundry/lib/forge-std/src/',
+    '@layerzerolabs/=node_modules/@layerzerolabs/',
+    '@openzeppelin/=node_modules/@openzeppelin/',
+    'heroglyph-library/=node_modules/@layerzerolabs/toolbox-foundry/lib/heroglyph-library/src/',
+    '@axelar-network/=node_modules/@axelar-network/',
+    '@chainlink/=node_modules/@chainlink/',
+    '@eth-optimism/=node_modules/@eth-optimism/',
+    'hardhat-deploy/=node_modules/hardhat-deploy/',
+    'hardhat/=node_modules/hardhat/',
+    'solidity-bytes-utils/=node_modules/solidity-bytes-utils/',
+    '@prb-math/=node_modules/@layerzerolabs/toolbox-foundry/lib/prb-math/',
+    '@prb/math/=node_modules/@layerzerolabs/toolbox-foundry/lib/prb-math/',
+    '@sablier/v2-core/=node_modules/@sablier/v2-core/',
+]
 
 [profile.e2e]
 match_path = "test/e2e/*"
@@ -15,23 +38,53 @@ match_path = "test/e2e/*"
 [profile.unit]
 block_number = 17373196
 block_timestamp = 1685467379
-match_path = "test/unit/*"
+no_match_path = "test/e2e/*"
+
+[fuzz]
+runs = 1024
+max_test_rejects = 65536
+seed = '0x3e8'
+dictionary_weight = 40
+include_storage = true
+include_push_bytes = true
 
 [rpc_endpoints]
 localhost = "http://127.0.0.1:8545"
 mainnet = "${RPC_MAINNET}"
 sepolia = "${RPC_SEPOLIA}"
 arbitrum = "${RPC_ARBITRUM}"
-arbitrumTestnet = "${RPC_ARBITRUM_SEPOLIA}"
+arbitrumOneTestnet = "${RPC_ARBITRUM_SEPOLIA}"
+polygon = "${RPC_POLYGON}"
+scroll = "${RPC_SCROLL}"
+avalanche = "${RPC_AVAX}"
+optimism = "${RPC_OP}"
+mantle = "${RPC_MANTLE}"
+linea = "${RPC_LINEA}"
+fantom = "${RPC_FANTOM}"
+base = "${RPC_BASE}"
+fraxtal = "${RPC_FRAXTAL}"
+gnosis = "${RPC_GNOSIS}"
 
 [etherscan]
 mainnet = { key = "${ETHERSCAN_KEY}", chain = 1, url = "https://api.etherscan.io/api/"}
-sepolia = { key = "${ETHERSCAN_KEY}", chain = 11155111, url = "https://api-sepolia.etherscan.io/api"}
+sepolia = { key = "${TENDERLY_KEY}", chain = 11155111, url = "${RPC_SEPOLIA}/verify/etherscan" }
 arbitrum = { key = "${ARBISCAN_KEY}", chain = 42161, url = "https://api.arbiscan.io/api/"}
-arbitrumSepolia = { key = "${ARBISCAN_KEY}", chain = 421614, url = "https://api-sepolia.arbiscan.io/api/"}
+arbitrumGoerli = { key = "${ARBISCAN_KEY}", chain = 421613, url = "https://api-sepolia.arbiscan.io/api/"}
+polygon = { key = "${POLYSCAN_KEY}", chain = 137, url = "https://api.polygonscan.com/api"}
+scroll = { key = "${SCROLLSCAN_KEY}", chain = 534352, url = "https://api.scrollscan.com/api"}
+avalanche = { key = "${AVAXSCAN_KEY}", chain = 43114, url = "https://api.snowscan.xyz/api"}
+optimism = { key = "${OPSCAN_KEY}", chain = 10, url = "https://api-optimistic.etherscan.io/api"}
+mantle = { key = "${MANTLESCAN_KEY}", chain = 5000, url = "https://api.mantlescan.xyz/api"}
+linea = { key = "${LINEASCAN_KEY}",  url = "https://api.lineascan.build/api"}
+fantom = { key = "${FANTOMSCAN_KEY}",  url = "https://api.ftmscan.com/api"}
+base = { key = "${BASESCAN_KEY}",  url = "https://api.basescan.org/api"}
+fraxtal = { key = "${FRAXTALSCAN_KEY}",  url = "https://api.fraxscan.com/api"}
+gnosis = { key = "${GNOSISSCAN_KEY}",  url = "https://api.gnosisscan.io/api"}
+
+
 
 [fmt]
-line_length = 90
+line_length = 120
 tab_width = 2
 bracket_spacing = true
 int_types = "long"
@@ -40,4 +93,4 @@ quote_style = "double"
 number_underscore = "thousands"
 wrap_comments = true
 
-# See more config options https://github.com/foundry-rs/foundry/tree/master/crates/config
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config
