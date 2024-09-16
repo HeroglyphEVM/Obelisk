@@ -18,14 +18,9 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
   mapping(uint256 => Metadata) internal metadataPasses;
 
-  constructor(
-    address _owner,
-    address _treasury,
-    address _nameFilter,
-    uint256 _cost, //0.05
-    string memory _name,
-    string memory _symbol
-  ) IdentityERC721(_owner, _treasury, _nameFilter, _cost, _name, _symbol) {
+  constructor(address _owner, address _treasury, address _nameFilter, uint256 _cost)
+    IdentityERC721(_owner, _treasury, _nameFilter, _cost, "Obelisk NFT Pass", "OPASS")
+  {
     resetCounterTimestamp = uint32(block.timestamp + 1 days);
     currentPrice = cost;
     maxIdentityPerDayAtInitialPrice = 25;

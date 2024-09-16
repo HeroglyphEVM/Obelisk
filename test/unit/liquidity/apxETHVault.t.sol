@@ -9,7 +9,7 @@ import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 
 contract apxETHVaultTest is BaseTest {
   address private owner;
-  address private heroglyphRegistry;
+  address private obeliskRegistry;
   address private apxETH;
   address private pirexEth;
   address private rateReceiver;
@@ -25,13 +25,13 @@ contract apxETHVaultTest is BaseTest {
     vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.asset.selector), abi.encode(address(pxETH)));
     vm.mockCall(pirexEth, abi.encodeWithSelector(IPirexEth.deposit.selector), abi.encode(0, 0));
 
-    underTest = new apxETHVault(owner, heroglyphRegistry, apxETH, rateReceiver);
+    underTest = new apxETHVault(owner, obeliskRegistry, apxETH, rateReceiver);
     pxETH.mint(address(underTest), 10_000e18);
   }
 
   function _setupVariables() internal {
     owner = generateAddress("owner");
-    heroglyphRegistry = generateAddress("heroglyphRegistry", 100e18);
+    obeliskRegistry = generateAddress("obeliskRegistry", 100e18);
     apxETH = generateAddress("apxETH");
     pirexEth = generateAddress("pirexEth");
     rateReceiver = generateAddress("rateReceiver");
@@ -40,7 +40,7 @@ contract apxETHVaultTest is BaseTest {
     pxETH = new MockERC20("pxETH", "pxETH", 18);
   }
 
-  function test_afterDeposit_thenDepositsInPirexETH() public prankAs(heroglyphRegistry) {
+  function test_afterDeposit_thenDepositsInPirexETH() public prankAs(obeliskRegistry) {
     uint256 amount = 2.32e18;
 
     vm.expectCall(pirexEth, amount, abi.encodeWithSelector(IPirexEth.deposit.selector, address(underTest), true));
@@ -49,7 +49,7 @@ contract apxETHVaultTest is BaseTest {
 
   function test_beforeWithdrawal_whenTotalBalanceIsNotZero_thenWithdrawsFromPirexETHAndTransfersInterest()
     public
-    prankAs(heroglyphRegistry)
+    prankAs(obeliskRegistry)
   {
     uint256 deposit = 7.32e18 + 1e18;
 
@@ -89,7 +89,7 @@ contract apxETHVaultTest is BaseTest {
 
   function test_beforeWithdrawal_whenWithdrawAmountIsEqualToTotalDeposit_thenTransfersInterestAndPxETH()
     public
-    prankAs(heroglyphRegistry)
+    prankAs(obeliskRegistry)
   {
     uint256 amount = 7.32e18;
     uint256 interest = 0.23e18;

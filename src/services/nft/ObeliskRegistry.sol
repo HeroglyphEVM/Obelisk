@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import { IHeroglyphRegistry } from "src/interfaces/IHeroglyphRegistry.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { WrappedNFTHero } from "./WrappedNFTHero.sol";
 import { LiteTickerFarmPool } from "../tickers/LiteTickerFarmPool.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 
-contract HeroglyphRegistry is IHeroglyphRegistry, Ownable {
+contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint32 public constant SUPPORT_LOCK_DURATION = 30 days;
   uint256 public constant COLLECTION_REWARD_PERCENT = 4000;
   uint256 public constant BPS = 10_000;
@@ -45,7 +45,7 @@ contract HeroglyphRegistry is IHeroglyphRegistry, Ownable {
     nftPass = _nftPass;
   }
 
-  /// @inheritdoc IHeroglyphRegistry
+  /// @inheritdoc IObeliskRegistry
   function addToCollection(address _collection) external payable override {
     if (msg.value == 0) revert ZeroValue();
 
@@ -102,7 +102,7 @@ contract HeroglyphRegistry is IHeroglyphRegistry, Ownable {
     return addr_;
   }
 
-  /// @inheritdoc IHeroglyphRegistry
+  /// @inheritdoc IObeliskRegistry
   function removeFromCollection(address _collection, uint256 _amount) external override {
     Collection storage collection = supportedCollections[_collection];
     uint256 depositedAmount = userSupportedCollections[msg.sender][_collection].deposit;
@@ -129,7 +129,7 @@ contract HeroglyphRegistry is IHeroglyphRegistry, Ownable {
     emit CollectionContributionWithdrawn(_collection, msg.sender, _amount);
   }
 
-  /// @inheritdoc IHeroglyphRegistry
+  /// @inheritdoc IObeliskRegistry
   function supportYieldPool() external payable override {
     if (msg.value == 0) revert ZeroValue();
 
@@ -146,7 +146,7 @@ contract HeroglyphRegistry is IHeroglyphRegistry, Ownable {
     emit Supported(supportId, msg.sender, msg.value);
   }
 
-  /// @inheritdoc IHeroglyphRegistry
+  /// @inheritdoc IObeliskRegistry
   function retrieveSupportToYieldPool(uint32 _id) external override {
     Supporter storage supporter = supporters[_id];
     uint256 returningAmount = supporter.amount;
@@ -240,12 +240,12 @@ contract HeroglyphRegistry is IHeroglyphRegistry, Ownable {
     });
   }
 
-  /// @inheritdoc IHeroglyphRegistry
+  /// @inheritdoc IObeliskRegistry
   function getTickerLogic(string memory _ticker) external view override returns (address) {
     return tickersLogic[_ticker];
   }
 
-  /// @inheritdoc IHeroglyphRegistry
+  /// @inheritdoc IObeliskRegistry
   function getSupporter(uint32 _id) external view override returns (Supporter memory) {
     return supporters[_id];
   }

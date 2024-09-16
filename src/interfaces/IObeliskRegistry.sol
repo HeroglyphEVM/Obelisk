@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-interface IHeroglyphRegistry {
+interface IObeliskRegistry {
   error ZeroValue();
   error TooManyEth();
   error GoalReached();
