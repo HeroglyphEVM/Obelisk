@@ -47,17 +47,11 @@ contract BaseTest is Test, MockERC20ABI {
     return generateAddress(_name, false, 0);
   }
 
-  function generateAddress(string memory _name, uint256 _balance)
-    internal
-    returns (address)
-  {
+  function generateAddress(string memory _name, uint256 _balance) internal returns (address) {
     return generateAddress(_name, false, _balance);
   }
 
-  function generateAddress(string memory _name, bool _isContract)
-    internal
-    returns (address)
-  {
+  function generateAddress(string memory _name, bool _isContract) internal returns (address) {
     return generateAddress(_name, _isContract, 0);
   }
 
@@ -107,5 +101,27 @@ contract BaseTest is Test, MockERC20ABI {
 
   function expectExactEmit() internal {
     vm.expectEmit(true, true, true, true);
+  }
+
+  function assertEqEpsilonBelow(uint256 a, uint256 b, uint256 epsilonInv) internal pure {
+    assertLe(a, b);
+    assertGe(a, b - b / epsilonInv);
+  }
+
+  function assertEqEpsilonAround(uint256 a, uint256 b, uint256 epsilonInv) internal pure {
+    assertLe(a, b + b / epsilonInv);
+    assertGe(a, b - b / epsilonInv);
+  }
+
+  function assertEqDecimalEpsilonBelow(uint256 a, uint256 b, uint256 decimals, uint256 epsilonInv) internal pure {
+    assertLeDecimal(a, b, decimals);
+    assertGeDecimal(a, b - b / epsilonInv, decimals);
+  }
+
+  function assertEqDecimalEpsilonAround(uint256 a, uint256 b, uint256 decimals, uint256 epsilonInv) internal pure {
+    if (a == 0) a = 1;
+    if (b == 0) b = 1;
+    assertLeDecimal(a, b + b / epsilonInv, decimals);
+    assertGeDecimal(a, b - b / epsilonInv, decimals);
   }
 }
