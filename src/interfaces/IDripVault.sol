@@ -4,9 +4,9 @@ pragma solidity >=0.8.0;
 interface IDripVault {
   error FailedToSendETH();
   error InvalidAmount();
-  error NotHeroglyphRegistry();
+  error NotObeliskRegistry();
 
-  event HeroglyphRegistryUpdated(address indexed heroglyphRegistry);
+  event ObeliskRegistryUpdated(address indexed obeliskRegistry);
   event InterestRateReceiverUpdated(address indexed interestRateReceiver);
 
   function deposit() external payable;

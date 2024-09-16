@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import { ITickerNFT } from "src/interfaces/ITickerNFT.sol";
 import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
-import { IHeroglyphRegistry } from "src/interfaces/IHeroglyphRegistry.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
 
 import { strings } from "src/lib/strings.sol";
@@ -16,15 +16,15 @@ abstract contract TickerNFT is ITickerNFT {
   string public constant TICKER_SPLIT_STRING = ",";
   string public constant TICKER_START_IDENTITY = "@";
   uint32 public constant MAX_NAME_BYTES_LENGTH = 29;
-  IHeroglyphRegistry public immutable heroglyphRegistry;
+  IObeliskRegistry public immutable obeliskRegistry;
   INFTPass public immutable nftPass;
 
   mapping(uint256 => address[]) internal linkedTickers;
   mapping(uint256 => string) internal names;
   mapping(uint256 => address) internal identities;
 
-  constructor(address _heroglyphRegistry, address _nftPass) {
-    heroglyphRegistry = IHeroglyphRegistry(_heroglyphRegistry);
+  constructor(address _obeliskRegistry, address _nftPass) {
+    obeliskRegistry = IObeliskRegistry(_obeliskRegistry);
     nftPass = INFTPass(_nftPass);
   }
 
@@ -63,7 +63,7 @@ abstract contract TickerNFT is ITickerNFT {
 
     address poolTarget;
     for (uint256 i = 0; i < poolTargets.length; i++) {
-      poolTarget = heroglyphRegistry.getTickerLogic(substring.split(delim).toString());
+      poolTarget = obeliskRegistry.getTickerLogic(substring.split(delim).toString());
       poolTargets[i] = poolTarget;
 
       ILiteTicker(poolTarget).virtualDeposit(_tokenId, msg.sender);

@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IHCT } from "src/interfaces/IHCT.sol";
-import { IHeroglyphRegistry } from "src/interfaces/IHeroglyphRegistry.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
@@ -14,20 +14,20 @@ contract HCT is ERC20, IHCT {
   uint128 public constant ONE_MONTH_IN_SECOND = 2_629_800;
 
   bool private isInitialized;
-  IHeroglyphRegistry public heroglyphRegistry;
+  IObeliskRegistry public obeliskRegistry;
   mapping(address => UserInfo) internal usersInfo;
 
   constructor() ERC20("Heroglyph Name Change Token", "HCT") { }
 
-  function initHCT(address _heroglyphRegistry) external {
+  function initHCT(address _obeliskRegistry) external {
     if (isInitialized) revert AlreadyInitialized();
 
     isInitialized = true;
-    heroglyphRegistry = IHeroglyphRegistry(_heroglyphRegistry);
+    obeliskRegistry = IObeliskRegistry(_obeliskRegistry);
   }
 
   modifier onlyHeroglyphWrappedNFT() {
-    if (!heroglyphRegistry.isWrappedNFT(msg.sender)) revert NotWrappedNFT();
+    if (!obeliskRegistry.isWrappedNFT(msg.sender)) revert NotWrappedNFT();
     _;
   }
 

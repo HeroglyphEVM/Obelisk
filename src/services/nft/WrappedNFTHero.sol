@@ -34,10 +34,10 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, TickerNFT {
     address _HCT,
     address _nftPass,
     address _attachedCollection,
-    address _heroglyphRegistry,
+    address _obeliskRegistry,
     uint256 _totalSupply,
     uint32 _collectionStartedUnixTime
-  ) ERC721("WrappedNFTHero", "WNH") TickerNFT(_heroglyphRegistry, _nftPass) {
+  ) ERC721("WrappedNFTHero", "WNH") TickerNFT(_obeliskRegistry, _nftPass) {
     HCT = IHCT(_HCT);
     attachedCollection = ERC721(_attachedCollection);
 
@@ -57,7 +57,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, TickerNFT {
     if (!canHaveFreeSlot && msg.value != SLOT_PRICE) revert NoFreeSlots();
 
     if (!canHaveFreeSlot) {
-      heroglyphRegistry.onSlotBought{ value: msg.value }();
+      obeliskRegistry.onSlotBought{ value: msg.value }();
       emit SlotBought(msg.sender, msg.value);
     } else {
       freeSlots--;

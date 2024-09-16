@@ -10,7 +10,7 @@ interface IHashmask is IERC721 {
   function tokenNameByIndex(uint256 _tokenId) external view returns (string memory);
 }
 
-contract HeroHashmask is TickerNFT, Ownable {
+contract ObeliskHashmask is TickerNFT, Ownable {
   error NotActivatedByHolder();
   error NotHashmaskHolder();
   error InsufficientActivationPrice();
@@ -23,8 +23,8 @@ contract HeroHashmask is TickerNFT, Ownable {
 
   mapping(uint256 => address) public activatedBy;
 
-  constructor(address _hashmask, address _owner, address _heroglyphRegistry, address _nftPass, address _treasury)
-    TickerNFT(_heroglyphRegistry, _nftPass)
+  constructor(address _hashmask, address _owner, address _obeliskRegistry, address _nftPass, address _treasury)
+    TickerNFT(_obeliskRegistry, _nftPass)
     Ownable(_owner)
   {
     hashmask = IHashmask(_hashmask);

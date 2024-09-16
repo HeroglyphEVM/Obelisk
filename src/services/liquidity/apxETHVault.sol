@@ -3,29 +3,17 @@ pragma solidity ^0.8.24;
 
 import { BaseDripVault } from "./BaseDripVault.sol";
 
-import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-interface IApxETH is IERC4626 {
-  function pirexEth() external view returns (address);
-  function harvest() external;
-  function assetsPerShare() external view returns (uint256);
-}
-
-interface IPirexEth {
-  function deposit(address receiver, bool shouldCompound)
-    external
-    payable
-    returns (uint256 postFeeAmount, uint256 feeAmount);
-}
+import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
+import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 
 contract apxETHVault is BaseDripVault {
   IApxETH public apxETH;
   IPirexEth public pirexEth;
   IERC20 public pxETH;
 
-  constructor(address _owner, address _heroglyphRegistry, address _apxETH, address _rateReceiver)
-    BaseDripVault(_owner, _heroglyphRegistry, _rateReceiver)
+  constructor(address _owner, address _obeliskRegistry, address _apxETH, address _rateReceiver)
+    BaseDripVault(_owner, _obeliskRegistry, _rateReceiver)
   {
     apxETH = IApxETH(_apxETH);
     pirexEth = IPirexEth(apxETH.pirexEth());

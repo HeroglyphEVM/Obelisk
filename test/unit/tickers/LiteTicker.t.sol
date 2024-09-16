@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "test/base/BaseTest.t.sol";
-import { LiteTicker, ILiteTicker, IHeroglyphRegistry } from "src/services/tickers/LiteTicker.sol";
+import { LiteTicker, ILiteTicker, IObeliskRegistry } from "src/services/tickers/LiteTicker.sol";
 
 contract LiteTickerTest is BaseTest {
   address private owner;
@@ -27,9 +27,9 @@ contract LiteTickerTest is BaseTest {
   }
 
   function _setUpMockCalls() internal {
-    vm.mockCall(registry, abi.encodeWithSelector(IHeroglyphRegistry.isWrappedNFT.selector), abi.encode(false));
+    vm.mockCall(registry, abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector), abi.encode(false));
     vm.mockCall(
-      registry, abi.encodeWithSelector(IHeroglyphRegistry.isWrappedNFT.selector, mockWrappedNFT), abi.encode(true)
+      registry, abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector, mockWrappedNFT), abi.encode(true)
     );
   }
 

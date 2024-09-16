@@ -3,7 +3,7 @@
 
 // import "test/base/BaseTest.t.sol";
 
-// import { IHeroglyphRegistry } from "src/interfaces/IHeroglyphRegistry.sol";
+// import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 // import { IHCT } from "src/interfaces/IHCT.sol";
 // import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
 
@@ -15,7 +15,7 @@
 
 //   address private hctMock;
 //   MockERC721 private nftCollectionMock;
-//   address private heroglyphRegistryMock;
+//   address private obeliskRegistryMock;
 //   address private user;
 
 //   string[] private tickers = ["#Pool", "HenZ", "MyWorld"];
@@ -31,14 +31,14 @@
 //     nftCollectionMock.mint(user, 1);
 
 //     underTest = new WrappedNFTHero(
-//       hctMock, address(nftCollectionMock), heroglyphRegistryMock, TOTAL_SUPPLY, uint32(block.timestamp)
+//       hctMock, address(nftCollectionMock), obeliskRegistryMock, TOTAL_SUPPLY, uint32(block.timestamp)
 //     );
 //   }
 
 //   function _prepareMocks() internal {
 //     hctMock = generateAddress("HCTMock");
 //     nftCollectionMock = new MockERC721();
-//     heroglyphRegistryMock = generateAddress("heroglyphRegistryMock");
+//     obeliskRegistryMock = generateAddress("obeliskRegistryMock");
 //     user = generateAddress("User");
 //   }
 
@@ -47,8 +47,8 @@
 //       vm.mockCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector), abi.encode(true));
 //       vm.mockCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector), abi.encode(true));
 //       vm.mockCall(
-//         heroglyphRegistryMock,
-//         abi.encodeWithSelector(IHeroglyphRegistry.getTickerLogic.selector, tickers[i]),
+//         obeliskRegistryMock,
+//         abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i]),
 //         abi.encode(poolTargets[i])
 //       );
 //     }
@@ -58,11 +58,11 @@
 //   }
 
 //   function test_constructor_thenSetsValues() external {
-//     underTest = new WrappedNFTHero(hctMock, address(nftCollectionMock), heroglyphRegistryMock, 10_000, 999_928);
+//     underTest = new WrappedNFTHero(hctMock, address(nftCollectionMock), obeliskRegistryMock, 10_000, 999_928);
 
 //     assertEq(address(underTest.HCT()), hctMock);
 //     assertEq(address(underTest.attachedCollection()), address(nftCollectionMock));
-//     assertEq(address(underTest.heroglyphRegistry()), heroglyphRegistryMock);
+//     assertEq(address(underTest.obeliskRegistry()), obeliskRegistryMock);
 //   }
 
 //   function test_wrap_whenAlreadyMinted_thenReverts() external prankAs(user) {
@@ -128,7 +128,7 @@
 //     underTest.wrap(1);
 //     for (uint256 i = 0; i < poolTargets.length; i++) {
 //       vm.expectCall(
-//         heroglyphRegistryMock, abi.encodeWithSelector(IHeroglyphRegistry.getTickerLogic.selector, tickers[i])
+//         obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i])
 //       );
 //       vm.expectCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, 1, user));
 //     }
@@ -141,7 +141,7 @@
 
 //       if (i > 0) {
 //         vm.expectCall(
-//           heroglyphRegistryMock, abi.encodeWithSelector(IHeroglyphRegistry.getTickerLogic.selector, tickers[i])
+//           obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i])
 //         );
 //         vm.expectCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, 1, user));
 //       }

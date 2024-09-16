@@ -26,8 +26,8 @@ contract BaseDripVaultTest is BaseTest {
     user = generateAddress("user", 100e18);
   }
 
-  function test_deposit_whenNotHeroglyphRegistry_reverts() public {
-    vm.expectRevert(IDripVault.NotHeroglyphRegistry.selector);
+  function test_deposit_whenNotObeliskRegistry_reverts() public {
+    vm.expectRevert(IDripVault.NotObeliskRegistry.selector);
     underTest.deposit{ value: 1 ether }();
   }
 
@@ -46,8 +46,8 @@ contract BaseDripVaultTest is BaseTest {
     assertEq(underTest.getTotalDeposit(), amount);
   }
 
-  function test_withdraw_whenNotHeroglyphRegistry_reverts() public {
-    vm.expectRevert(IDripVault.NotHeroglyphRegistry.selector);
+  function test_withdraw_whenNotObeliskRegistry_reverts() public {
+    vm.expectRevert(IDripVault.NotObeliskRegistry.selector);
     underTest.withdraw(address(0), 1 ether);
   }
 
@@ -62,19 +62,19 @@ contract BaseDripVaultTest is BaseTest {
     assertEq(underTest.getTotalDeposit(), 0);
   }
 
-  function test_setHeroglyphRegistry_whenNotOwner_reverts() public prankAs(user) {
+  function test_setObeliskRegistry_whenNotOwner_reverts() public prankAs(user) {
     vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
-    underTest.setHeroglyphRegistry(generateAddress("newRegistry"));
+    underTest.setObeliskRegistry(generateAddress("newRegistry"));
   }
 
-  function test_setHeroglyphRegistry_whenValid_thenSets() public prankAs(owner) {
+  function test_setObeliskRegistry_whenValid_thenSets() public prankAs(owner) {
     address newRegistry = generateAddress("newRegistry");
 
     expectExactEmit();
-    emit IDripVault.HeroglyphRegistryUpdated(newRegistry);
+    emit IDripVault.ObeliskRegistryUpdated(newRegistry);
 
-    underTest.setHeroglyphRegistry(newRegistry);
-    assertEq(underTest.heroglyphRegistry(), newRegistry);
+    underTest.setObeliskRegistry(newRegistry);
+    assertEq(underTest.obeliskRegistry(), newRegistry);
   }
 
   function test_setInterestRateReceiver_whenNotOwner_reverts() public prankAs(user) {

@@ -5,14 +5,14 @@ import "test/base/BaseTest.t.sol";
 
 import { HCT, IHCT } from "src/services/HCT.sol";
 
-import { IHeroglyphRegistry } from "src/interfaces/IHeroglyphRegistry.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
 contract HCTTest is BaseTest {
   uint128 private constant POWER_BY_NFT = 1e18;
   uint128 private constant MULTIPLIER_BY_NFT_MOCK_A = 3e18;
   uint128 private constant MULTIPLIER_BY_NFT_MOCK_B = 0.8e18;
 
-  address private heroglyphRegistryMock;
+  address private obeliskRegistryMock;
   address private wrappedNFTMock_A;
   address private wrappedNFTMock_B;
   address private user;
@@ -22,45 +22,43 @@ contract HCTTest is BaseTest {
     _setupMocks();
     _setupMockCalls();
     underTest = new HCTHarness();
-    underTest.initHCT(heroglyphRegistryMock);
+    underTest.initHCT(obeliskRegistryMock);
   }
 
   function _setupMocks() internal {
-    heroglyphRegistryMock = generateAddress("HeroglyphRegistry");
+    obeliskRegistryMock = generateAddress("ObeliskRegistry");
     wrappedNFTMock_A = generateAddress("WrappedNFT_A");
     wrappedNFTMock_B = generateAddress("WrappedNFT_B");
     user = generateAddress("User");
   }
 
   function _setupMockCalls() internal {
+    vm.mockCall(obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector), abi.encode(false));
     vm.mockCall(
-      heroglyphRegistryMock, abi.encodeWithSelector(IHeroglyphRegistry.isWrappedNFT.selector), abi.encode(false)
-    );
-    vm.mockCall(
-      heroglyphRegistryMock,
-      abi.encodeWithSelector(IHeroglyphRegistry.isWrappedNFT.selector, wrappedNFTMock_A),
+      obeliskRegistryMock,
+      abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector, wrappedNFTMock_A),
       abi.encode(true)
     );
     vm.mockCall(
-      heroglyphRegistryMock,
-      abi.encodeWithSelector(IHeroglyphRegistry.isWrappedNFT.selector, wrappedNFTMock_B),
+      obeliskRegistryMock,
+      abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector, wrappedNFTMock_B),
       abi.encode(true)
     );
   }
 
   function test_initHCT_whenAlreadyInitialized_thenReverts() external {
     underTest = new HCTHarness();
-    underTest.initHCT(heroglyphRegistryMock);
+    underTest.initHCT(obeliskRegistryMock);
 
     vm.expectRevert(IHCT.AlreadyInitialized.selector);
-    underTest.initHCT(heroglyphRegistryMock);
+    underTest.initHCT(obeliskRegistryMock);
   }
 
-  function test_initHCT_thenSetsHeroglyphRegistry() external {
+  function test_initHCT_thenSetsObeliskRegistry() external {
     underTest = new HCTHarness();
-    underTest.initHCT(heroglyphRegistryMock);
+    underTest.initHCT(obeliskRegistryMock);
 
-    assertEq(address(underTest.heroglyphRegistry()), heroglyphRegistryMock);
+    assertEq(address(underTest.obeliskRegistry()), obeliskRegistryMock);
   }
 
   function test_addPower_asNonWrappedNFTSystem_thenReverts() external {
