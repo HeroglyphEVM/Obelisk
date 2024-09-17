@@ -24,7 +24,7 @@ contract ChaiMoneyVault is BaseDripVault {
   }
 
   function _beforeWithdrawal(address _to, uint256 _amount) internal override {
-    chaiMoney.draw(address(this), chaiMoney.balanceOf(address(this)));
+    chaiMoney.exit(address(this), chaiMoney.balanceOf(address(this)));
     uint256 totalBalance = dai.balanceOf(address(this));
     uint256 cachedTotalDeposit = getTotalDeposit();
     uint256 leftOver = totalBalance - _amount;
@@ -45,7 +45,7 @@ contract ChaiMoneyVault is BaseDripVault {
     uint256 cachedTotalDeposit = getTotalDeposit();
     if (cachedTotalDeposit == 0) return 0;
 
-    chaiMoney.draw(address(this), chaiMoney.balanceOf(address(this)));
+    chaiMoney.exit(address(this), chaiMoney.balanceOf(address(this)));
     uint256 totalBalance = dai.balanceOf(address(this));
 
     if (totalBalance > cachedTotalDeposit) {
