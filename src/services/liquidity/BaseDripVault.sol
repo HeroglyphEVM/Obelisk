@@ -9,22 +9,27 @@ abstract contract BaseDripVault is IDripVault, Ownable {
   address public interestRateReceiver;
   address public obeliskRegistry;
   uint256 private totalDeposit;
+  address public inputToken;
 
   modifier onlyObeliskRegistry() {
     if (msg.sender != obeliskRegistry) revert NotObeliskRegistry();
     _;
   }
 
-  constructor(address _owner, address _obeliskRegistry, address _rateReceiver) Ownable(_owner) {
+  constructor(address _inputToken, address _owner, address _obeliskRegistry, address _rateReceiver) Ownable(_owner) {
     obeliskRegistry = _obeliskRegistry;
     interestRateReceiver = _rateReceiver;
+    inputToken = _inputToken;
   }
 
-  function deposit() external payable override onlyObeliskRegistry {
-    if (msg.value == 0) revert InvalidAmount();
-    totalDeposit += msg.value;
+  function deposit(uint256 _amount) external payable override onlyObeliskRegistry {
+    if (inputToken == address(0) && msg.value == 0) revert InvalidAmount();
+    if (inputToken != address(0) && _amount == 0) revert InvalidAmount();
+    if (inputToken != address(0) && msg.value != 0) revert NativeNotAccepted();
 
-    _afterDeposit(msg.value);
+    _amount = inputToken == address(0) ? msg.value : _amount;
+    totalDeposit += _amount;
+    _afterDeposit(_amount);
   }
 
   function _afterDeposit(uint256 _amount) internal virtual;

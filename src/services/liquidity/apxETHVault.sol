@@ -13,7 +13,7 @@ contract apxETHVault is BaseDripVault {
   IERC20 public pxETH;
 
   constructor(address _owner, address _obeliskRegistry, address _apxETH, address _rateReceiver)
-    BaseDripVault(_owner, _obeliskRegistry, _rateReceiver)
+    BaseDripVault(address(0), _owner, _obeliskRegistry, _rateReceiver)
   {
     apxETH = IApxETH(_apxETH);
     pirexEth = IPirexEth(apxETH.pirexEth());
