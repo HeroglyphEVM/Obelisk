@@ -6,8 +6,12 @@ import "test/base/BaseTest.t.sol";
 import { HCT, IHCT } from "src/services/HCT.sol";
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
+import { strings } from "src/lib/strings.sol";
 
 contract HCTTest is BaseTest {
+  using strings for string;
+  using strings for strings.slice;
+
   uint128 private constant POWER_BY_NFT = 1e18;
   uint128 private constant MULTIPLIER_BY_NFT_MOCK_A = 3e18;
   uint128 private constant MULTIPLIER_BY_NFT_MOCK_B = 0.8e18;

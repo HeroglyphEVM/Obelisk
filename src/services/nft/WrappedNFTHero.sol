@@ -74,7 +74,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, TickerNFT {
 
   function unwrap(uint256 _tokenId) external override {
     if (!isMinted[_tokenId]) revert NotMinted();
-    _removeOldTickers(_tokenId, false);
+    _removeOldTickers(identities[_tokenId], _tokenId, false);
 
     HCT.removePower(msg.sender, getWrapperMultiplier());
     attachedCollection.transferFrom(address(this), msg.sender, _tokenId);
