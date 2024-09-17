@@ -21,8 +21,6 @@ contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
   address public treasury;
   uint256 public activationPrice;
 
-  mapping(uint256 => address) public activatedBy;
-
   constructor(address _hashmask, address _owner, address _obeliskRegistry, address _nftPass, address _treasury)
     TickerNFT(_obeliskRegistry, _nftPass)
     Ownable(_owner)
@@ -32,30 +30,53 @@ contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
     activationPrice = 0.1 ether;
   }
 
-  function activate(uint256 _hashmaskId) external payable {
+  function link(uint256 _hashmaskId) external payable {
     if (msg.value != activationPrice) revert InsufficientActivationPrice();
     if (hashmask.ownerOf(_hashmaskId) != msg.sender) revert NotHashmaskHolder();
 
-    activatedBy[_hashmaskId] = msg.sender;
+    _removeOldTickers(identities[_hashmaskId], _hashmaskId, true);
+    identities[_hashmaskId] = msg.sender;
 
     (bool success,) = treasury.call{ value: msg.value }("");
     if (!success) revert TransferFailed();
+
+    //Since it's an override, the from is address(0);
+    emit HashmaskLinked(_hashmaskId, address(0), msg.sender);
+  }
+
+  function transferLink(uint256 _hashmaskId, bool _triggerNameUpdate) external {
+    if (identities[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
+
+    address newOwner = hashmask.ownerOf(_hashmaskId);
+
+    _removeOldTickers(msg.sender, _hashmaskId, true);
+    identities[_hashmaskId] = newOwner;
+
+    if (_triggerNameUpdate) {
+      _updateName(_hashmaskId, msg.sender, newOwner);
+    }
+
+    emit HashmaskLinked(_hashmaskId, msg.sender, newOwner);
   }
 
   function updateName(uint256 _hashmaskId) external {
-    if (activatedBy[_hashmaskId] != msg.sender) revert NotActivatedByHolder();
     if (hashmask.ownerOf(_hashmaskId) != msg.sender) revert NotHashmaskHolder();
+    if (identities[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
 
+    _updateName(_hashmaskId, msg.sender, msg.sender);
+  }
+
+  function _updateName(uint256 _hashmaskId, address _oldReceiver, address _newReceiver) internal {
     string memory name = hashmask.tokenNameByIndex(_hashmaskId);
     names[_hashmaskId] = name;
 
-    _removeOldTickers(_hashmaskId, true);
-    _addNewTickers(_hashmaskId, name);
+    _removeOldTickers(_oldReceiver, _hashmaskId, true);
+    _addNewTickers(_newReceiver, _hashmaskId, name);
 
-    identities[_hashmaskId] = msg.sender;
+    emit NameUpdated(_hashmaskId, name);
   }
 
-  function _addNewTickers(uint256 _tokenId, string memory _name) internal override {
+  function _addNewTickers(address _receiver, uint256 _tokenId, string memory _name) internal override {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory delim = string(" ").toSlice();
     strings.slice[] memory potentialTickers = new strings.slice[](nameSlice.count(delim) + 1);
@@ -72,30 +93,40 @@ contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
       }
 
       poolTarget = obeliskRegistry.getTickerLogic(potentialTicker.beyond(string("O").toSlice()).toString());
+      if (poolTarget == address(0)) continue;
+
       poolTargets.push(poolTarget);
 
-      ILiteTicker(poolTarget).virtualDeposit(_tokenId, msg.sender);
+      ILiteTicker(poolTarget).virtualDeposit(_tokenId, _receiver);
       emit TickerActivated(_tokenId, poolTarget);
     }
 
     if (poolTargets.length == 0) revert NoTickersFound();
   }
 
-  function _updateIdentity(uint256 _tokenId, string memory _name) internal override {
-    //skip
+  function _updateIdentity(uint256, string memory) internal pure override returns (address) {
+    revert UseLinkOrTransferLinkInstead();
   }
 
   function _renameRequirements(uint256) internal pure override {
-    revert UseUpdateNameForHashmasks();
+    revert UseUpdateNameInstead();
   }
 
   function _claimRequirements(uint256 _tokenId) internal view override returns (bool) {
     bool sameName = keccak256(bytes(hashmask.tokenNameByIndex(_tokenId))) == keccak256(bytes(names[_tokenId]));
-    return hashmask.ownerOf(_tokenId) == msg.sender && !sameName;
+    address owner = hashmask.ownerOf(_tokenId);
+    return owner == msg.sender && owner == identities[_tokenId] && sameName;
   }
 
   function setActivationPrice(uint256 _price) external onlyOwner {
     activationPrice = _price;
     emit ActivationPriceSet(_price);
+  }
+
+  function setTreasury(address _treasury) external onlyOwner {
+    if (_treasury == address(0)) revert ZeroAddress();
+    treasury = _treasury;
+
+    emit TreasurySet(_treasury);
   }
 }

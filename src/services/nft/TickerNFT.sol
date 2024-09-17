@@ -33,27 +33,39 @@ abstract contract TickerNFT is ITickerNFT {
     if (nameBytesLength == 0 || nameBytesLength > MAX_NAME_BYTES_LENGTH) revert InvalidNameLength();
     _renameRequirements(_tokenId);
 
-    _updateIdentity(_tokenId, _newName);
-    _removeOldTickers(_tokenId, false);
-    _addNewTickers(_tokenId, _newName);
+    address registredUserAddress = identities[_tokenId];
+    _removeOldTickers(registredUserAddress, _tokenId, false);
+
+    address newReceiver = _updateIdentity(_tokenId, _newName);
+    _addNewTickers(newReceiver, _tokenId, _newName);
 
     emit NameChanged(_tokenId, _newName);
     names[_tokenId] = _newName;
   }
 
+  function updateIdentityReceiver(uint256 _tokenId) external {
+    string memory currentName = names[_tokenId];
+
+    address registredUserAddress = identities[_tokenId];
+    _removeOldTickers(registredUserAddress, _tokenId, false);
+
+    address newReceiver = _updateIdentity(_tokenId, currentName);
+    _addNewTickers(newReceiver, _tokenId, currentName);
+  }
+
   function _renameRequirements(uint256 _tokenId) internal virtual;
 
-  function _removeOldTickers(uint256 _tokenId, bool _ignoreRewards) internal {
+  function _removeOldTickers(address _registredUserAddress, uint256 _tokenId, bool _ignoreRewards) internal {
     address[] memory activePools = linkedTickers[_tokenId];
     delete linkedTickers[_tokenId];
 
     for (uint256 i = 0; i < activePools.length; i++) {
-      ILiteTicker(activePools[i]).virtualWithdraw(_tokenId, msg.sender, _ignoreRewards);
+      ILiteTicker(activePools[i]).virtualWithdraw(_tokenId, _registredUserAddress, _ignoreRewards);
       emit TickerDeactivated(_tokenId, activePools[i]);
     }
   }
 
-  function _addNewTickers(uint256 _tokenId, string memory _name) internal virtual {
+  function _addNewTickers(address _registredUserAddress, uint256 _tokenId, string memory _name) internal virtual {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory needle = TICKER_START_INDICE.toSlice();
     strings.slice memory substring = nameSlice.find(needle).beyond(needle).split(string(" ").toSlice());
@@ -64,24 +76,28 @@ abstract contract TickerNFT is ITickerNFT {
     address poolTarget;
     for (uint256 i = 0; i < poolTargets.length; i++) {
       poolTarget = obeliskRegistry.getTickerLogic(substring.split(delim).toString());
+      if (poolTarget == address(0)) continue;
+
       poolTargets[i] = poolTarget;
 
-      ILiteTicker(poolTarget).virtualDeposit(_tokenId, msg.sender);
+      ILiteTicker(poolTarget).virtualDeposit(_tokenId, _registredUserAddress);
       emit TickerActivated(_tokenId, poolTarget);
     }
 
     linkedTickers[_tokenId] = poolTargets;
   }
 
-  function _updateIdentity(uint256 _tokenId, string memory _name) internal virtual {
+  function _updateIdentity(uint256 _tokenId, string memory _name) internal virtual returns (address receiver_) {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory needle = TICKER_START_IDENTITY.toSlice();
     strings.slice memory substring = nameSlice.find(needle).beyond(needle).split(string(" ").toSlice());
 
-    address receiver = nftPass.getMetadataWithName(substring.toString()).walletReceiver;
+    receiver_ = nftPass.getMetadataWithName(substring.toString()).walletReceiver;
 
-    if (receiver == address(0)) revert InvalidWalletReceiver();
-    identities[_tokenId] = receiver;
+    if (receiver_ == address(0)) revert InvalidWalletReceiver();
+    identities[_tokenId] = receiver_;
+
+    return receiver_;
   }
 
   function claim(uint256 _tokenId) external {
@@ -99,5 +115,9 @@ abstract contract TickerNFT is ITickerNFT {
 
   function getLinkedTickers(uint256 _tokenId) external view returns (address[] memory) {
     return linkedTickers[_tokenId];
+  }
+
+  function getIdentity(uint256 _tokenId) external view returns (address) {
+    return identities[_tokenId];
   }
 }
