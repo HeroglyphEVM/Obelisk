@@ -14,7 +14,6 @@ contract apxETHVaultTest is BaseTest {
   address private pirexEth;
   address private rateReceiver;
   address private user;
-  MockERC20 private pxETH;
 
   apxETHVault private underTest;
 
@@ -22,101 +21,119 @@ contract apxETHVaultTest is BaseTest {
     _setupVariables();
 
     vm.mockCall(apxETH, abi.encodeWithSelector(IApxETH.pirexEth.selector), abi.encode(pirexEth));
-    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.asset.selector), abi.encode(address(pxETH)));
-    vm.mockCall(pirexEth, abi.encodeWithSelector(IPirexEth.deposit.selector), abi.encode(0, 0));
 
     underTest = new apxETHVault(owner, obeliskRegistry, apxETH, rateReceiver);
-    pxETH.mint(address(underTest), 10_000e18);
   }
 
   function _setupVariables() internal {
     owner = generateAddress("owner");
     obeliskRegistry = generateAddress("obeliskRegistry", 100e18);
-    apxETH = generateAddress("apxETH");
-    pirexEth = generateAddress("pirexEth");
     rateReceiver = generateAddress("rateReceiver");
     user = generateAddress("user");
 
-    pxETH = new MockERC20("pxETH", "pxETH", 18);
+    apxETH = address(new MockERC20("apxETH", "auto", 18));
+    pirexEth = address(new MockPirexETH(MockERC20(apxETH)));
   }
 
   function test_afterDeposit_thenDepositsInPirexETH() public prankAs(obeliskRegistry) {
     uint256 amount = 2.32e18;
 
     vm.expectCall(pirexEth, amount, abi.encodeWithSelector(IPirexEth.deposit.selector, address(underTest), true));
-    underTest.deposit{ value: amount }();
+    underTest.deposit{ value: amount }(0);
   }
 
-  function test_beforeWithdrawal_whenTotalBalanceIsNotZero_thenWithdrawsFromPirexETHAndTransfersInterest()
+  function test_beforeWithdrawal_whenTotalBalanceIsNotZero_thenWithdrawsTransferEverything()
     public
     prankAs(obeliskRegistry)
   {
-    uint256 deposit = 7.32e18 + 1e18;
+    uint256 depositAmount = 7.32e18;
+    uint256 withdrawAmount = 2.11e18;
 
-    uint256 withdrawAmount = 7.32e18;
-    uint256 interest = 0.23e18;
-    uint256 interestInPx = 0.11e18;
+    uint256 apxAmount = MockPirexETH(pirexEth).toRatio(depositAmount);
+    uint256 withdrawAmountApx = MockPirexETH(pirexEth).toRatio(withdrawAmount);
 
-    uint256 redeemAmount = 1.23e18;
-    uint256 amountInPx = 2.21e18;
-    uint256 exitedPx = 5.11e18;
-    uint256 exitedInETH = deposit + interest;
+    uint256 interestETH = 0.23e18;
+    uint256 interestInAPX = MockPirexETH(pirexEth).toRatio(interestETH);
 
-    underTest.deposit{ value: deposit }();
+    uint256 totalValueETH = depositAmount + interestETH;
 
-    uint256 pxBalance = pxETH.balanceOf(address(underTest));
+    MockERC20(apxETH).mint(address(underTest), interestInAPX);
 
+    underTest.deposit{ value: depositAmount }(0);
+
+    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.maxRedeem.selector, address(underTest)), abi.encode(apxAmount));
+    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToAssets.selector, apxAmount), abi.encode(totalValueETH));
     vm.mockCall(
-      apxETH, abi.encodeWithSelector(IERC4626.maxRedeem.selector, address(underTest)), abi.encode(redeemAmount)
+      apxETH, abi.encodeWithSelector(IERC4626.convertToShares.selector, interestETH), abi.encode(interestInAPX)
     );
-    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.redeem.selector, redeemAmount), abi.encode(exitedPx));
 
     vm.mockCall(
-      apxETH, abi.encodeWithSelector(IERC4626.convertToShares.selector, withdrawAmount), abi.encode(amountInPx)
-    );
-    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToAssets.selector, exitedPx), abi.encode(exitedInETH));
-    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToShares.selector, interest), abi.encode(interestInPx));
-
-    vm.mockCall(
-      apxETH, abi.encodeWithSelector(IERC4626.deposit.selector, pxBalance - amountInPx - interestInPx), abi.encode(0)
+      apxETH, abi.encodeWithSelector(IERC4626.convertToShares.selector, withdrawAmount), abi.encode(withdrawAmountApx)
     );
 
     underTest.withdraw(user, withdrawAmount);
 
-    assertEq(pxETH.balanceOf(user), amountInPx);
-    assertEq(pxETH.balanceOf(rateReceiver), interestInPx);
+    assertEq(MockERC20(apxETH).balanceOf(user), withdrawAmountApx);
+    assertEq(MockERC20(apxETH).balanceOf(rateReceiver), interestInAPX);
+    assertEq(
+      MockERC20(apxETH).balanceOf(address(underTest)), (interestInAPX + apxAmount) - (withdrawAmountApx + interestInAPX)
+    );
   }
 
-  function test_beforeWithdrawal_whenWithdrawAmountIsEqualToTotalDeposit_thenTransfersInterestAndPxETH()
+  function test_beforeWithdrawal_whenWithdrawAmountIsEqualToTotalDeposit_thenTransfersInterestAndApxETH()
     public
     prankAs(obeliskRegistry)
   {
-    uint256 amount = 7.32e18;
-    uint256 interest = 0.23e18;
-    uint256 interestInPx = 0.11e18;
+    uint256 depositAmount = 7.32e18;
+    uint256 withdrawAmount = depositAmount;
 
-    uint256 redeemAmount = 1.23e18;
-    uint256 amountInPx = 2.21e18;
-    uint256 exitedPx = 5.11e18;
-    uint256 exitedInETH = amount + interest;
+    uint256 apxAmount = MockPirexETH(pirexEth).toRatio(depositAmount);
+    uint256 withdrawAmountApx = apxAmount;
 
-    underTest.deposit{ value: amount }();
+    uint256 interestETH = 0.23e18;
+    uint256 interestInAPX = MockPirexETH(pirexEth).toRatio(interestETH);
 
-    uint256 pxBalance = pxETH.balanceOf(address(underTest));
-    uint256 remainingPxBalance = pxBalance - amountInPx - interestInPx;
+    uint256 totalValueETH = depositAmount + interestETH;
+
+    MockERC20(apxETH).mint(address(underTest), interestInAPX);
+
+    underTest.deposit{ value: depositAmount }(0);
+
+    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.maxRedeem.selector, address(underTest)), abi.encode(apxAmount));
+    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToAssets.selector, apxAmount), abi.encode(totalValueETH));
+    vm.mockCall(
+      apxETH, abi.encodeWithSelector(IERC4626.convertToShares.selector, interestETH), abi.encode(interestInAPX)
+    );
 
     vm.mockCall(
-      apxETH, abi.encodeWithSelector(IERC4626.maxRedeem.selector, address(underTest)), abi.encode(redeemAmount)
+      apxETH, abi.encodeWithSelector(IERC4626.convertToShares.selector, withdrawAmount), abi.encode(withdrawAmountApx)
     );
-    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.redeem.selector, redeemAmount), abi.encode(exitedPx));
 
-    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToShares.selector, amount), abi.encode(amountInPx));
-    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToAssets.selector, exitedPx), abi.encode(exitedInETH));
-    vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToShares.selector, interest), abi.encode(interestInPx));
+    underTest.withdraw(user, withdrawAmount);
 
-    underTest.withdraw(user, amount);
+    assertEq(MockERC20(apxETH).balanceOf(user), withdrawAmountApx);
+    assertEq(MockERC20(apxETH).balanceOf(rateReceiver), interestInAPX);
+    assertEq(MockERC20(apxETH).balanceOf(address(underTest)), 0);
+  }
+}
 
-    assertEq(pxETH.balanceOf(user), amountInPx);
-    assertEq(pxETH.balanceOf(rateReceiver), remainingPxBalance + interestInPx);
+contract MockPirexETH is IPirexEth {
+  MockERC20 private pxETH;
+
+  constructor(MockERC20 _pxETH) {
+    pxETH = _pxETH;
+  }
+
+  function deposit(address receiver, bool) external payable override returns (uint256 postFeeAmount, uint256 feeAmount) {
+    pxETH.mint(receiver, toRatio(msg.value));
+    return (msg.value, 0);
+  }
+
+  function ratio() public pure returns (uint256) {
+    return 0.133e18;
+  }
+
+  function toRatio(uint256 _raw) public pure returns (uint256) {
+    return _raw * 1e18 / ratio();
   }
 }

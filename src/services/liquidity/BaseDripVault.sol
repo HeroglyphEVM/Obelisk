@@ -3,28 +3,38 @@ pragma solidity ^0.8.24;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract BaseDripVault is IDripVault, Ownable {
   address public interestRateReceiver;
   address public obeliskRegistry;
   uint256 private totalDeposit;
+  address public inputToken;
 
   modifier onlyObeliskRegistry() {
     if (msg.sender != obeliskRegistry) revert NotObeliskRegistry();
     _;
   }
 
-  constructor(address _owner, address _obeliskRegistry, address _rateReceiver) Ownable(_owner) {
+  constructor(address _inputToken, address _owner, address _obeliskRegistry, address _rateReceiver) Ownable(_owner) {
     obeliskRegistry = _obeliskRegistry;
     interestRateReceiver = _rateReceiver;
+    inputToken = _inputToken;
   }
 
-  function deposit() external payable override onlyObeliskRegistry {
-    if (msg.value == 0) revert InvalidAmount();
-    totalDeposit += msg.value;
+  function deposit(uint256 _amount) external payable override onlyObeliskRegistry {
+    if (inputToken == address(0) && msg.value == 0) revert InvalidAmount();
+    if (inputToken != address(0) && msg.value != 0) revert NativeNotAccepted();
+    if (inputToken != address(0) && _amount == 0) revert InvalidAmount();
 
-    _afterDeposit(msg.value);
+    uint256 sanitizedAmount = inputToken == address(0) ? msg.value : _amount;
+
+    if (inputToken != address(0)) {
+      sanitizedAmount = IERC20(inputToken).balanceOf(address(this)) - totalDeposit;
+    }
+
+    totalDeposit += sanitizedAmount;
+    _afterDeposit(sanitizedAmount);
   }
 
   function _afterDeposit(uint256 _amount) internal virtual;
@@ -43,7 +53,7 @@ abstract contract BaseDripVault is IDripVault, Ownable {
       (bool success,) = _to.call{ value: _amount }("");
       if (!success) revert FailedToSendETH();
     } else {
-      IERC20(_asset).transfer(_to, _amount);
+      SafeERC20.safeTransfer(IERC20(_asset), _to, _amount);
     }
   }
 

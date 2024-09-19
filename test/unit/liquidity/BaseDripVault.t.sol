@@ -16,7 +16,7 @@ contract BaseDripVaultTest is BaseTest {
 
   function setUp() public {
     _setUpVariables();
-    underTest = new BaseDripVaultHarness(owner, registry, rateReceiver);
+    underTest = new BaseDripVaultHarness(address(0), owner, registry, rateReceiver);
   }
 
   function _setUpVariables() internal {
@@ -28,12 +28,12 @@ contract BaseDripVaultTest is BaseTest {
 
   function test_deposit_whenNotObeliskRegistry_reverts() public {
     vm.expectRevert(IDripVault.NotObeliskRegistry.selector);
-    underTest.deposit{ value: 1 ether }();
+    underTest.deposit{ value: 1 ether }(0);
   }
 
   function test_deposit_whenZeroAmount_reverts() public prankAs(registry) {
     vm.expectRevert(IDripVault.InvalidAmount.selector);
-    underTest.deposit{ value: 0 }();
+    underTest.deposit{ value: 0 }(0);
   }
 
   function test_deposit_whenValidAmount_thenDeposits() public prankAs(registry) {
@@ -41,7 +41,7 @@ contract BaseDripVaultTest is BaseTest {
 
     expectExactEmit();
     emit BaseDripVaultHarness.AfterDeposit(amount);
-    underTest.deposit{ value: amount }();
+    underTest.deposit{ value: amount }(0);
 
     assertEq(underTest.getTotalDeposit(), amount);
   }
@@ -53,7 +53,7 @@ contract BaseDripVaultTest is BaseTest {
 
   function test_withdraw_thenWithdraws() public prankAs(registry) {
     uint256 amount = 1 ether;
-    underTest.deposit{ value: amount }();
+    underTest.deposit{ value: amount }(0);
 
     expectExactEmit();
     emit BaseDripVaultHarness.BeforeWithdrawal(address(0), amount);
@@ -97,7 +97,9 @@ contract BaseDripVaultHarness is BaseDripVault {
   event AfterDeposit(uint256 amount);
   event BeforeWithdrawal(address to, uint256 amount);
 
-  constructor(address _owner, address _registry, address _rateReceiver) BaseDripVault(_owner, _registry, _rateReceiver) { }
+  constructor(address _inputToken, address _owner, address _registry, address _rateReceiver)
+    BaseDripVault(_inputToken, _owner, _registry, _rateReceiver)
+  { }
 
   function _afterDeposit(uint256 _amount) internal override {
     emit AfterDeposit(_amount);
@@ -107,7 +109,7 @@ contract BaseDripVaultHarness is BaseDripVault {
     emit BeforeWithdrawal(_to, _amount);
   }
 
-  function claim() external returns (uint256) {
+  function claim() external pure returns (uint256) {
     return 0;
   }
 }
