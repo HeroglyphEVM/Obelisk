@@ -29,6 +29,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, TickerNFT {
   uint32 public contractStartedUnixTime;
   uint32 public contractBlockNumber;
   bool public freeSlotForOdd;
+  bool public premium;
 
   constructor(
     address _HCT,
@@ -36,7 +37,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, TickerNFT {
     address _attachedCollection,
     address _obeliskRegistry,
     uint256 _totalSupply,
-    uint32 _collectionStartedUnixTime
+    uint32 _collectionStartedUnixTime,
+    bool _premium
   ) ERC721("WrappedNFTHero", "WNH") TickerNFT(_obeliskRegistry, _nftPass) {
     HCT = IHCT(_HCT);
     attachedCollection = ERC721(_attachedCollection);
@@ -45,6 +47,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, TickerNFT {
     freeSlotForOdd = abi.encode(tx.origin, _attachedCollection).length % 2 == 1;
     collectionStartedUnixTime = _collectionStartedUnixTime;
     contractStartedUnixTime = uint32(block.timestamp);
+    premium = _premium;
   }
 
   function wrap(uint256 _attachedCollectionNFTId) external payable override {
@@ -115,6 +118,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, TickerNFT {
   }
 
   function getWrapperMultiplier() public view returns (uint128) {
+    if (premium) return uint128(MAX_RATE);
+
     uint256 currentYear = (block.timestamp - collectionStartedUnixTime) / SECONDS_PER_YEAR;
     return uint128(Math.min(currentYear * RATE_PER_YEAR, MAX_RATE));
   }

@@ -8,6 +8,8 @@ import { LiteTickerFarmPool } from "../tickers/LiteTickerFarmPool.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint32 public constant SUPPORT_LOCK_DURATION = 30 days;
   uint256 public constant COLLECTION_REWARD_PERCENT = 4000;
@@ -18,6 +20,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   address public nftPass;
   address public treasury;
   address public dataAsserter;
+  IERC20 public dai;
   IDripVault public dripVault;
   uint32 public supportId;
 
@@ -35,7 +38,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     address _hct,
     address _nftPass,
     address _dripVault,
-    address _dataAsserter
+    address _dataAsserter,
+    address _dai
   ) Ownable(_owner) {
     requiredEthToEnableCollection = 100e18;
     treasury = _treasury;
@@ -43,6 +47,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     dripVault = IDripVault(_dripVault);
     dataAsserter = _dataAsserter;
     nftPass = _nftPass;
+    dai = IERC20(_dai);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -56,7 +61,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     collection.contributionBalance = newTotalContribution;
     userSupportedCollections[msg.sender][_collection].deposit += uint128(msg.value);
-    dripVault.deposit{ value: msg.value }();
+    dripVault.deposit{ value: msg.value }(0);
 
     if (newTotalContribution > requiredEthToEnableCollection) {
       revert TooManyEth();
@@ -65,10 +70,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     emit CollectionContributed(_collection, msg.sender, msg.value);
     if (newTotalContribution != requiredEthToEnableCollection) return;
 
-    _createWrappedNFT(_collection, collection.totalSupply, collection.collectionStartedUnixTime);
+    _createWrappedNFT(_collection, collection.totalSupply, collection.collectionStartedUnixTime, collection.premium);
   }
 
-  function allowNFTCollection(address _collection) external onlyOwner {
+  function forceActiveCollection(address _collection) external onlyOwner {
     Collection storage collection = supportedCollections[_collection];
     uint256 currentBalance = collection.contributionBalance;
     if (currentBalance >= requiredEthToEnableCollection) {
@@ -80,17 +85,17 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     collection.contributionBalance += missingEth;
     userSupportedCollections[msg.sender][_collection].deposit += uint128(missingEth);
 
-    _createWrappedNFT(_collection, collection.totalSupply, collection.collectionStartedUnixTime);
+    _createWrappedNFT(_collection, collection.totalSupply, collection.collectionStartedUnixTime, collection.premium);
   }
 
-  function _createWrappedNFT(address _collection, uint256 _totalSupply, uint32 _blockOfCreation)
+  function _createWrappedNFT(address _collection, uint256 _totalSupply, uint32 _unixTimeCreation, bool _premium)
     internal
     returns (address addr_)
   {
     addr_ = _createContract(
       abi.encodePacked(
         type(WrappedNFTHero).creationCode,
-        abi.encode(hct, nftPass, _collection, address(this), _totalSupply, _blockOfCreation)
+        abi.encode(hct, nftPass, _collection, address(this), _totalSupply, _unixTimeCreation, _premium)
       )
     );
 
@@ -130,20 +135,30 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   }
 
   /// @inheritdoc IObeliskRegistry
-  function supportYieldPool() external payable override {
-    if (msg.value == 0) revert ZeroValue();
+  function supportYieldPool(uint256 _amount) external payable override {
+    if (msg.value == 0 && _amount == 0) revert ZeroValue();
+    if (msg.value != 0 && _amount != 0) revert OnlyOneValue();
+
+    address token = msg.value != 0 ? address(0) : address(dai);
+    uint256 amount = msg.value != 0 ? msg.value : _amount;
 
     supportId++;
     supporters[supportId] = Supporter({
       depositor: msg.sender,
-      amount: uint128(msg.value),
+      token: token,
+      amount: uint128(amount),
       lockUntil: uint32(block.timestamp + SUPPORT_LOCK_DURATION),
       removed: false
     });
 
-    dripVault.deposit{ value: msg.value }();
+    if (token == address(0)) {
+      dripVault.deposit{ value: msg.value }(0);
+    } else {
+      dai.transferFrom(msg.sender, address(dripVault), _amount);
+      dripVault.deposit(_amount);
+    }
 
-    emit Supported(supportId, msg.sender, msg.value);
+    emit Supported(supportId, msg.sender, amount);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -228,15 +243,32 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     return addr_;
   }
 
+  function allowNewCollectionPremium(address _collection, uint256 _totalSupply, uint32 _collectionStartedUnixTime)
+    external
+    onlyOwner
+  {
+    _allowNewCollection(_collection, _totalSupply, _collectionStartedUnixTime, true);
+  }
+
   function allowNewCollection(address _collection, uint256 _totalSupply, uint32 _collectionStartedUnixTime) external {
     if (msg.sender != owner() || msg.sender != dataAsserter) revert NotAuthorized();
 
+    _allowNewCollection(_collection, _totalSupply, _collectionStartedUnixTime, false);
+  }
+
+  function _allowNewCollection(
+    address _collection,
+    uint256 _totalSupply,
+    uint32 _collectionStartedUnixTime,
+    bool _premium
+  ) internal {
     supportedCollections[_collection] = Collection({
       wrappedVersion: address(0),
       totalSupply: _totalSupply,
       contributionBalance: 0,
       collectionStartedUnixTime: _collectionStartedUnixTime,
-      allowed: true
+      allowed: true,
+      premium: _premium
     });
   }
 

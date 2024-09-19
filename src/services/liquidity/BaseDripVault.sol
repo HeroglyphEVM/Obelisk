@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract BaseDripVault is IDripVault, Ownable {
   address public interestRateReceiver;
@@ -24,12 +24,17 @@ abstract contract BaseDripVault is IDripVault, Ownable {
 
   function deposit(uint256 _amount) external payable override onlyObeliskRegistry {
     if (inputToken == address(0) && msg.value == 0) revert InvalidAmount();
-    if (inputToken != address(0) && _amount == 0) revert InvalidAmount();
     if (inputToken != address(0) && msg.value != 0) revert NativeNotAccepted();
+    if (inputToken != address(0) && _amount == 0) revert InvalidAmount();
 
-    _amount = inputToken == address(0) ? msg.value : _amount;
-    totalDeposit += _amount;
-    _afterDeposit(_amount);
+    uint256 sanitizedAmount = inputToken == address(0) ? msg.value : _amount;
+
+    if (inputToken != address(0)) {
+      sanitizedAmount = IERC20(inputToken).balanceOf(address(this)) - totalDeposit;
+    }
+
+    totalDeposit += sanitizedAmount;
+    _afterDeposit(sanitizedAmount);
   }
 
   function _afterDeposit(uint256 _amount) internal virtual;
@@ -48,7 +53,7 @@ abstract contract BaseDripVault is IDripVault, Ownable {
       (bool success,) = _to.call{ value: _amount }("");
       if (!success) revert FailedToSendETH();
     } else {
-      IERC20(_asset).transfer(_to, _amount);
+      SafeERC20.safeTransfer(IERC20(_asset), _to, _amount);
     }
   }
 

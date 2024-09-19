@@ -16,6 +16,7 @@ interface IObeliskRegistry {
   error NotWrappedNFT();
   error CollectionNotAllowed();
   error NotAuthorized();
+  error OnlyOneValue();
 
   event WrappedNFTCreated(address indexed collection, address indexed wrappedNFT);
   event TickerLogicSet(string indexed ticker, address pool);
@@ -32,10 +33,12 @@ interface IObeliskRegistry {
     uint256 contributionBalance;
     uint32 collectionStartedUnixTime;
     bool allowed;
+    bool premium;
   }
 
   struct Supporter {
     address depositor;
+    address token;
     uint128 amount;
     uint32 lockUntil;
     bool removed;
@@ -69,9 +72,11 @@ interface IObeliskRegistry {
 
   /**
    * @notice Support the yield pool
+   * @param _amount The amount to support with
    * @dev The amount is locked for 30 days
+   * @dev if msg.value is 0, the amount is expected to be sent in DAI
    */
-  function supportYieldPool() external payable;
+  function supportYieldPool(uint256 _amount) external payable;
 
   /**
    * @notice Retrieve support to yield pool

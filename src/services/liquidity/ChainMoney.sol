@@ -19,7 +19,6 @@ contract ChaiMoneyVault is BaseDripVault {
   }
 
   function _afterDeposit(uint256 _amount) internal override {
-    IERC20(inputToken).transferFrom(msg.sender, address(this), _amount);
     chaiMoney.join(address(this), _amount);
   }
 
