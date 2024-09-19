@@ -17,15 +17,25 @@ interface IObeliskRegistry {
   error CollectionNotAllowed();
   error NotAuthorized();
   error OnlyOneValue();
+  error AmountTooLow();
+  error ZeroAddress();
+  error CollectionAlreadyAllowed();
 
   event WrappedNFTCreated(address indexed collection, address indexed wrappedNFT);
   event TickerLogicSet(string indexed ticker, address pool);
   event NewGenesisTickerCreated(string indexed ticker, address pool);
+
   event Supported(uint32 indexed supportId, address indexed supporter, uint256 amount);
   event SupportRetrieved(uint32 indexed supportId, address indexed supporter, uint256 amount);
   event CollectionContributed(address indexed collection, address indexed contributor, uint256 amount);
   event CollectionContributionWithdrawn(address indexed collection, address indexed contributor, uint256 amount);
   event Claimed(address indexed collection, address indexed contributor, uint256 amount);
+  event SlotBought(address indexed wrappedNFT, uint256 toCollection, uint256 toTreasury);
+  event CollectionAllowed(
+    address indexed collection, uint256 totalSupply, uint32 collectionStartedUnixTime, bool premium
+  );
+  event TreasurySet(address indexed treasury);
+  event MaxRewardPerCollectionSet(uint256 maxRewardPerCollection);
 
   struct Collection {
     address wrappedVersion;

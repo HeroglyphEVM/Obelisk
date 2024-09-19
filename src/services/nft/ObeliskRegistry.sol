@@ -9,20 +9,24 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract ObeliskRegistry is IObeliskRegistry, Ownable {
+  uint256 public constant MIN_SUPPORT_AMOUNT = 1e18;
   uint32 public constant SUPPORT_LOCK_DURATION = 30 days;
   uint256 public constant COLLECTION_REWARD_PERCENT = 4000;
   uint256 public constant BPS = 10_000;
 
-  uint256 public requiredEthToEnableCollection;
+  uint128 public requiredEthToEnableCollection;
   address public hct;
   address public nftPass;
   address public treasury;
   address public dataAsserter;
   IERC20 public dai;
-  IDripVault public dripVault;
+  IDripVault public dripVaultETH;
+  IDripVault public dripVaultDAI;
   uint32 public supportId;
+  uint256 public maxRewardPerCollection;
 
   mapping(address => Collection) public supportedCollections;
   mapping(address wrappedCollection => CollectionRewards) internal wrappedCollectionRewards;
@@ -37,14 +41,18 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     address _treasury,
     address _hct,
     address _nftPass,
-    address _dripVault,
+    address _dripVaultETH,
+    address _dripVaultDAI,
     address _dataAsserter,
     address _dai
   ) Ownable(_owner) {
     requiredEthToEnableCollection = 100e18;
+    maxRewardPerCollection = 250e18;
+
     treasury = _treasury;
     hct = _hct;
-    dripVault = IDripVault(_dripVault);
+    dripVaultETH = IDripVault(_dripVaultETH);
+    dripVaultDAI = IDripVault(_dripVaultDAI);
     dataAsserter = _dataAsserter;
     nftPass = _nftPass;
     dai = IERC20(_dai);
@@ -61,7 +69,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     collection.contributionBalance = newTotalContribution;
     userSupportedCollections[msg.sender][_collection].deposit += uint128(msg.value);
-    dripVault.deposit{ value: msg.value }(0);
+    dripVaultETH.deposit{ value: msg.value }(0);
 
     if (newTotalContribution > requiredEthToEnableCollection) {
       revert TooManyEth();
@@ -75,6 +83,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
   function forceActiveCollection(address _collection) external onlyOwner {
     Collection storage collection = supportedCollections[_collection];
+    if (!collection.allowed) revert CollectionNotAllowed();
+
     uint256 currentBalance = collection.contributionBalance;
     if (currentBalance >= requiredEthToEnableCollection) {
       revert TooManyEth();
@@ -124,7 +134,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     collection.contributionBalance = currentBalance - _amount;
     userSupportedCollections[msg.sender][_collection].deposit -= uint128(_amount);
-    dripVault.withdraw(msg.sender, _amount);
+    dripVaultETH.withdraw(msg.sender, _amount);
 
     (bool success,) = msg.sender.call{ value: _amount }("");
     if (!success) {
@@ -140,25 +150,27 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (msg.value != 0 && _amount != 0) revert OnlyOneValue();
 
     address token = msg.value != 0 ? address(0) : address(dai);
-    uint256 amount = msg.value != 0 ? msg.value : _amount;
+    uint256 santizedAmount = msg.value != 0 ? msg.value : _amount;
+
+    if (santizedAmount < MIN_SUPPORT_AMOUNT) revert AmountTooLow();
 
     supportId++;
     supporters[supportId] = Supporter({
       depositor: msg.sender,
       token: token,
-      amount: uint128(amount),
+      amount: uint128(santizedAmount),
       lockUntil: uint32(block.timestamp + SUPPORT_LOCK_DURATION),
       removed: false
     });
 
     if (token == address(0)) {
-      dripVault.deposit{ value: msg.value }(0);
+      dripVaultETH.deposit{ value: msg.value }(0);
     } else {
-      dai.transferFrom(msg.sender, address(dripVault), _amount);
-      dripVault.deposit(_amount);
+      dai.transferFrom(msg.sender, address(dripVaultDAI), santizedAmount);
+      dripVaultDAI.deposit(santizedAmount);
     }
 
-    emit Supported(supportId, msg.sender, amount);
+    emit Supported(supportId, msg.sender, santizedAmount);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -171,7 +183,12 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (supporter.removed) revert AlreadyRemoved();
 
     supporter.removed = true;
-    dripVault.withdraw(msg.sender, returningAmount);
+
+    if (supporter.token == address(0)) {
+      dripVaultETH.withdraw(msg.sender, returningAmount);
+    } else {
+      dripVaultDAI.withdraw(msg.sender, returningAmount);
+    }
 
     emit SupportRetrieved(_id, msg.sender, returningAmount);
   }
@@ -200,29 +217,42 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
   function onSlotBought() external payable {
     if (!isWrappedNFT[msg.sender]) revert NotWrappedNFT();
+    if (msg.value == 0) return;
 
-    uint256 toCollection = msg.value * COLLECTION_REWARD_PERCENT / BPS;
+    uint256 collectionTotalReward = wrappedCollectionRewards[msg.sender].totalRewards;
+    uint256 toCollection = Math.mulDiv(msg.value, COLLECTION_REWARD_PERCENT, BPS);
+
+    if (collectionTotalReward + toCollection > maxRewardPerCollection) {
+      toCollection = maxRewardPerCollection - collectionTotalReward;
+    }
     uint256 toTreasury = msg.value - toCollection;
 
     wrappedCollectionRewards[msg.sender].totalRewards += uint128(toCollection);
 
     (bool success,) = treasury.call{ value: toTreasury }("");
     if (!success) revert TransferFailed();
+
+    emit SlotBought(msg.sender, toCollection, toTreasury);
   }
 
   function claim(address _collection) external {
     Collection storage collection = supportedCollections[_collection];
     address wrappedNFT = collection.wrappedVersion;
+    uint256 contributionBalance = collection.contributionBalance;
+
+    if (contributionBalance == 0 || !collection.allowed) revert NothingToClaim();
 
     CollectionRewards storage collectionRewards = wrappedCollectionRewards[wrappedNFT];
     ContributionInfo storage userContribution = userSupportedCollections[msg.sender][_collection];
 
-    uint256 totalUserReward = userContribution.deposit * collectionRewards.totalRewards / collection.contributionBalance;
-    uint256 rewardsToClaim = totalUserReward - userContribution.claimed;
+    uint128 totalCollectionReward = collectionRewards.totalRewards;
+    uint256 totalUserReward = Math.mulDiv(userContribution.deposit, totalCollectionReward, contributionBalance);
+    uint128 rewardsToClaim = uint128(totalUserReward - userContribution.claimed);
+    uint128 totalCollactionClaimedRewards = collectionRewards.claimedRewards;
 
     if (rewardsToClaim == 0) revert NothingToClaim();
 
-    collectionRewards.claimedRewards += uint128(rewardsToClaim);
+    collectionRewards.claimedRewards = totalCollactionClaimedRewards + rewardsToClaim;
     userContribution.claimed = uint128(totalUserReward);
 
     (bool success,) = msg.sender.call{ value: rewardsToClaim }("");
@@ -251,7 +281,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   }
 
   function allowNewCollection(address _collection, uint256 _totalSupply, uint32 _collectionStartedUnixTime) external {
-    if (msg.sender != owner() || msg.sender != dataAsserter) revert NotAuthorized();
+    if (msg.sender != owner() && msg.sender != dataAsserter) revert NotAuthorized();
 
     _allowNewCollection(_collection, _totalSupply, _collectionStartedUnixTime, false);
   }
@@ -262,6 +292,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     uint32 _collectionStartedUnixTime,
     bool _premium
   ) internal {
+    if (supportedCollections[_collection].allowed) revert CollectionAlreadyAllowed();
+
     supportedCollections[_collection] = Collection({
       wrappedVersion: address(0),
       totalSupply: _totalSupply,
@@ -270,6 +302,19 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
       allowed: true,
       premium: _premium
     });
+
+    emit CollectionAllowed(_collection, _totalSupply, _collectionStartedUnixTime, _premium);
+  }
+
+  function setTreasury(address _treasury) external onlyOwner {
+    if (_treasury == address(0)) revert ZeroAddress();
+    treasury = _treasury;
+    emit TreasurySet(_treasury);
+  }
+
+  function setMaxRewardPerCollection(uint256 _maxRewardPerCollection) external onlyOwner {
+    maxRewardPerCollection = _maxRewardPerCollection;
+    emit MaxRewardPerCollectionSet(_maxRewardPerCollection);
   }
 
   /// @inheritdoc IObeliskRegistry
