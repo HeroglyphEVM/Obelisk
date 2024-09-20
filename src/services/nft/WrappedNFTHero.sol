@@ -13,7 +13,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
   uint256 private constant SECONDS_PER_YEAR = 31_557_600;
 
   uint256 public constant SLOT_PRICE = 0.1e18;
-  uint256 public constant FREE_SLOT_BPS = 2000; // 20%
+  uint256 public constant FREE_SLOT_BPS = 2000; // 20 %
 
   uint256 public constant RATE_PER_YEAR = 0.43e18;
   uint256 public constant MAX_RATE = 3e18;
