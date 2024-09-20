@@ -9,11 +9,11 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
 
+  uint32 public immutable MAX_IDENTITY_PER_DAY_AT_INITIAL_PRICE;
+  uint32 public immutable PRICE_INCREASE_THRESHOLD;
+  uint32 public immutable PRICE_DECAY_BPS;
   uint32 public resetCounterTimestamp;
   uint32 public boughtToday;
-  uint32 public maxIdentityPerDayAtInitialPrice;
-  uint32 public priceIncreaseThreshold;
-  uint32 public priceDecayBPS;
   uint256 public currentPrice;
 
   mapping(uint256 => Metadata) internal metadataPasses;
@@ -23,9 +23,9 @@ contract NFTPass is INFTPass, IdentityERC721 {
   {
     resetCounterTimestamp = uint32(block.timestamp + 1 days);
     currentPrice = cost;
-    maxIdentityPerDayAtInitialPrice = 25;
-    priceIncreaseThreshold = 10;
-    priceDecayBPS = 2500;
+    MAX_IDENTITY_PER_DAY_AT_INITIAL_PRICE = 25;
+    PRICE_INCREASE_THRESHOLD = 10;
+    PRICE_DECAY_BPS = 2500;
   }
 
   function create(string calldata _name, address _receiverWallet) external payable {
@@ -71,7 +71,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
       uint256 userCost_
     )
   {
-    uint32 maxPerDayCached = maxIdentityPerDayAtInitialPrice;
+    uint32 maxPerDayCached = MAX_IDENTITY_PER_DAY_AT_INITIAL_PRICE;
     resetCounterTimestampReturn_ = resetCounterTimestamp;
     boughtTodayReturn_ = boughtToday;
     currentCostReturn_ = currentPrice;
@@ -83,7 +83,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
       for (uint256 i = 0; i < totalDayPassed; ++i) {
         currentCostReturn_ =
-          Math.max(cost, currentCostReturn_ - Math.mulDiv(currentCostReturn_, priceDecayBPS, MAX_BPS));
+          Math.max(cost, currentCostReturn_ - Math.mulDiv(currentCostReturn_, PRICE_DECAY_BPS, MAX_BPS));
 
         if (currentCostReturn_ <= cost) break;
       }
@@ -91,7 +91,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
     bool boughtExceedsMaxPerDay = boughtTodayReturn_ > maxPerDayCached;
 
-    if (boughtExceedsMaxPerDay && (boughtTodayReturn_ - maxPerDayCached) % priceIncreaseThreshold == 0) {
+    if (boughtExceedsMaxPerDay && (boughtTodayReturn_ - maxPerDayCached) % PRICE_INCREASE_THRESHOLD == 0) {
       currentCostReturn_ += cost / 2;
     }
 

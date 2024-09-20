@@ -7,8 +7,9 @@ import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
 
 import { strings } from "src/lib/strings.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-abstract contract TickerNFT is ITickerNFT {
+abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
   using strings for string;
   using strings for strings.slice;
 
@@ -55,7 +56,10 @@ abstract contract TickerNFT is ITickerNFT {
 
   function _renameRequirements(uint256 _tokenId) internal virtual;
 
-  function _removeOldTickers(address _registredUserAddress, uint256 _tokenId, bool _ignoreRewards) internal {
+  function _removeOldTickers(address _registredUserAddress, uint256 _tokenId, bool _ignoreRewards)
+    internal
+    nonReentrant
+  {
     address[] memory activePools = linkedTickers[_tokenId];
     delete linkedTickers[_tokenId];
 

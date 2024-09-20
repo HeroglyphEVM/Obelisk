@@ -32,7 +32,7 @@ contract LiteTickerYieldSharingTest is BaseTest {
 
     assertEq(underTest.owner(), owner);
     assertEq(address(underTest.registry()), registry);
-    assertEq(address(underTest.rewardToken()), address(rewardToken));
+    assertEq(address(underTest.REWARD_TOKEN()), address(rewardToken));
   }
 
   function test_afterVirtualDeposit_whenFirstCaller_thenShareIsOne() external {

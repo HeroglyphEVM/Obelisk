@@ -49,8 +49,8 @@ contract LiteTickerFarmPoolTest is BaseTest {
 
     assertEq(underTest.owner(), owner);
     assertEq(address(underTest.registry()), registry);
-    assertEq(address(underTest.rewardToken()), address(wrappedReward));
-    assertEq(address(underTest.genesisKey()), address(genesisKey));
+    assertEq(address(underTest.REWARD_TOKEN()), address(wrappedReward));
+    assertEq(address(underTest.GENESIS_KEY()), address(genesisKey));
   }
 
   function test_afterVirtualDeposit_whenGenesisKeyNotFound_thenReverts() external {
@@ -95,7 +95,7 @@ contract LiteTickerFarmPoolTest is BaseTest {
     vm.assume(stakeTimeAsDurationPercentage > 0);
     uint256 amount0 = 1e18;
     uint256 amount1 = 1e18;
-    uint64 duration = underTest.distributionDuration();
+    uint64 duration = underTest.DISTRIBUTION_DURATION();
 
     address user2 = generateAddress("User 2");
     genesisKey.mint(user2, 3);
@@ -128,7 +128,7 @@ contract LiteTickerFarmPoolTest is BaseTest {
     vm.assume(warpTime > 0);
     vm.assume(stakeTimeAsDurationPercentage > 0);
     uint256 amount = 1e18;
-    uint64 duration = underTest.distributionDuration();
+    uint64 duration = underTest.DISTRIBUTION_DURATION();
 
     underTest.exposed_afterVirtualDeposit(user);
     skip(warpTime);

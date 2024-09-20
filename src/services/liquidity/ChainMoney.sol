@@ -27,7 +27,7 @@ contract ChaiMoneyVault is BaseDripVault {
     uint256 totalBalance = DAI.balanceOf(address(this));
     uint256 cachedTotalDeposit = getTotalDeposit();
     uint256 leftOver = totalBalance - _amount;
-    uint256 interest;
+    uint256 interest = 0;
 
     if (totalBalance > cachedTotalDeposit) {
       interest = totalBalance - cachedTotalDeposit;
@@ -36,8 +36,8 @@ contract ChaiMoneyVault is BaseDripVault {
       CHAIN_MONEY.join(address(this), leftOver);
     }
 
-    _transfer(inputToken, interestRateReceiver, interest);
-    _transfer(inputToken, _to, _amount);
+    _transfer(INPUT_TOKEN, interestRateReceiver, interest);
+    _transfer(INPUT_TOKEN, _to, _amount);
   }
 
   function claim() external override returns (uint256 interest_) {
@@ -52,7 +52,7 @@ contract ChaiMoneyVault is BaseDripVault {
     }
 
     CHAIN_MONEY.join(address(this), totalBalance);
-    _transfer(inputToken, interestRateReceiver, interest_);
+    _transfer(INPUT_TOKEN, interestRateReceiver, interest_);
 
     return interest_;
   }
