@@ -10,10 +10,10 @@ interface IWrappedNFTHero {
 
   event Wrapped(uint256 indexed tokenId);
   event Unwrapped(uint256 indexed tokenId);
-  event SlotBought(address indexed user, uint256 amount);
+  event SlotBought(address indexed user, uint256 indexed inputCollectionNFTId);
   event FreeSlotUsed(uint256 freeSlotLeft);
 
-  function wrap(uint256 _attachedCollectionNFTId) external payable;
+  function wrap(uint256 _inputCollectionNFTId) external payable;
 
   function unwrap(uint256 _tokenId) external;
 }

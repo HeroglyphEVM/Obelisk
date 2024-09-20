@@ -1,155 +1,358 @@
-// // SPDX-License-Identifier: Unlicense
-// pragma solidity >=0.8.0;
+// SPDX-License-Identifier: Unlicense
+pragma solidity >=0.8.0;
 
-// import "test/base/BaseTest.t.sol";
+import "test/base/BaseTest.t.sol";
 
-// import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
-// import { IHCT } from "src/interfaces/IHCT.sol";
-// import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
+import { IHCT } from "src/interfaces/IHCT.sol";
+import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
 
-// import { MockERC721 } from "test/mock/contract/MockERC721.t.sol";
-// import { WrappedNFTHero, IWrappedNFTHero } from "src/services/staking/nft/WrappedNFTHero.sol";
+import { MockERC721 } from "test/mock/contract/MockERC721.t.sol";
+import { WrappedNFTHero, IWrappedNFTHero } from "src/services/nft/WrappedNFTHero.sol";
 
-// contract WrappedNFTHeroTest is BaseTest {
-//   uint128 private constant TOTAL_SUPPLY = 10_000e18;
+contract WrappedNFTHeroTest is BaseTest {
+  uint128 private constant ACTIVE_SUPPLY = 10_000e18;
+  uint256 private UNLOCK_SLOT_BPS = 2000;
+  uint256 private BPS = 10_000;
+  uint32 private TEST_UNIX_TIME = 1_726_850_955;
+  uint32 private YEAR_IN_SECONDS = 31_557_600;
+  uint256 private SLOT_PRICE = 0.1e18;
 
-//   address private hctMock;
-//   MockERC721 private nftCollectionMock;
-//   address private obeliskRegistryMock;
-//   address private user;
+  address private mockHCT;
+  address private mockNFTPass;
+  MockERC721 private mockInputCollection;
+  address private mockObeliskRegistry;
+  address private user;
 
-//   string[] private tickers = ["#Pool", "HenZ", "MyWorld"];
-//   address[] private poolTargets =
-//     [generateAddress("PoolTarget1"), generateAddress("PoolTarget2"), generateAddress("PoolTarget3")];
+  string[] private tickers = ["#Pool", "HenZ", "MyWorld"];
+  address[] private poolTargets =
+    [generateAddress("PoolTarget1"), generateAddress("PoolTarget2"), generateAddress("PoolTarget3")];
 
-//   WrappedNFTHero underTest;
+  WrappedNFTHeroHarness private underTest;
 
-//   function setUp() external {
-//     _prepareMocks();
-//     _mockCalls();
+  function setUp() external {
+    vm.warp(TEST_UNIX_TIME);
 
-//     nftCollectionMock.mint(user, 1);
+    _prepareMocks();
+    _mockCalls();
 
-//     underTest = new WrappedNFTHero(
-//       hctMock, address(nftCollectionMock), obeliskRegistryMock, TOTAL_SUPPLY, uint32(block.timestamp)
-//     );
-//   }
+    mockInputCollection.mint(user, 1);
+    mockInputCollection.mint(user, 2);
 
-//   function _prepareMocks() internal {
-//     hctMock = generateAddress("HCTMock");
-//     nftCollectionMock = new MockERC721();
-//     obeliskRegistryMock = generateAddress("obeliskRegistryMock");
-//     user = generateAddress("User");
-//   }
+    underTest = new WrappedNFTHeroHarness(
+      mockHCT,
+      mockNFTPass,
+      address(mockInputCollection),
+      mockObeliskRegistry,
+      ACTIVE_SUPPLY,
+      uint32(block.timestamp) - YEAR_IN_SECONDS,
+      false
+    );
+  }
 
-//   function _mockCalls() internal {
-//     for (uint256 i = 0; i < poolTargets.length; i++) {
-//       vm.mockCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector), abi.encode(true));
-//       vm.mockCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector), abi.encode(true));
-//       vm.mockCall(
-//         obeliskRegistryMock,
-//         abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i]),
-//         abi.encode(poolTargets[i])
-//       );
-//     }
+  function _prepareMocks() internal {
+    mockHCT = generateAddress("mockHCT");
+    mockInputCollection = new MockERC721();
+    mockObeliskRegistry = generateAddress("mockObeliskRegistry");
+    user = generateAddress("User", 10e18);
+  }
 
-//     vm.mockCall(hctMock, abi.encodeWithSelector(IHCT.addPower.selector), abi.encode(true));
-//     vm.mockCall(hctMock, abi.encodeWithSelector(IHCT.usesForRenaming.selector), abi.encode(true));
-//   }
+  function _mockCalls() internal {
+    for (uint256 i = 0; i < poolTargets.length; i++) {
+      vm.mockCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector), abi.encode(true));
+      vm.mockCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector), abi.encode(true));
+      vm.mockCall(
+        mockObeliskRegistry,
+        abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i]),
+        abi.encode(poolTargets[i])
+      );
+    }
 
-//   function test_constructor_thenSetsValues() external {
-//     underTest = new WrappedNFTHero(hctMock, address(nftCollectionMock), obeliskRegistryMock, 10_000, 999_928);
+    vm.mockCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector), abi.encode(true));
+    vm.mockCall(mockHCT, abi.encodeWithSelector(IHCT.usesForRenaming.selector), abi.encode(true));
+  }
 
-//     assertEq(address(underTest.HCT()), hctMock);
-//     assertEq(address(underTest.attachedCollection()), address(nftCollectionMock));
-//     assertEq(address(underTest.obeliskRegistry()), obeliskRegistryMock);
-//   }
+  function test_constructor_thenSetsValues() external {
+    underTest = new WrappedNFTHeroHarness(
+      mockHCT,
+      mockNFTPass,
+      address(mockInputCollection),
+      mockObeliskRegistry,
+      ACTIVE_SUPPLY,
+      uint32(block.timestamp) - YEAR_IN_SECONDS,
+      false
+    );
 
-//   function test_wrap_whenAlreadyMinted_thenReverts() external prankAs(user) {
-//     underTest.wrap(1);
-//     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.AlreadyMinted.selector));
-//     underTest.wrap(1);
-//   }
+    assertEq(address(underTest.HCT()), mockHCT);
+    assertEq(address(underTest.NFT_PASS()), mockNFTPass);
+    assertEq(address(underTest.INPUT_COLLECTION()), address(mockInputCollection));
+    assertEq(address(underTest.obeliskRegistry()), mockObeliskRegistry);
+    assertEq(underTest.freeSlots(), ACTIVE_SUPPLY * UNLOCK_SLOT_BPS / BPS);
+    assertEq(
+      underTest.freeSlotForOdd(), uint256(keccak256(abi.encode(tx.origin, address(mockInputCollection)))) % 2 == 1
+    );
+    assertEq(underTest.collectionStartedUnixTime(), uint32(block.timestamp) - YEAR_IN_SECONDS);
+    assertFalse(underTest.premium());
 
-//   function test_wrap_thenWraps() external prankAs(user) {
-//     uint256 tokenId = 929;
-//     nftCollectionMock.mint(user, tokenId);
+    underTest = new WrappedNFTHeroHarness(
+      mockHCT,
+      mockNFTPass,
+      address(mockInputCollection),
+      mockObeliskRegistry,
+      ACTIVE_SUPPLY,
+      uint32(block.timestamp) - YEAR_IN_SECONDS,
+      true
+    );
 
-//     vm.expectCall(hctMock, abi.encodeWithSelector(IHCT.addPower.selector, tokenId));
+    assertTrue(underTest.premium());
+  }
 
-//     expectExactEmit();
-//     emit IWrappedNFTHero.Wrapped(tokenId);
-//     underTest.wrap(tokenId);
+  function test_wrap_whenAlreadyMinted_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
 
-//     assertEq(underTest.ownerOf(tokenId), user);
-//     assertEq(nftCollectionMock.ownerOf(tokenId), address(underTest));
-//   }
+    underTest.wrap(tokenId);
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.AlreadyMinted.selector));
+    underTest.wrap(tokenId);
+  }
 
-//   function test_unwrap_whenTokenIsNotMinted_thenReverts() external {
-//     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotMinted.selector));
-//     underTest.unwrap(1);
-//   }
+  function test_wrap_givenETH_whenFreeSlotAvailable_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
 
-//   function test_unwrap_thenUnwraps() external prankAs(user) {
-//     uint256 tokenId = 929;
-//     nftCollectionMock.mint(user, tokenId);
-//     underTest.wrap(tokenId);
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.FreeSlotAvailable.selector));
+    underTest.wrap{ value: 1 }(tokenId);
+  }
 
-//     vm.expectCall(hctMock, abi.encodeWithSelector(IHCT.removePower.selector, tokenId));
+  function test_givenNoEth_whenNoFreeSlotAvailable_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 2 : 1;
 
-//     expectExactEmit();
-//     emit IWrappedNFTHero.Unwrapped(tokenId);
-//     underTest.unwrap(tokenId);
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NoFreeSlots.selector));
+    underTest.wrap(tokenId);
+  }
 
-//     assertEq(nftCollectionMock.ownerOf(tokenId), user);
+  function test_wrap_whenBuyingSlot_thenCallsObeliskRegistryAndWraps() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 2 : 1;
+    uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
 
-//     vm.expectRevert();
-//     underTest.ownerOf(tokenId);
-//   }
+    vm.expectCall(mockObeliskRegistry, SLOT_PRICE, abi.encodeWithSelector(IObeliskRegistry.onSlotBought.selector));
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier));
 
-//   function test_rename_whenTokenIsNotMinted_thenReverts() external {
-//     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotMinted.selector));
-//     underTest.rename(1, "1");
-//   }
+    expectExactEmit();
+    emit IWrappedNFTHero.SlotBought(user, tokenId);
+    expectExactEmit();
+    emit IWrappedNFTHero.Wrapped(tokenId);
+    underTest.wrap{ value: SLOT_PRICE }(tokenId);
 
-//   function test_rename_whenInvalidNameLength_thenReverts() external prankAs(user) {
-//     underTest.wrap(1);
+    assertEq(underTest.ownerOf(tokenId), user);
+    assertEq(mockInputCollection.ownerOf(tokenId), address(underTest));
+    assertEq(underTest.assignedMultipler(tokenId), expectingMultiplier);
+  }
 
-//     bytes memory emptyName = new bytes(0);
-//     bytes memory tooLongName = new bytes(33);
+  function test_wrap_whenFreeSlotAvailable_thenWraps() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 freeSlotsBefore = underTest.freeSlots();
+    uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
 
-//     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.InvalidNameLength.selector));
-//     underTest.rename(1, string(emptyName));
-//     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.InvalidNameLength.selector));
-//     underTest.rename(1, string(tooLongName));
-//   }
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier));
 
-//   function test_rename_thenDeactiveOldTickersAndUpdatesTickers() external prankAs(user) {
-//     underTest.wrap(1);
-//     for (uint256 i = 0; i < poolTargets.length; i++) {
-//       vm.expectCall(obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector,
-// tickers[i]));
-//       vm.expectCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, 1, user));
-//     }
+    expectExactEmit();
+    emit IWrappedNFTHero.FreeSlotUsed(freeSlotsBefore - 1);
+    expectExactEmit();
+    emit IWrappedNFTHero.Wrapped(tokenId);
 
-//     underTest.rename(1, "MyNFT ##Pool,HenZ,MyWorld");
-//     assertEq(abi.encode(underTest.getActiveTickerPools(1)), abi.encode(poolTargets));
+    underTest.wrap(tokenId);
 
-//     for (uint256 i = 0; i < poolTargets.length; i++) {
-//       vm.expectCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector, 1, user));
+    assertEq(underTest.ownerOf(tokenId), user);
+    assertEq(mockInputCollection.ownerOf(tokenId), address(underTest));
+    assertEq(underTest.assignedMultipler(tokenId), expectingMultiplier);
+    assertEq(underTest.freeSlots(), freeSlotsBefore - 1);
+  }
 
-//       if (i > 0) {
-//         vm.expectCall(obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector,
-// tickers[i]));
-//         vm.expectCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, 1, user));
-//       }
-//     }
+  function test_unwrap_whenNotMinted_thenReverts() external prankAs(user) {
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotMinted.selector));
+    underTest.unwrap(1);
+  }
 
-//     underTest.rename(1, "MyNFT Test #HenZ,MyWorld");
-//     poolTargets[0] = poolTargets[1];
-//     poolTargets[1] = poolTargets[2];
-//     poolTargets.pop();
+  function test_unwrap_whenNotNFTHolder_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
 
-//     assertEq(abi.encode(underTest.getActiveTickerPools(1)), abi.encode(poolTargets));
-//   }
-// }
+    underTest.wrap(tokenId);
+
+    changePrank(generateAddress("NotHolder"));
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotNFTHolder.selector));
+    underTest.unwrap(tokenId);
+  }
+
+  function test_unwrap_thenUnwraps() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+
+    underTest.wrap(tokenId);
+
+    expectExactEmit();
+    emit IWrappedNFTHero.Unwrapped(tokenId);
+    underTest.unwrap(tokenId);
+
+    vm.expectRevert();
+    underTest.ownerOf(tokenId);
+
+    assertEq(mockInputCollection.ownerOf(tokenId), user);
+    assertEq(bytes(underTest.names(tokenId)).length, 0);
+    assertEq(underTest.assignedMultipler(tokenId), 0);
+    assertEq(underTest.isMinted(tokenId), false);
+  }
+
+  function test_renameRequirements_whenNotMinted_thenReverts() external prankAs(user) {
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotMinted.selector));
+    underTest.exposed_renameRequirements(1);
+  }
+
+  function test_renameRequirements_whenNotNFTHolder_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+
+    underTest.wrap(tokenId);
+
+    changePrank(generateAddress("NotHolder"));
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotNFTHolder.selector));
+    underTest.exposed_renameRequirements(1);
+  }
+
+  function test_renameRequirements_whenCorrect_thenRenames() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+
+    underTest.wrap(tokenId);
+
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.usesForRenaming.selector, user));
+    underTest.exposed_renameRequirements(1);
+  }
+
+  function test_claimRequirements_whenNotHolder_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    underTest.wrap(tokenId);
+
+    changePrank(generateAddress("NotHolder"));
+    assertFalse(underTest.exposed_claimRequirements(1));
+  }
+
+  function test_claimRequirements_whenHolder_thenReturnsTrue() external prankAs(user) {
+    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    underTest.wrap(tokenId);
+
+    assertTrue(underTest.exposed_claimRequirements(1));
+  }
+
+  function test_mint_thenAddPower() external {
+    uint256 tokenId = 33;
+    uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
+
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier));
+    underTest.exposed_mint(user, tokenId);
+  }
+
+  function test_burn_thenRemovePower() external {
+    uint256 tokenId = 33;
+    uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
+
+    underTest.exposed_mint(user, tokenId);
+
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, user, expectingMultiplier));
+    underTest.exposed_burn(tokenId);
+
+    assertEq(underTest.assignedMultipler(tokenId), 0);
+  }
+
+  function test_burn_whenMultiplierChanged_thenRemovesCorrectPower() external {
+    uint256 tokenId = 33;
+    uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
+
+    underTest.exposed_mint(user, tokenId);
+
+    skip(YEAR_IN_SECONDS);
+
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, user, expectingMultiplier));
+    underTest.exposed_burn(tokenId);
+
+    assertGt(underTest.getWrapperMultiplier(), expectingMultiplier);
+  }
+
+  function test_transfer_thenRemoveFromPowerAndAddToPower() external {
+    address from = generateAddress("From");
+    address to = generateAddress("To");
+
+    uint256 tokenId = 33;
+    uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
+
+    underTest.exposed_mint(from, tokenId);
+
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, from, expectingMultiplier));
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, to, expectingMultiplier));
+
+    vm.prank(from);
+    underTest.transferFrom(from, to, tokenId);
+
+    assertEq(underTest.assignedMultipler(tokenId), expectingMultiplier);
+    assertEq(underTest.ownerOf(tokenId), to);
+  }
+
+  function test_transfer_whenMultiplierChanged_thenRemovesCorrectPowerAndAddsNewPower() external {
+    uint256 tokenId = 33;
+    uint256 expectingRemovingMultiplier = 1 * underTest.RATE_PER_YEAR();
+    uint256 expectingAddingMultiplier = 2 * underTest.RATE_PER_YEAR();
+
+    address from = generateAddress("From");
+    address to = generateAddress("To");
+
+    underTest.exposed_mint(from, tokenId);
+    skip(YEAR_IN_SECONDS);
+
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, from, expectingRemovingMultiplier));
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, to, expectingAddingMultiplier));
+
+    vm.prank(from);
+    underTest.transferFrom(from, to, tokenId);
+
+    assertEq(underTest.assignedMultipler(tokenId), expectingAddingMultiplier);
+    assertEq(underTest.ownerOf(tokenId), to);
+  }
+
+  function test_onERC721Received_whenCalled_thenReturnsSelector() external view {
+    bytes4 expectedSelector = underTest.onERC721Received.selector;
+    assertEq(underTest.onERC721Received(address(0), address(0), 0, bytes("")), expectedSelector);
+  }
+}
+
+contract WrappedNFTHeroHarness is WrappedNFTHero {
+  constructor(
+    address _HCT,
+    address _nftPass,
+    address _inputCollection,
+    address _obeliskRegistry,
+    uint256 _currentSupply,
+    uint32 _collectionStartedUnixTime,
+    bool _premium
+  )
+    WrappedNFTHero(
+      _HCT,
+      _nftPass,
+      _inputCollection,
+      _obeliskRegistry,
+      _currentSupply,
+      _collectionStartedUnixTime,
+      _premium
+    )
+  { }
+
+  function exposed_renameRequirements(uint256 _tokenId) external {
+    _renameRequirements(_tokenId);
+  }
+
+  function exposed_claimRequirements(uint256 _tokenId) external view returns (bool) {
+    return _claimRequirements(_tokenId);
+  }
+
+  function exposed_mint(address _to, uint256 _tokenId) external {
+    _mint(_to, _tokenId);
+  }
+
+  function exposed_burn(uint256 _tokenId) external {
+    _burn(_tokenId);
+  }
+}

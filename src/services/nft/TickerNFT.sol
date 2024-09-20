@@ -20,7 +20,7 @@ abstract contract TickerNFT is ITickerNFT {
   INFTPass public immutable NFT_PASS;
 
   mapping(uint256 => address[]) internal linkedTickers;
-  mapping(uint256 => string) internal names;
+  mapping(uint256 => string) public names;
   mapping(uint256 => address) internal identities;
 
   constructor(address _obeliskRegistry, address _nftPass) {
