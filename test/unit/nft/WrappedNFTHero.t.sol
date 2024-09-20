@@ -127,9 +127,8 @@
 //   function test_rename_thenDeactiveOldTickersAndUpdatesTickers() external prankAs(user) {
 //     underTest.wrap(1);
 //     for (uint256 i = 0; i < poolTargets.length; i++) {
-//       vm.expectCall(
-//         obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i])
-//       );
+//       vm.expectCall(obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector,
+// tickers[i]));
 //       vm.expectCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, 1, user));
 //     }
 
@@ -140,9 +139,8 @@
 //       vm.expectCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector, 1, user));
 
 //       if (i > 0) {
-//         vm.expectCall(
-//           obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i])
-//         );
+//         vm.expectCall(obeliskRegistryMock, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector,
+// tickers[i]));
 //         vm.expectCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, 1, user));
 //       }
 //     }

@@ -16,15 +16,16 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint32 public constant SUPPORT_LOCK_DURATION = 30 days;
   uint256 public constant COLLECTION_REWARD_PERCENT = 4000;
   uint256 public constant BPS = 10_000;
+  uint128 public constant REQUIRED_ETH_TO_ENABLE_COLLECTION = 100e18;
 
-  uint128 public requiredEthToEnableCollection;
-  address public hct;
-  address public nftPass;
+  address public immutable HCT;
+  address public immutable NFT_PASS;
+  IERC20 public immutable DAI;
+  IDripVault public immutable DRIP_VAULT_ETH;
+  IDripVault public immutable DRIP_VAULT_DAI;
+
   address public treasury;
   address public dataAsserter;
-  IERC20 public dai;
-  IDripVault public dripVaultETH;
-  IDripVault public dripVaultDAI;
   uint32 public supportId;
   uint256 public maxRewardPerCollection;
 
@@ -43,19 +44,16 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     address _nftPass,
     address _dripVaultETH,
     address _dripVaultDAI,
-    address _dataAsserter,
     address _dai
   ) Ownable(_owner) {
-    requiredEthToEnableCollection = 100e18;
     maxRewardPerCollection = 250e18;
 
     treasury = _treasury;
-    hct = _hct;
-    dripVaultETH = IDripVault(_dripVaultETH);
-    dripVaultDAI = IDripVault(_dripVaultDAI);
-    dataAsserter = _dataAsserter;
-    nftPass = _nftPass;
-    dai = IERC20(_dai);
+    HCT = _hct;
+    DRIP_VAULT_ETH = IDripVault(_dripVaultETH);
+    DRIP_VAULT_DAI = IDripVault(_dripVaultDAI);
+    NFT_PASS = _nftPass;
+    DAI = IERC20(_dai);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -69,14 +67,14 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     collection.contributionBalance = newTotalContribution;
     userSupportedCollections[msg.sender][_collection].deposit += uint128(msg.value);
-    dripVaultETH.deposit{ value: msg.value }(0);
+    DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
 
-    if (newTotalContribution > requiredEthToEnableCollection) {
+    if (newTotalContribution > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       revert TooManyEth();
     }
 
     emit CollectionContributed(_collection, msg.sender, msg.value);
-    if (newTotalContribution != requiredEthToEnableCollection) return;
+    if (newTotalContribution != REQUIRED_ETH_TO_ENABLE_COLLECTION) return;
 
     _createWrappedNFT(_collection, collection.totalSupply, collection.collectionStartedUnixTime, collection.premium);
   }
@@ -86,11 +84,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (!collection.allowed) revert CollectionNotAllowed();
 
     uint256 currentBalance = collection.contributionBalance;
-    if (currentBalance >= requiredEthToEnableCollection) {
+    if (currentBalance >= REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       revert TooManyEth();
     }
 
-    uint256 missingEth = requiredEthToEnableCollection - currentBalance;
+    uint256 missingEth = REQUIRED_ETH_TO_ENABLE_COLLECTION - currentBalance;
 
     collection.contributionBalance += missingEth;
     userSupportedCollections[msg.sender][_collection].deposit += uint128(missingEth);
@@ -105,7 +103,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     addr_ = _createContract(
       abi.encodePacked(
         type(WrappedNFTHero).creationCode,
-        abi.encode(hct, nftPass, _collection, address(this), _totalSupply, _unixTimeCreation, _premium)
+        abi.encode(HCT, NFT_PASS, _collection, address(this), _totalSupply, _unixTimeCreation, _premium)
       )
     );
 
@@ -128,13 +126,13 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     }
     if (_amount == 0) _amount = depositedAmount;
 
-    if (currentBalance >= requiredEthToEnableCollection) {
+    if (currentBalance >= REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       revert GoalReached();
     }
 
     collection.contributionBalance = currentBalance - _amount;
     userSupportedCollections[msg.sender][_collection].deposit -= uint128(_amount);
-    dripVaultETH.withdraw(msg.sender, _amount);
+    DRIP_VAULT_ETH.withdraw(msg.sender, _amount);
 
     (bool success,) = msg.sender.call{ value: _amount }("");
     if (!success) {
@@ -149,7 +147,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (msg.value == 0 && _amount == 0) revert ZeroValue();
     if (msg.value != 0 && _amount != 0) revert OnlyOneValue();
 
-    address token = msg.value != 0 ? address(0) : address(dai);
+    address token = msg.value != 0 ? address(0) : address(DAI);
     uint256 santizedAmount = msg.value != 0 ? msg.value : _amount;
 
     if (santizedAmount < MIN_SUPPORT_AMOUNT) revert AmountTooLow();
@@ -164,10 +162,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     });
 
     if (token == address(0)) {
-      dripVaultETH.deposit{ value: msg.value }(0);
+      DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
     } else {
-      dai.transferFrom(msg.sender, address(dripVaultDAI), santizedAmount);
-      dripVaultDAI.deposit(santizedAmount);
+      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), santizedAmount);
+      DRIP_VAULT_DAI.deposit(santizedAmount);
     }
 
     emit Supported(supportId, msg.sender, santizedAmount);
@@ -185,9 +183,9 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     supporter.removed = true;
 
     if (supporter.token == address(0)) {
-      dripVaultETH.withdraw(msg.sender, returningAmount);
+      DRIP_VAULT_ETH.withdraw(msg.sender, returningAmount);
     } else {
-      dripVaultDAI.withdraw(msg.sender, returningAmount);
+      DRIP_VAULT_DAI.withdraw(msg.sender, returningAmount);
     }
 
     emit SupportRetrieved(_id, msg.sender, returningAmount);
@@ -310,6 +308,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (_treasury == address(0)) revert ZeroAddress();
     treasury = _treasury;
     emit TreasurySet(_treasury);
+  }
+
+  function setDataAsserter(address _dataAsserter) external onlyOwner {
+    dataAsserter = _dataAsserter;
+    emit DataAsserterSet(_dataAsserter);
   }
 
   function setMaxRewardPerCollection(uint256 _maxRewardPerCollection) external onlyOwner {

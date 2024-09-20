@@ -17,7 +17,7 @@ abstract contract TickerNFT is ITickerNFT {
   string public constant TICKER_START_IDENTITY = "@";
   uint32 public constant MAX_NAME_BYTES_LENGTH = 29;
   IObeliskRegistry public immutable obeliskRegistry;
-  INFTPass public immutable nftPass;
+  INFTPass public immutable NFT_PASS;
 
   mapping(uint256 => address[]) internal linkedTickers;
   mapping(uint256 => string) internal names;
@@ -25,7 +25,7 @@ abstract contract TickerNFT is ITickerNFT {
 
   constructor(address _obeliskRegistry, address _nftPass) {
     obeliskRegistry = IObeliskRegistry(_obeliskRegistry);
-    nftPass = INFTPass(_nftPass);
+    NFT_PASS = INFTPass(_nftPass);
   }
 
   function rename(uint256 _tokenId, string memory _newName) external {
@@ -92,7 +92,7 @@ abstract contract TickerNFT is ITickerNFT {
     strings.slice memory needle = TICKER_START_IDENTITY.toSlice();
     strings.slice memory substring = nameSlice.find(needle).beyond(needle).split(string(" ").toSlice());
 
-    receiver_ = nftPass.getMetadataWithName(substring.toString()).walletReceiver;
+    receiver_ = NFT_PASS.getMetadataWithName(substring.toString()).walletReceiver;
 
     if (receiver_ == address(0)) revert InvalidWalletReceiver();
     identities[_tokenId] = receiver_;

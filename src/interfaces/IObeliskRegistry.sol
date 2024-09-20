@@ -24,7 +24,6 @@ interface IObeliskRegistry {
   event WrappedNFTCreated(address indexed collection, address indexed wrappedNFT);
   event TickerLogicSet(string indexed ticker, address pool);
   event NewGenesisTickerCreated(string indexed ticker, address pool);
-
   event Supported(uint32 indexed supportId, address indexed supporter, uint256 amount);
   event SupportRetrieved(uint32 indexed supportId, address indexed supporter, uint256 amount);
   event CollectionContributed(address indexed collection, address indexed contributor, uint256 amount);
@@ -36,6 +35,7 @@ interface IObeliskRegistry {
   );
   event TreasurySet(address indexed treasury);
   event MaxRewardPerCollectionSet(uint256 maxRewardPerCollection);
+  event DataAsserterSet(address indexed dataAsserter);
 
   struct Collection {
     address wrappedVersion;
