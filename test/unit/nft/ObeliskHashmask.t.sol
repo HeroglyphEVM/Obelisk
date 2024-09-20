@@ -73,7 +73,7 @@ contract ObeliskHashmaskTest is BaseTest {
     assertEq(underTest.activationPrice(), 0.1 ether);
     assertEq(underTest.owner(), owner);
     assertEq(address(underTest.obeliskRegistry()), mockObeliskRegistry);
-    assertEq(address(underTest.nftPass()), address(0));
+    assertEq(address(underTest.NFT_PASS()), address(0));
   }
 
   function test_link_whenMsgValueIsNotActivationPrice_thenReverts() external prankAs(hashmaskUser) {
