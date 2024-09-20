@@ -171,16 +171,17 @@ contract ObeliskRegistryTest is BaseTest {
     address collection_premium = generateAddress("CollectionPremium");
     uint32 collectionStartedUnixTime = 999_928;
 
-    WrappedNFTHero wrappedNFT_nonPremium =
-      WrappedNFTHero(underTest.exposed_createWrappedNFT(collection_nonPremium, 10_000, collectionStartedUnixTime, false));
+    WrappedNFTHero wrappedNFT_nonPremium = WrappedNFTHero(
+      underTest.exposed_createWrappedNFT(collection_nonPremium, 10_000, collectionStartedUnixTime, false)
+    );
 
     assertTrue(underTest.isWrappedNFT(address(wrappedNFT_nonPremium)));
 
     assertEq(address(wrappedNFT_nonPremium.HCT()), hctMock);
     assertEq(address(wrappedNFT_nonPremium.INPUT_COLLECTION()), collection_nonPremium);
     assertEq(address(wrappedNFT_nonPremium.obeliskRegistry()), address(underTest));
-    assertEq(wrappedNFT_nonPremium.collectionStartedUnixTime(), collectionStartedUnixTime);
-    assertFalse(wrappedNFT_nonPremium.premium());
+    assertEq(wrappedNFT_nonPremium.COLLECTION_STARTED_UNIX_TIME(), collectionStartedUnixTime);
+    assertFalse(wrappedNFT_nonPremium.PREMIUM());
 
     WrappedNFTHero wrappedNFT_premium =
       WrappedNFTHero(underTest.exposed_createWrappedNFT(collection_premium, 10_000, collectionStartedUnixTime, true));
@@ -190,8 +191,8 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(address(wrappedNFT_premium.HCT()), hctMock);
     assertEq(address(wrappedNFT_premium.INPUT_COLLECTION()), collection_premium);
     assertEq(address(wrappedNFT_premium.obeliskRegistry()), address(underTest));
-    assertEq(wrappedNFT_premium.collectionStartedUnixTime(), collectionStartedUnixTime);
-    assertTrue(wrappedNFT_premium.premium());
+    assertEq(wrappedNFT_premium.COLLECTION_STARTED_UNIX_TIME(), collectionStartedUnixTime);
+    assertTrue(wrappedNFT_premium.PREMIUM());
   }
 
   function test_removeFromCollection_whenAmountExceedsDeposit_thenReverts() external prankAs(user) {
@@ -410,8 +411,8 @@ contract ObeliskRegistryTest is BaseTest {
 
     assertEq(pool.owner(), owner);
     assertEq(address(pool.registry()), address(underTest));
-    assertEq(address(pool.genesisKey()), mockGenesisKey);
-    assertEq(address(pool.rewardToken()), mockGenesisWrappedToken);
+    assertEq(address(pool.GENESIS_KEY()), mockGenesisKey);
+    assertEq(address(pool.REWARD_TOKEN()), mockGenesisWrappedToken);
   }
 
   function test_onSlotBought_whenNotWrappedNFT_thenReverts() external prankAs(user) {

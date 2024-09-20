@@ -89,10 +89,10 @@ contract WrappedNFTHeroTest is BaseTest {
     assertEq(address(underTest.obeliskRegistry()), mockObeliskRegistry);
     assertEq(underTest.freeSlots(), ACTIVE_SUPPLY * UNLOCK_SLOT_BPS / BPS);
     assertEq(
-      underTest.freeSlotForOdd(), uint256(keccak256(abi.encode(tx.origin, address(mockInputCollection)))) % 2 == 1
+      underTest.FREE_SLOT_FOR_ODD(), uint256(keccak256(abi.encode(tx.origin, address(mockInputCollection)))) % 2 == 1
     );
-    assertEq(underTest.collectionStartedUnixTime(), uint32(block.timestamp) - YEAR_IN_SECONDS);
-    assertFalse(underTest.premium());
+    assertEq(underTest.COLLECTION_STARTED_UNIX_TIME(), uint32(block.timestamp) - YEAR_IN_SECONDS);
+    assertFalse(underTest.PREMIUM());
 
     underTest = new WrappedNFTHeroHarness(
       mockHCT,
@@ -104,11 +104,11 @@ contract WrappedNFTHeroTest is BaseTest {
       true
     );
 
-    assertTrue(underTest.premium());
+    assertTrue(underTest.PREMIUM());
   }
 
   function test_wrap_whenAlreadyMinted_thenReverts() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
 
     underTest.wrap(tokenId);
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.AlreadyMinted.selector));
@@ -116,21 +116,21 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function test_wrap_givenETH_whenFreeSlotAvailable_thenReverts() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
 
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.FreeSlotAvailable.selector));
     underTest.wrap{ value: 1 }(tokenId);
   }
 
   function test_givenNoEth_whenNoFreeSlotAvailable_thenReverts() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 2 : 1;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 2 : 1;
 
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NoFreeSlots.selector));
     underTest.wrap(tokenId);
   }
 
   function test_wrap_whenBuyingSlot_thenCallsObeliskRegistryAndWraps() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 2 : 1;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 2 : 1;
     uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
 
     vm.expectCall(mockObeliskRegistry, SLOT_PRICE, abi.encodeWithSelector(IObeliskRegistry.onSlotBought.selector));
@@ -148,7 +148,7 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function test_wrap_whenFreeSlotAvailable_thenWraps() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
     uint256 freeSlotsBefore = underTest.freeSlots();
     uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
 
@@ -173,7 +173,7 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function test_unwrap_whenNotNFTHolder_thenReverts() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
 
     underTest.wrap(tokenId);
 
@@ -183,7 +183,7 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function test_unwrap_thenUnwraps() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
 
     underTest.wrap(tokenId);
 
@@ -206,7 +206,7 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function test_renameRequirements_whenNotNFTHolder_thenReverts() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
 
     underTest.wrap(tokenId);
 
@@ -216,7 +216,7 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function test_renameRequirements_whenCorrect_thenRenames() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
 
     underTest.wrap(tokenId);
 
@@ -225,7 +225,7 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function test_claimRequirements_whenNotHolder_thenReverts() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
     underTest.wrap(tokenId);
 
     changePrank(generateAddress("NotHolder"));
@@ -233,7 +233,7 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function test_claimRequirements_whenHolder_thenReturnsTrue() external prankAs(user) {
-    uint256 tokenId = underTest.freeSlotForOdd() ? 1 : 2;
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
     underTest.wrap(tokenId);
 
     assertTrue(underTest.exposed_claimRequirements(1));

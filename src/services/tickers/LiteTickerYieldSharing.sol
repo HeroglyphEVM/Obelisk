@@ -7,13 +7,13 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Shareable, ShareableMath } from "src/lib/Shareable.sol";
 
 contract LiteTickerYieldSharing is LiteTicker, Shareable {
-  ERC20 public rewardToken;
+  ERC20 public immutable REWARD_TOKEN;
 
   uint256 public systemBalance;
   mapping(address => uint256) private balances;
 
   constructor(address _owner, address _registry, address _tokenReward) LiteTicker(_owner, _registry) {
-    rewardToken = ERC20(_tokenReward);
+    REWARD_TOKEN = ERC20(_tokenReward);
   }
 
   function _afterVirtualDeposit(address _holder) internal override {
@@ -48,7 +48,7 @@ contract LiteTickerYieldSharing is LiteTicker, Shareable {
   }
 
   function _crop() internal view override returns (uint256) {
-    return rewardToken.balanceOf(address(this)) - stock;
+    return REWARD_TOKEN.balanceOf(address(this)) - stock;
   }
 
   function _onClaimTriggered(address _holder, bool _ignoreRewards) internal override {
@@ -65,10 +65,10 @@ contract LiteTickerYieldSharing is LiteTicker, Shareable {
 
     if (curr > last && !_ignoreRewards) {
       uint256 sendingReward = curr - last;
-      rewardToken.transfer(_holder, sendingReward);
+      REWARD_TOKEN.transfer(_holder, sendingReward);
     }
 
-    stock = rewardToken.balanceOf(address(this));
+    stock = REWARD_TOKEN.balanceOf(address(this));
   }
 
   function getBalanceOf(address _holder) external view returns (uint256) {

@@ -21,15 +21,14 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
   IHCT public immutable HCT;
   ERC721 public immutable INPUT_COLLECTION;
 
-  mapping(uint256 => bool) public isMinted;
-  mapping(uint256 => uint128) public assignedMultipler;
+  bool public immutable FREE_SLOT_FOR_ODD;
+  uint32 public immutable COLLECTION_STARTED_UNIX_TIME;
+  bool public immutable PREMIUM;
 
   uint256 public freeSlots;
-  uint32 public collectionStartedUnixTime;
-  uint32 public contractStartedUixTime;
-  uint32 public contractBlockNumber;
-  bool public freeSlotForOdd;
-  bool public premium;
+
+  mapping(uint256 => bool) public isMinted;
+  mapping(uint256 => uint128) public assignedMultipler;
 
   constructor(
     address _HCT,
@@ -44,15 +43,15 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
     INPUT_COLLECTION = ERC721(_inputCollection);
 
     freeSlots = _currentSupply * FREE_SLOT_BPS / MAX_BPS;
-    freeSlotForOdd = uint256(keccak256(abi.encode(tx.origin, _inputCollection))) % 2 == 1;
-    collectionStartedUnixTime = _collectionStartedUnixTime;
-    premium = _premium;
+    FREE_SLOT_FOR_ODD = uint256(keccak256(abi.encode(tx.origin, _inputCollection))) % 2 == 1;
+    COLLECTION_STARTED_UNIX_TIME = _collectionStartedUnixTime;
+    PREMIUM = _premium;
   }
 
   function wrap(uint256 _inputCollectionNFTId) external payable override {
     uint256 catchedDepositNFTID = _inputCollectionNFTId;
     bool isIdOdd = catchedDepositNFTID % 2 == 1;
-    bool canHaveFreeSlot = freeSlots != 0 && freeSlotForOdd == isIdOdd;
+    bool canHaveFreeSlot = freeSlots != 0 && FREE_SLOT_FOR_ODD == isIdOdd;
 
     if (isMinted[catchedDepositNFTID]) revert AlreadyMinted();
     if (canHaveFreeSlot && msg.value != 0) revert FreeSlotAvailable();
@@ -121,9 +120,9 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
   }
 
   function getWrapperMultiplier() public view returns (uint128) {
-    if (premium) return uint128(MAX_RATE);
+    if (PREMIUM) return uint128(MAX_RATE);
 
-    uint256 currentYear = (block.timestamp - collectionStartedUnixTime) / SECONDS_PER_YEAR;
+    uint256 currentYear = (block.timestamp - COLLECTION_STARTED_UNIX_TIME) / SECONDS_PER_YEAR;
     return uint128(Math.min(currentYear * RATE_PER_YEAR, MAX_RATE));
   }
 

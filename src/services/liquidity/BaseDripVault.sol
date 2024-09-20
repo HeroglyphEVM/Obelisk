@@ -6,10 +6,11 @@ import { IDripVault } from "src/interfaces/IDripVault.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract BaseDripVault is IDripVault, Ownable {
+  address public immutable INPUT_TOKEN;
+
   address public interestRateReceiver;
   address public obeliskRegistry;
   uint256 private totalDeposit;
-  address public inputToken;
 
   modifier onlyObeliskRegistry() {
     if (msg.sender != obeliskRegistry) revert NotObeliskRegistry();
@@ -19,18 +20,18 @@ abstract contract BaseDripVault is IDripVault, Ownable {
   constructor(address _inputToken, address _owner, address _obeliskRegistry, address _rateReceiver) Ownable(_owner) {
     obeliskRegistry = _obeliskRegistry;
     interestRateReceiver = _rateReceiver;
-    inputToken = _inputToken;
+    INPUT_TOKEN = _inputToken;
   }
 
   function deposit(uint256 _amount) external payable override onlyObeliskRegistry {
-    if (inputToken == address(0) && msg.value == 0) revert InvalidAmount();
-    if (inputToken != address(0) && msg.value != 0) revert NativeNotAccepted();
-    if (inputToken != address(0) && _amount == 0) revert InvalidAmount();
+    if (INPUT_TOKEN == address(0) && msg.value == 0) revert InvalidAmount();
+    if (INPUT_TOKEN != address(0) && msg.value != 0) revert NativeNotAccepted();
+    if (INPUT_TOKEN != address(0) && _amount == 0) revert InvalidAmount();
 
-    uint256 sanitizedAmount = inputToken == address(0) ? msg.value : _amount;
+    uint256 sanitizedAmount = INPUT_TOKEN == address(0) ? msg.value : _amount;
 
-    if (inputToken != address(0)) {
-      sanitizedAmount = IERC20(inputToken).balanceOf(address(this)) - totalDeposit;
+    if (INPUT_TOKEN != address(0)) {
+      sanitizedAmount = IERC20(INPUT_TOKEN).balanceOf(address(this)) - totalDeposit;
     }
 
     totalDeposit += sanitizedAmount;

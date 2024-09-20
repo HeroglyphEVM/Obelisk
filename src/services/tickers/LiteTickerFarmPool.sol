@@ -15,8 +15,9 @@ import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
   uint256 internal constant PRECISION = 1e30;
 
-  IERC721 public immutable genesisKey;
-  ERC20 public immutable rewardToken;
+  uint64 public immutable DISTRIBUTION_DURATION;
+  IERC721 public immutable GENESIS_KEY;
+  ERC20 public immutable REWARD_TOKEN;
 
   uint64 public lastUpdateUnixTime;
   uint64 public unixPeriodFinish;
@@ -24,27 +25,26 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
   uint256 public rewardRatePerSecond;
   uint256 public latestRewardPerTokenStored;
   uint256 public totalSupply;
-  uint64 public distributionDuration;
 
   mapping(address user => uint256) public balanceOf;
   mapping(address user => uint256) public userRewardPerTokenPaid;
   mapping(address user => uint256) public rewards;
 
   modifier onlyCanRefillReward() {
-    if (msg.sender != address(rewardToken) && msg.sender != owner()) revert NotAuthorized();
+    if (msg.sender != address(REWARD_TOKEN) && msg.sender != owner()) revert NotAuthorized();
     _;
   }
 
   constructor(address _owner, address _registry, address _wrappedReward, address _genesisKey)
     LiteTicker(_owner, _registry)
   {
-    genesisKey = IERC721(_genesisKey);
-    rewardToken = ERC20(_wrappedReward);
-    distributionDuration = 30 days;
+    GENESIS_KEY = IERC721(_genesisKey);
+    REWARD_TOKEN = ERC20(_wrappedReward);
+    DISTRIBUTION_DURATION = 30 days;
   }
 
   function _afterVirtualDeposit(address _holder) internal override {
-    if (address(genesisKey) != address(0) && genesisKey.balanceOf(_holder) == 0) revert MissingKey();
+    if (address(GENESIS_KEY) != address(0) && GENESIS_KEY.balanceOf(_holder) == 0) revert MissingKey();
     uint256 amount = 1e18;
 
     uint256 accountBalance = balanceOf[_holder];
@@ -79,7 +79,7 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
       totalSupply = totalSupply_ - amount;
     }
 
-    rewardToken.transfer(_holder, amount);
+    REWARD_TOKEN.transfer(_holder, amount);
   }
 
   function _onClaimTriggered(address _holder, bool _ignoreRewards) internal override {
@@ -98,11 +98,11 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
     rewards[_holder] = 0;
 
     if (_ignoreRewards) {
-      rewardToken.transfer(owner(), reward);
+      REWARD_TOKEN.transfer(owner(), reward);
       return;
     }
 
-    rewardToken.transfer(_holder, reward);
+    REWARD_TOKEN.transfer(_holder, reward);
     emit RewardPaid(_holder, reward);
   }
 
@@ -112,7 +112,7 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
     uint256 rewardRate_ = rewardRatePerSecond;
     uint64 unixPeriodFinish_ = unixPeriodFinish;
     uint64 lastTimeRewardApplicable_ = block.timestamp < unixPeriodFinish_ ? uint64(block.timestamp) : unixPeriodFinish_;
-    uint64 DURATION_ = distributionDuration;
+    uint64 DURATION_ = DISTRIBUTION_DURATION;
     uint256 totalSupply_ = totalSupply;
 
     latestRewardPerTokenStored = _rewardPerToken(totalSupply_, lastTimeRewardApplicable_, rewardRate_);

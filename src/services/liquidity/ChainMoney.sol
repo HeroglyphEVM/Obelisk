@@ -36,8 +36,8 @@ contract ChaiMoneyVault is BaseDripVault {
       CHAIN_MONEY.join(address(this), leftOver);
     }
 
-    _transfer(inputToken, interestRateReceiver, interest);
-    _transfer(inputToken, _to, _amount);
+    _transfer(INPUT_TOKEN, interestRateReceiver, interest);
+    _transfer(INPUT_TOKEN, _to, _amount);
   }
 
   function claim() external override returns (uint256 interest_) {
@@ -52,7 +52,7 @@ contract ChaiMoneyVault is BaseDripVault {
     }
 
     CHAIN_MONEY.join(address(this), totalBalance);
-    _transfer(inputToken, interestRateReceiver, interest_);
+    _transfer(INPUT_TOKEN, interestRateReceiver, interest_);
 
     return interest_;
   }
