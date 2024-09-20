@@ -167,18 +167,31 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_createWrappedNFT_thenVerifyWrappedNFTConfiguration() external {
+    address collection_nonPremium = generateAddress("CollectionNonPremium");
+    address collection_premium = generateAddress("CollectionPremium");
     uint32 collectionStartedUnixTime = 999_928;
 
-    WrappedNFTHero wrappedNFT =
-      WrappedNFTHero(underTest.exposed_createWrappedNFT(collectionMock, 10_000, collectionStartedUnixTime, false));
+    WrappedNFTHero wrappedNFT_nonPremium =
+      WrappedNFTHero(underTest.exposed_createWrappedNFT(collection_nonPremium, 10_000, collectionStartedUnixTime, false));
 
-    assertTrue(underTest.isWrappedNFT(address(wrappedNFT)));
+    assertTrue(underTest.isWrappedNFT(address(wrappedNFT_nonPremium)));
 
-    assertEq(address(wrappedNFT.HCT()), hctMock);
-    assertEq(address(wrappedNFT.attachedCollection()), collectionMock);
-    assertEq(address(wrappedNFT.obeliskRegistry()), address(underTest));
-    assertEq(wrappedNFT.collectionStartedUnixTime(), collectionStartedUnixTime);
-    assertEq(wrappedNFT.contractStartedUnixTime(), uint32(block.timestamp));
+    assertEq(address(wrappedNFT_nonPremium.HCT()), hctMock);
+    assertEq(address(wrappedNFT_nonPremium.INPUT_COLLECTION()), collection_nonPremium);
+    assertEq(address(wrappedNFT_nonPremium.obeliskRegistry()), address(underTest));
+    assertEq(wrappedNFT_nonPremium.collectionStartedUnixTime(), collectionStartedUnixTime);
+    assertFalse(wrappedNFT_nonPremium.premium());
+
+    WrappedNFTHero wrappedNFT_premium =
+      WrappedNFTHero(underTest.exposed_createWrappedNFT(collection_premium, 10_000, collectionStartedUnixTime, true));
+
+    assertTrue(underTest.isWrappedNFT(address(wrappedNFT_premium)));
+
+    assertEq(address(wrappedNFT_premium.HCT()), hctMock);
+    assertEq(address(wrappedNFT_premium.INPUT_COLLECTION()), collection_premium);
+    assertEq(address(wrappedNFT_premium.obeliskRegistry()), address(underTest));
+    assertEq(wrappedNFT_premium.collectionStartedUnixTime(), collectionStartedUnixTime);
+    assertTrue(wrappedNFT_premium.premium());
   }
 
   function test_removeFromCollection_whenAmountExceedsDeposit_thenReverts() external prankAs(user) {
@@ -495,7 +508,7 @@ contract ObeliskRegistryTest is BaseTest {
   function test_fizz_claim(uint128[10] memory _amounts, uint128 _slotBought) external {
     address[10] memory fizzUsers;
     _slotBought = uint128(bound(_slotBought, 0.1e18, underTest.maxRewardPerCollection()));
-    uint128 REQUIRED_ETH_TO_ENABLE_COLLECTION = underTest.REQUIRED_ETH_TO_ENABLE_COLLECTION();
+    uint128 requiredEth = underTest.REQUIRED_ETH_TO_ENABLE_COLLECTION();
 
     address currentUser;
     uint128 sanitizedAmount;
@@ -504,7 +517,7 @@ contract ObeliskRegistryTest is BaseTest {
 
     for (uint256 i = 0; i < _amounts.length; ++i) {
       if (i == _amounts.length - 1) {
-        sanitizedAmount = REQUIRED_ETH_TO_ENABLE_COLLECTION - totalAmount;
+        sanitizedAmount = requiredEth - totalAmount;
       } else {
         sanitizedAmount = uint128(bound(_amounts[i], 0.01e18, 10e18));
       }
