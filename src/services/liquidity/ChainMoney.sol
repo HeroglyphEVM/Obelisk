@@ -27,7 +27,7 @@ contract ChaiMoneyVault is BaseDripVault {
     uint256 totalBalance = DAI.balanceOf(address(this));
     uint256 cachedTotalDeposit = getTotalDeposit();
     uint256 leftOver = totalBalance - _amount;
-    uint256 interest;
+    uint256 interest = 0;
 
     if (totalBalance > cachedTotalDeposit) {
       interest = totalBalance - cachedTotalDeposit;

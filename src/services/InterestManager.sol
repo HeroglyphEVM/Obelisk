@@ -7,8 +7,9 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract InterestManager is IInterestManager, Ownable {
+contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
   uint256 public constant PRECISION = 1e18;
 
   uint64 public epochId;
@@ -22,7 +23,7 @@ contract InterestManager is IInterestManager, Ownable {
     gaugeController = _gaugeController;
   }
 
-  function applyGauges(address[] memory _megapools, uint128[] memory _weights) external override {
+  function applyGauges(address[] memory _megapools, uint128[] memory _weights) external override nonReentrant {
     if (msg.sender != gaugeController) revert NotGaugeController();
 
     _endEpoch();
@@ -48,7 +49,7 @@ contract InterestManager is IInterestManager, Ownable {
     emit EpochIntialized(epochId, _megapools, _weights, totalWeight);
   }
 
-  function _endEpoch() internal {
+  function _endEpoch() internal nonReentrant {
     Epoch storage epoch = epochs[epochId];
 
     for (uint256 i = 0; i < epoch.megapools.length; ++i) {
@@ -63,7 +64,7 @@ contract InterestManager is IInterestManager, Ownable {
     return _claim(epoch, msg.sender);
   }
 
-  function _claim(Epoch storage _epoch, address _megapool) internal returns (uint128 rewards_) {
+  function _claim(Epoch storage _epoch, address _megapool) internal nonReentrant returns (uint128 rewards_) {
     rewards_ = _getRewards(_epoch, _megapool);
 
     _epoch.totalRewards += uint128(dripVault.claim());

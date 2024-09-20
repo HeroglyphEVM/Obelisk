@@ -5,8 +5,9 @@ import { LiteTicker } from "./LiteTicker.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Shareable, ShareableMath } from "src/lib/Shareable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract LiteTickerYieldSharing is LiteTicker, Shareable {
+contract LiteTickerYieldSharing is LiteTicker, Shareable, ReentrancyGuard {
   ERC20 public immutable REWARD_TOKEN;
 
   uint256 public systemBalance;
@@ -55,7 +56,7 @@ contract LiteTickerYieldSharing is LiteTicker, Shareable {
     _claim(_holder, _ignoreRewards);
   }
 
-  function _claim(address _holder, bool _ignoreRewards) internal {
+  function _claim(address _holder, bool _ignoreRewards) internal nonReentrant {
     if (totalWeight > 0) {
       share = share + ShareableMath.rdiv(_crop(), totalWeight);
     }
