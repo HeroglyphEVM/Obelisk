@@ -6,7 +6,7 @@ import { IHCT } from "src/interfaces/IHCT.sol";
 import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
 import { TickerNFT } from "./TickerNFT.sol";
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { FixedPointMathLib as Math } from "src/vendor/solmate/FixedPointMathLib.sol";
 
 contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
   uint256 private constant MAX_BPS = 10_000;

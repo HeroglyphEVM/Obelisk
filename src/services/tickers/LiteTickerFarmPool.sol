@@ -5,8 +5,8 @@ import { LiteTicker } from "./LiteTicker.sol";
 import { ILiteTickerFarmPool } from "src/interfaces/ILiteTickerFarmPool.sol";
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { FixedPointMathLib as Math } from "src/vendor/solmate/FixedPointMathLib.sol";
 
 /**
  * @title TickerPool
@@ -154,7 +154,8 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
     view
     returns (uint256)
   {
-    return Math.mulDiv(accountBalance, rewardPerToken_ - userRewardPerTokenPaid[account], PRECISION) + accountRewards;
+    return
+      Math.mulDivDown(accountBalance, rewardPerToken_ - userRewardPerTokenPaid[account], PRECISION) + accountRewards;
   }
 
   function _rewardPerToken(uint256 totalSupply_, uint256 lastTimeRewardApplicable_, uint256 rewardRate_)
@@ -166,7 +167,7 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
       return latestRewardPerTokenStored;
     }
     return latestRewardPerTokenStored
-      + Math.mulDiv((lastTimeRewardApplicable_ - lastUpdateUnixTime) * PRECISION, rewardRate_, totalSupply_);
+      + Math.mulDivDown((lastTimeRewardApplicable_ - lastUpdateUnixTime) * PRECISION, rewardRate_, totalSupply_);
   }
 
   function lastTimeRewardApplicable() public view returns (uint64) {

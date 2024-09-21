@@ -4,9 +4,14 @@ pragma solidity >=0.8.0;
 interface IInterestManager {
   error InvalidInputLength();
   error NotGaugeController();
+  error ApplyGaugesLocked();
+  error RealTimeRewards(uint256 rewards);
 
   event EpochIntialized(uint64 indexed epochId, address[] megapools, uint128[] weights, uint128 totalWeight);
   event GaugeControllerSet(address indexed gaugeController);
+  event EpochEnded(uint64 indexed epochId);
+  event RewardAssigned(address indexed megapool, uint256 addedRewards, uint256 totalRewards);
+  event RewardClaimed(address indexed megapool, uint256 rewards);
 
   struct Epoch {
     uint128 totalRewards;
