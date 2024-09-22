@@ -72,5 +72,9 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     return totalDeposit;
   }
 
+  function getInputToken() external view returns (address) {
+    return INPUT_TOKEN;
+  }
+
   receive() external payable { }
 }

@@ -14,7 +14,7 @@ contract apxETHVault is BaseDripVault {
     BaseDripVault(address(0), _owner, _gob, _rateReceiver)
   {
     APXETH = IApxETH(_apxETH);
-    PIREX_ETH = IPirexEth(APXETH.pirexEth());
+    PIREX_ETH = IPirexEth(IApxETH(_apxETH).pirexEth());
   }
 
   function _afterDeposit(uint256 _amount) internal override {
@@ -46,5 +46,9 @@ contract apxETHVault is BaseDripVault {
     }
 
     return interestInApx_;
+  }
+
+  function getOutputToken() external view returns (address) {
+    return address(APXETH);
   }
 }

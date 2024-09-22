@@ -2,7 +2,6 @@
 pragma solidity ^0.8.25;
 
 import { LiteTicker } from "./LiteTicker.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Shareable, ShareableMath } from "src/lib/Shareable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";

@@ -35,4 +35,16 @@ interface IDripVault {
    * @return The total deposit amount.
    */
   function getTotalDeposit() external view returns (uint256);
+
+  /**
+   * @notice Gets the input token of the vault.
+   * @return The input token address.
+   */
+  function getInputToken() external view returns (address);
+
+  /**
+   * @notice Gets the output token of the vault.
+   * @return The output token address.
+   */
+  function getOutputToken() external view returns (address);
 }

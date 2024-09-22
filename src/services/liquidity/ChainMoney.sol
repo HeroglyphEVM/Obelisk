@@ -1,21 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import { BaseDripVault } from "./BaseDripVault.sol";
+import { BaseDripVault, IERC20 } from "./BaseDripVault.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IChaiMoney } from "src/vendor/chai/IChaiMoney.sol";
 
 contract ChaiMoneyVault is BaseDripVault {
   IChaiMoney public immutable CHAIN_MONEY;
-  IERC20 public immutable DAI;
 
   constructor(address _owner, address _obeliskRegistry, address _chaiMoney, address _dai, address _rateReceiver)
     BaseDripVault(_dai, _owner, _obeliskRegistry, _rateReceiver)
   {
     CHAIN_MONEY = IChaiMoney(_chaiMoney);
-    DAI = IERC20(_dai);
-    DAI.approve(address(CHAIN_MONEY), type(uint256).max);
+    IERC20(INPUT_TOKEN).approve(address(CHAIN_MONEY), type(uint256).max);
   }
 
   function _afterDeposit(uint256 _amount) internal override {
@@ -24,7 +21,7 @@ contract ChaiMoneyVault is BaseDripVault {
 
   function _beforeWithdrawal(address _to, uint256 _amount) internal override {
     CHAIN_MONEY.exit(address(this), CHAIN_MONEY.balanceOf(address(this)));
-    uint256 totalBalance = DAI.balanceOf(address(this));
+    uint256 totalBalance = IERC20(INPUT_TOKEN).balanceOf(address(this));
     uint256 cachedTotalDeposit = getTotalDeposit();
     uint256 leftOver = totalBalance - _amount;
     uint256 interest = 0;
@@ -45,7 +42,7 @@ contract ChaiMoneyVault is BaseDripVault {
     if (cachedTotalDeposit == 0) return 0;
 
     CHAIN_MONEY.exit(address(this), CHAIN_MONEY.balanceOf(address(this)));
-    uint256 totalBalance = DAI.balanceOf(address(this));
+    uint256 totalBalance = IERC20(INPUT_TOKEN).balanceOf(address(this));
 
     if (totalBalance > cachedTotalDeposit) {
       interest_ = totalBalance - cachedTotalDeposit;
@@ -55,5 +52,9 @@ contract ChaiMoneyVault is BaseDripVault {
     _transfer(INPUT_TOKEN, interestRateReceiver, interest_);
 
     return interest_;
+  }
+
+  function getOutputToken() external view returns (address) {
+    return INPUT_TOKEN;
   }
 }

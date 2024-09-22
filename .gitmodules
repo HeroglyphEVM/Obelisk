@@ -4,3 +4,9 @@
 [submodule "node_modules/@layerzerolabs/toolbox-foundry/lib/heroglyph-library"]
 	path = node_modules/@layerzerolabs/toolbox-foundry/lib/heroglyph-library
 	url = https://github.com/HeroglyphEVM/heroglyph-library
+[submodule "node_modules/@layerzerolabs/toolbox-foundry/lib/v3-periphery"]
+	path = node_modules/@layerzerolabs/toolbox-foundry/lib/v3-periphery
+	url = https://github.com/Uniswap/v3-periphery
+[submodule "node_modules/@layerzerolabs/toolbox-foundry/lib/v3-core"]
+	path = node_modules/@layerzerolabs/toolbox-foundry/lib/v3-core
+	url = https://github.com/uniswap/v3-core

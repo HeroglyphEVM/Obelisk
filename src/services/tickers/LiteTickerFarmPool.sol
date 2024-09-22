@@ -5,8 +5,8 @@ import { LiteTicker } from "./LiteTicker.sol";
 import { ILiteTickerFarmPool } from "src/interfaces/ILiteTickerFarmPool.sol";
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title TickerPool
