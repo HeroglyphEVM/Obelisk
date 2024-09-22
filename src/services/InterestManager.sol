@@ -2,7 +2,7 @@
 pragma solidity ^0.8.25;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { FixedPointMathLib as Math } from "src/vendor/solmate/FixedPointMathLib.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -174,8 +174,8 @@ contract InterestManager is IInterestManager, Ownable {
     uint256 totalClaimedByPool = epoch.megapoolClaims[_megapool];
     if (weight == 0 || epoch.totalWeight == 0) return (totalRewards_, 0);
 
-    uint256 weightRatioOfPool = Math.mulDivDown(weight, PRECISION, epoch.totalWeight);
-    uint256 totalRewardsToPool = uint128(Math.mulDivDown(totalServiceRewards, weightRatioOfPool, PRECISION));
+    uint256 weightRatioOfPool = Math.mulDiv(weight, PRECISION, epoch.totalWeight);
+    uint256 totalRewardsToPool = uint128(Math.mulDiv(totalServiceRewards, weightRatioOfPool, PRECISION));
 
     addedRewards_ = uint128(totalRewardsToPool - totalClaimedByPool);
     totalRewards_ += addedRewards_;

@@ -9,7 +9,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { FixedPointMathLib as Math } from "src/vendor/solmate/FixedPointMathLib.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint256 public constant MIN_SUPPORT_AMOUNT = 1e18;
@@ -218,7 +218,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (msg.value == 0) return;
 
     uint256 collectionTotalReward = wrappedCollectionRewards[msg.sender].totalRewards;
-    uint256 toCollection = Math.mulDivDown(msg.value, COLLECTION_REWARD_PERCENT, BPS);
+    uint256 toCollection = Math.mulDiv(msg.value, COLLECTION_REWARD_PERCENT, BPS);
 
     if (collectionTotalReward + toCollection > maxRewardPerCollection) {
       toCollection = maxRewardPerCollection - collectionTotalReward;
@@ -244,7 +244,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     ContributionInfo storage userContribution = userSupportedCollections[msg.sender][_collection];
 
     uint128 totalCollectionReward = collectionRewards.totalRewards;
-    uint256 totalUserReward = Math.mulDivDown(userContribution.deposit, totalCollectionReward, contributionBalance);
+    uint256 totalUserReward = Math.mulDiv(userContribution.deposit, totalCollectionReward, contributionBalance);
     uint128 rewardsToClaim = uint128(totalUserReward - userContribution.claimed);
     uint128 totalCollactionClaimedRewards = collectionRewards.claimedRewards;
 

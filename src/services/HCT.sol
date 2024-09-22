@@ -5,7 +5,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IHCT } from "src/interfaces/IHCT.sol";
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
-import { FixedPointMathLib as Math } from "src/vendor/solmate/FixedPointMathLib.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract HCT is ERC20, IHCT {
   uint256 private constant PRECISION = 1e18;
@@ -72,7 +72,7 @@ contract HCT is ERC20, IHCT {
 
     _userInfo.power = uint128(totalPower);
     _userInfo.totalMultiplier = uint128(totalMultiplier);
-    _userInfo.multiplier = uint128(Math.mulDivDown(totalMultiplier, PRECISION, totalPower));
+    _userInfo.multiplier = uint128(Math.mulDiv(totalMultiplier, PRECISION, totalPower));
   }
 
   function _reducePowerAndMultiplier(UserInfo storage _userInfo, uint128 _removingPower, uint128 _removeMultiplier)
@@ -83,7 +83,7 @@ contract HCT is ERC20, IHCT {
 
     _userInfo.power = uint128(totalPower);
     _userInfo.totalMultiplier = uint128(totalMultiplier);
-    _userInfo.multiplier = uint128(Math.mulDivDown(totalMultiplier, PRECISION, totalPower));
+    _userInfo.multiplier = uint128(Math.mulDiv(totalMultiplier, PRECISION, totalPower));
   }
 
   function usesForRenaming(address _user) external override onlyHeroglyphWrappedNFT {

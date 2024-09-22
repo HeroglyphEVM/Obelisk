@@ -15,7 +15,7 @@ import {
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 
 import { FailOnReceive } from "test/mock/contract/FailOnReceive.t.sol";
-import { FixedPointMathLib as Math } from "src/vendor/solmate/FixedPointMathLib.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ObeliskRegistryTest is BaseTest {
@@ -546,7 +546,7 @@ contract ObeliskRegistryTest is BaseTest {
       sanitizedAmount = _amounts[i];
 
       changePrank(currentUser);
-      expectedReward = Math.mulDivDown(sanitizedAmount, totalRewardToContributor, totalAmount);
+      expectedReward = Math.mulDiv(sanitizedAmount, totalRewardToContributor, totalAmount);
 
       expectExactEmit();
       emit IObeliskRegistry.Claimed(collectionMock, currentUser, expectedReward);

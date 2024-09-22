@@ -4,7 +4,7 @@ pragma solidity ^0.8.25;
 import { IdentityERC721 } from "src/vendor/heroglyph/IdentityERC721.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
 
-import { FixedPointMathLib as Math } from "src/vendor/solmate/FixedPointMathLib.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
@@ -83,7 +83,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
       for (uint256 i = 0; i < totalDayPassed; ++i) {
         currentCostReturn_ =
-          Math.max(cost, currentCostReturn_ - Math.mulDivDown(currentCostReturn_, PRICE_DECAY_BPS, MAX_BPS));
+          Math.max(cost, currentCostReturn_ - Math.mulDiv(currentCostReturn_, PRICE_DECAY_BPS, MAX_BPS));
 
         if (currentCostReturn_ <= cost) break;
       }
