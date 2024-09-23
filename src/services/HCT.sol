@@ -11,7 +11,6 @@ contract HCT is ERC20, IHCT {
   uint256 private constant PRECISION = 1e18;
   uint128 private constant POWER_BY_NFT = 1e18;
   uint128 public constant NAME_COST = 90e18;
-  uint128 public constant ONE_MONTH_IN_SECOND = 2_629_800;
 
   bool private isInitialized;
   IObeliskRegistry public obeliskRegistry;
@@ -55,7 +54,7 @@ contract HCT is ERC20, IHCT {
 
     _userInfo.power = uint128(totalPower);
     _userInfo.totalMultiplier = uint128(totalMultiplier);
-    _userInfo.multiplier = uint128(Math.mulDiv(totalMultiplier, PRECISION, totalPower));
+    _userInfo.multiplier = totalPower == 0 ? 0 : uint128(Math.mulDiv(totalMultiplier, PRECISION, totalPower));
   }
 
   function _reducePowerAndMultiplier(UserInfo storage _userInfo, uint128 _removingPower, uint128 _removeMultiplier)
@@ -66,7 +65,7 @@ contract HCT is ERC20, IHCT {
 
     _userInfo.power = uint128(totalPower);
     _userInfo.totalMultiplier = uint128(totalMultiplier);
-    _userInfo.multiplier = uint128(Math.mulDiv(totalMultiplier, PRECISION, totalPower));
+    _userInfo.multiplier = totalPower == 0 ? 0 : uint128(Math.mulDiv(totalMultiplier, PRECISION, totalPower));
   }
 
   function usesForRenaming(address _user) external override onlyHeroglyphWrappedNFT {
