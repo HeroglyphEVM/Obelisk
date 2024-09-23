@@ -79,7 +79,11 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
       totalSupply = totalSupply_ - amount;
     }
 
-    REWARD_TOKEN.transfer(_holder, amount);
+    if (_ignoreRewards) {
+      _notifyRewardAmount(amount);
+    } else {
+      REWARD_TOKEN.transfer(_holder, amount);
+    }
   }
 
   function _onClaimTriggered(address _holder, bool _ignoreRewards) internal override {
@@ -98,7 +102,7 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
     rewards[_holder] = 0;
 
     if (_ignoreRewards) {
-      REWARD_TOKEN.transfer(owner(), reward);
+      _notifyRewardAmount(reward);
       return;
     }
 
@@ -107,6 +111,10 @@ contract LiteTickerFarmPool is LiteTicker, ILiteTickerFarmPool {
   }
 
   function notifyRewardAmount(uint256 reward) external override onlyCanRefillReward {
+    _notifyRewardAmount(reward);
+  }
+
+  function _notifyRewardAmount(uint256 reward) internal {
     if (reward == 0) return;
 
     uint256 rewardRate_ = rewardRatePerSecond;
