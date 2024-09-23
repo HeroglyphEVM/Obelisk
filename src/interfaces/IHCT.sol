@@ -22,7 +22,6 @@ interface IHCT {
 
   function addPower(address _user, uint128 _addMultiplier) external;
   function removePower(address _user, uint128 _removeMultiplier) external;
-  function onNFTTransfer(address _from, address _to, uint128 _multiplierToRemove, uint128 _multiplierToAdd) external;
   function usesForRenaming(address _user) external;
   function getPendingToBeClaimed(address _user) external view returns (uint256);
   function getUserInfo(address _user) external view returns (UserInfo memory);
