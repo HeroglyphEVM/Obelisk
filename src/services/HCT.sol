@@ -47,23 +47,6 @@ contract HCT is ERC20, IHCT {
     emit PowerRemoved(msg.sender, _user, POWER_BY_NFT, _removeMultiplier);
   }
 
-  function onNFTTransfer(address _from, address _to, uint128 _multiplierToRemove, uint128 _multiplierToAdd)
-    external
-    override
-    onlyHeroglyphWrappedNFT
-  {
-    UserInfo storage fromUserInfo = usersInfo[_from];
-    UserInfo storage toUserInfo = usersInfo[_to];
-
-    _claim(_from, fromUserInfo);
-    _claim(_to, toUserInfo);
-
-    _reducePowerAndMultiplier(fromUserInfo, POWER_BY_NFT, _multiplierToRemove);
-    _increasePowerAndMultiplier(toUserInfo, POWER_BY_NFT, _multiplierToAdd);
-
-    emit Transferred(msg.sender, _from, _to, _multiplierToAdd);
-  }
-
   function _increasePowerAndMultiplier(UserInfo storage _userInfo, uint128 _addingPower, uint128 _addMultiplier)
     internal
   {
