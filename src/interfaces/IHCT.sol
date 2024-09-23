@@ -7,11 +7,11 @@ interface IHCT {
   error NotActive();
   error InsufficientBalance();
 
-  event PowerAdded(address indexed wrappedNFT, address indexed user, uint128 power, uint128 multiplier);
-  event PowerRemoved(address indexed wrappedNFT, address indexed user, uint128 power, uint128 multiplier);
+  event PowerAdded(address indexed wrappedNFT, address indexed user, uint256 power, uint128 multiplier);
+  event PowerRemoved(address indexed wrappedNFT, address indexed user, uint256 power, uint128 multiplier);
   event Transferred(address indexed wrappedNFT, address indexed from, address indexed to, uint128 multiplier);
-  event Claimed(address indexed user, uint128 amount);
-  event BurnedForRenaming(address wrappedNFT, address indexed user, uint128 amount);
+  event Claimed(address indexed user, uint256 amount);
+  event BurnedForRenaming(address indexed wrappedNFT, address indexed user, uint256 amount);
 
   struct UserInfo {
     uint128 power;
