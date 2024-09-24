@@ -34,8 +34,8 @@ contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
     if (msg.value != activationPrice) revert InsufficientActivationPrice();
     if (hashmask.ownerOf(_hashmaskId) != msg.sender) revert NotHashmaskHolder();
 
-    _removeOldTickers(identities[_hashmaskId], _hashmaskId, true);
-    identities[_hashmaskId] = msg.sender;
+    _removeOldTickers(identityReceivers[_hashmaskId], _hashmaskId, true);
+    identityReceivers[_hashmaskId] = msg.sender;
 
     (bool success,) = treasury.call{ value: msg.value }("");
     if (!success) revert TransferFailed();
@@ -45,12 +45,12 @@ contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
   }
 
   function transferLink(uint256 _hashmaskId, bool _triggerNameUpdate) external {
-    if (identities[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
+    if (identityReceivers[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
 
     address newOwner = hashmask.ownerOf(_hashmaskId);
 
     _removeOldTickers(msg.sender, _hashmaskId, true);
-    identities[_hashmaskId] = newOwner;
+    identityReceivers[_hashmaskId] = newOwner;
 
     if (_triggerNameUpdate) {
       _updateName(_hashmaskId, msg.sender, newOwner);
@@ -61,7 +61,7 @@ contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
 
   function updateName(uint256 _hashmaskId) external {
     if (hashmask.ownerOf(_hashmaskId) != msg.sender) revert NotHashmaskHolder();
-    if (identities[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
+    if (identityReceivers[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
 
     _updateName(_hashmaskId, msg.sender, msg.sender);
   }
@@ -115,7 +115,7 @@ contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
   function _claimRequirements(uint256 _tokenId) internal view override returns (bool) {
     bool sameName = keccak256(bytes(hashmask.tokenNameByIndex(_tokenId))) == keccak256(bytes(names[_tokenId]));
     address owner = hashmask.ownerOf(_tokenId);
-    return owner == msg.sender && owner == identities[_tokenId] && sameName;
+    return owner == msg.sender && owner == identityReceivers[_tokenId] && sameName;
   }
 
   function setActivationPrice(uint256 _price) external onlyOwner {

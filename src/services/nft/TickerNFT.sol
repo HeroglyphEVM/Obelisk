@@ -22,7 +22,7 @@ abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
 
   mapping(uint256 => address[]) internal linkedTickers;
   mapping(uint256 => string) public names;
-  mapping(uint256 => address) internal identities;
+  mapping(uint256 => address) internal identityReceivers;
 
   constructor(address _obeliskRegistry, address _nftPass) {
     obeliskRegistry = IObeliskRegistry(_obeliskRegistry);
@@ -34,7 +34,7 @@ abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
     if (nameBytesLength == 0 || nameBytesLength > MAX_NAME_BYTES_LENGTH) revert InvalidNameLength();
     _renameRequirements(_tokenId);
 
-    address registredUserAddress = identities[_tokenId];
+    address registredUserAddress = identityReceivers[_tokenId];
     _removeOldTickers(registredUserAddress, _tokenId, false);
 
     address newReceiver = _updateIdentity(_tokenId, _newName);
@@ -47,7 +47,7 @@ abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
   function updateIdentityReceiver(uint256 _tokenId) external {
     string memory currentName = names[_tokenId];
 
-    address registredUserAddress = identities[_tokenId];
+    address registredUserAddress = identityReceivers[_tokenId];
     _removeOldTickers(registredUserAddress, _tokenId, false);
 
     address newReceiver = _updateIdentity(_tokenId, currentName);
@@ -99,7 +99,7 @@ abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
     receiver_ = NFT_PASS.getMetadataWithName(substring.toString()).walletReceiver;
 
     if (receiver_ == address(0)) revert InvalidWalletReceiver();
-    identities[_tokenId] = receiver_;
+    identityReceivers[_tokenId] = receiver_;
 
     return receiver_;
   }
@@ -110,7 +110,7 @@ abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
     bool canClaim = _claimRequirements(_tokenId);
 
     for (uint256 i = 0; i < activePools.length; i++) {
-      ILiteTicker(activePools[i]).claim(_tokenId, msg.sender, !canClaim);
+      ILiteTicker(activePools[i]).claim(_tokenId, identityReceivers[_tokenId], !canClaim);
       emit TickerClaimed(_tokenId, activePools[i]);
     }
   }
@@ -121,7 +121,7 @@ abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
     return linkedTickers[_tokenId];
   }
 
-  function getIdentity(uint256 _tokenId) external view returns (address) {
-    return identities[_tokenId];
+  function getIdentityReceiver(uint256 _tokenId) external view returns (address) {
+    return identityReceivers[_tokenId];
   }
 }

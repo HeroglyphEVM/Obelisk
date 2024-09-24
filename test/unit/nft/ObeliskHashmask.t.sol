@@ -102,7 +102,7 @@ contract ObeliskHashmaskTest is BaseTest {
     underTest.link{ value: activationPrice }(HASH_MASK_ID);
 
     assertEq(treasury.balance, activationPrice);
-    assertEq(underTest.getIdentity(HASH_MASK_ID), hashmaskUser);
+    assertEq(underTest.getIdentityReceiver(HASH_MASK_ID), hashmaskUser);
   }
 
   function test_link_whenOldLinker_thenRemovesOldTickersWithoutRewards() external pranking {
@@ -119,7 +119,7 @@ contract ObeliskHashmaskTest is BaseTest {
     );
     underTest.link{ value: activationPrice }(HASH_MASK_ID);
 
-    assertEq(underTest.getIdentity(HASH_MASK_ID), user);
+    assertEq(underTest.getIdentityReceiver(HASH_MASK_ID), user);
   }
 
   function test_transferLink_whenNotLinkedToHolder_thenReverts() external prankAs(hashmaskUser) {
@@ -136,7 +136,7 @@ contract ObeliskHashmaskTest is BaseTest {
     emit IObeliskHashmask.HashmaskLinked(HASH_MASK_ID, hashmaskUser, user);
     underTest.transferLink(HASH_MASK_ID, false);
 
-    assertEq(underTest.getIdentity(HASH_MASK_ID), user);
+    assertEq(underTest.getIdentityReceiver(HASH_MASK_ID), user);
   }
 
   function test_transferLink_givenNoUpdateTrigger_whenLinkedTickers_thenRemovesOldTickersWithoutRewards()
