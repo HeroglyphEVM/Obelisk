@@ -86,9 +86,9 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(underTest.REQUIRED_ETH_TO_ENABLE_COLLECTION(), REQUIRED_ETH_TO_ENABLE_COLLECTION);
   }
 
-  function test_addToCollection_whenZeroValue_thenReverts() external prankAs(user) {
-    vm.expectRevert(IObeliskRegistry.ZeroValue.selector);
-    underTest.addToCollection(collectionMock);
+  function test_addToCollection_whenTooLowValue_thenReverts() external prankAs(user) {
+    vm.expectRevert(IObeliskRegistry.AmountTooLow.selector);
+    underTest.addToCollection{ value: 0.001e18 }(collectionMock);
   }
 
   function test_addToCollection_whenOverRequiredETH_thenReverts() external prankAs(user) {
@@ -98,7 +98,7 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.addToCollection{ value: REQUIRED_ETH_TO_ENABLE_COLLECTION }(collectionMock);
 
     vm.expectRevert(IObeliskRegistry.TooManyEth.selector);
-    underTest.addToCollection{ value: 1 }(collectionMock);
+    underTest.addToCollection{ value: 0.01e18 }(collectionMock);
   }
 
   function test_addToCollection_whenGoalNotReached_thenAddsEthAndDepositsIntoDripVault() external prankAs(user) {
@@ -251,11 +251,6 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(underTest.getCollection(collectionMock).contributionBalance, givingAmount - withdrawn);
     assertEq(underTest.getUserContribution(user, collectionMock).deposit, givingAmount - withdrawn);
     assertEq(user.balance, initialBalance - (givingAmount - withdrawn));
-  }
-
-  function test_supportYieldPool_whenZeroValue_thenReverts() external prankAs(user) {
-    vm.expectRevert(IObeliskRegistry.ZeroValue.selector);
-    underTest.supportYieldPool{ value: 0 }(0);
   }
 
   function test_supportYieldPool_whenBothAmountsAreSet_thenReverts() external prankAs(user) {

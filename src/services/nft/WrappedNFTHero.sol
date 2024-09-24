@@ -77,7 +77,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
     if (!isMinted[_tokenId]) revert NotMinted();
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
-    _removeOldTickers(identities[_tokenId], _tokenId, false);
+    _removeOldTickers(identityReceivers[_tokenId], _tokenId, false);
 
     _burn(_tokenId);
     delete names[_tokenId];

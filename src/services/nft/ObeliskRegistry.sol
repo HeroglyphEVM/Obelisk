@@ -12,6 +12,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract ObeliskRegistry is IObeliskRegistry, Ownable {
+  uint256 private constant MINIMUM_SENDING_ETH = 0.005 ether;
   uint256 public constant MIN_SUPPORT_AMOUNT = 1e18;
   uint32 public constant SUPPORT_LOCK_DURATION = 30 days;
   uint256 public constant COLLECTION_REWARD_PERCENT = 4000;
@@ -58,7 +59,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
   /// @inheritdoc IObeliskRegistry
   function addToCollection(address _collection) external payable override {
-    if (msg.value == 0) revert ZeroValue();
+    if (msg.value < MINIMUM_SENDING_ETH) revert AmountTooLow();
 
     Collection storage collection = supportedCollections[_collection];
     uint256 newTotalContribution = collection.contributionBalance + msg.value;
@@ -144,7 +145,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
   /// @inheritdoc IObeliskRegistry
   function supportYieldPool(uint256 _amount) external payable override {
-    if (msg.value == 0 && _amount == 0) revert ZeroValue();
     if (msg.value != 0 && _amount != 0) revert OnlyOneValue();
 
     address token = msg.value != 0 ? address(0) : address(DAI);
