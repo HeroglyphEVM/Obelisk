@@ -9,9 +9,9 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
 
-  uint32 public immutable MAX_IDENTITY_PER_DAY_AT_INITIAL_PRICE;
-  uint32 public immutable PRICE_INCREASE_THRESHOLD;
-  uint32 public immutable PRICE_DECAY_BPS;
+  uint32 public maxIdentityPerDayAtInitialPrice;
+  uint32 public priceIncreaseThreshold;
+  uint32 public priceDecayBPS;
   uint32 public resetCounterTimestamp;
   uint32 public boughtToday;
   uint256 public currentPrice;
@@ -23,19 +23,31 @@ contract NFTPass is INFTPass, IdentityERC721 {
   {
     resetCounterTimestamp = uint32(block.timestamp + 1 days);
     currentPrice = cost;
-    MAX_IDENTITY_PER_DAY_AT_INITIAL_PRICE = 25;
-    PRICE_INCREASE_THRESHOLD = 10;
-    PRICE_DECAY_BPS = 2500;
+    maxIdentityPerDayAtInitialPrice = 25;
+    priceIncreaseThreshold = 10;
+    priceDecayBPS = 2500;
   }
 
-  function create(string calldata _name, address _receiverWallet) external payable {
+  function create(string calldata _name, address _receiverWallet, uint256 _maxCost) external payable {
     if (cost == 0 && msg.value != 0) revert NoNeedToPay();
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
+    uint256 costAtDuringTx = _updateCost();
+    uint256 costAllowed = _maxCost == 0 ? type(uint256).max : _maxCost;
 
-    uint256 id = _create(_name, _updateCost());
+    if (msg.value < costAtDuringTx) revert MsgValueTooLow();
+    if (costAtDuringTx > costAllowed) revert ExceededCostAllowance();
+
+    uint256 id = _create(_name, 0);
     metadataPasses[id] = Metadata({ name: _name, walletReceiver: _receiverWallet });
 
-    emit NFTPassCreated(id, _name, _receiverWallet);
+    bool success;
+    (success,) = msg.sender.call{ value: msg.value - costAtDuringTx }("");
+    if (!success) revert TransferFailed();
+
+    (success,) = treasury.call{ value: costAtDuringTx }("");
+    if (!success) revert TransferFailed();
+
+    emit NFTPassCreated(id, _name, _receiverWallet, costAtDuringTx);
   }
 
   function updateReceiverAddress(uint256 _nftId, string calldata _name, address _receiver) external {
@@ -48,7 +60,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
     Metadata storage metadata = metadataPasses[_nftId];
     metadata.walletReceiver = _receiver;
 
-    emit NFTPassUpdated(_nftId, _name, _receiver);
+    emit NFTPassUpdated(_nftId, metadata.name, _receiver);
   }
 
   function _updateCost() internal returns (uint256 userCost_) {
@@ -71,7 +83,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
       uint256 userCost_
     )
   {
-    uint32 maxPerDayCached = MAX_IDENTITY_PER_DAY_AT_INITIAL_PRICE;
+    uint32 maxPerDayCached = maxIdentityPerDayAtInitialPrice;
     resetCounterTimestampReturn_ = resetCounterTimestamp;
     boughtTodayReturn_ = boughtToday;
     currentCostReturn_ = currentPrice;
@@ -83,7 +95,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
       for (uint256 i = 0; i < totalDayPassed; ++i) {
         currentCostReturn_ =
-          Math.max(cost, currentCostReturn_ - Math.mulDiv(currentCostReturn_, PRICE_DECAY_BPS, MAX_BPS));
+          Math.max(cost, currentCostReturn_ - Math.mulDiv(currentCostReturn_, priceDecayBPS, MAX_BPS));
 
         if (currentCostReturn_ <= cost) break;
       }
@@ -91,7 +103,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
     bool boughtExceedsMaxPerDay = boughtTodayReturn_ > maxPerDayCached;
 
-    if (boughtExceedsMaxPerDay && (boughtTodayReturn_ - maxPerDayCached) % PRICE_INCREASE_THRESHOLD == 0) {
+    if (boughtExceedsMaxPerDay && (boughtTodayReturn_ - maxPerDayCached) % priceIncreaseThreshold == 0) {
       currentCostReturn_ += cost / 2;
     }
 
@@ -101,11 +113,31 @@ contract NFTPass is INFTPass, IdentityERC721 {
     return (resetCounterTimestampReturn_, boughtTodayReturn_, currentCostReturn_, userCost_);
   }
 
-  function getMetadata(uint256 _nftId) external view returns (Metadata memory) {
+  function getMetadata(uint256 _nftId, string calldata _name) external view returns (Metadata memory) {
+    if (_nftId == 0) {
+      _nftId = identityIds[_name];
+    }
+
     return metadataPasses[_nftId];
   }
 
-  function getMetadataWithName(string calldata _name) external view override returns (Metadata memory) {
-    return metadataPasses[identityIds[_name]];
+  function updateMaxIdentityPerDayAtInitialPrice(uint32 _maxIdentityPerDayAtInitialPrice) external onlyOwner {
+    maxIdentityPerDayAtInitialPrice = _maxIdentityPerDayAtInitialPrice;
+    emit MaxIdentityPerDayAtInitialPriceUpdated(_maxIdentityPerDayAtInitialPrice);
+  }
+
+  function updatePriceIncreaseThreshold(uint32 _priceIncreaseThreshold) external onlyOwner {
+    priceIncreaseThreshold = _priceIncreaseThreshold;
+    emit PriceIncreaseThresholdUpdated(_priceIncreaseThreshold);
+  }
+
+  function updatePriceDecayBPS(uint32 _priceDecayBPS) external onlyOwner {
+    if (_priceDecayBPS > MAX_BPS) revert InvalidBPS();
+    priceDecayBPS = _priceDecayBPS;
+    emit PriceDecayBPSUpdated(_priceDecayBPS);
+  }
+
+  function transferFrom(address, address, uint256) public pure override {
+    revert("Non-Transferrable");
   }
 }
