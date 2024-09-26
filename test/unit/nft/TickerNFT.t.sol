@@ -53,13 +53,11 @@ contract TickerNFTTest is BaseTest {
 
     vm.mockCall(
       mockNftPass,
-      abi.encodeWithSelector(INFTPass.getMetadataWithName.selector, IDENTITY_NAME),
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
       abi.encode(mockNftPassMetadata)
     );
 
-    vm.mockCall(
-      mockNftPass, abi.encodeWithSelector(INFTPass.getMetadataWithName.selector), abi.encode(EMPTY_NFT_METADATA)
-    );
+    vm.mockCall(mockNftPass, abi.encodeWithSelector(INFTPass.getMetadata.selector), abi.encode(EMPTY_NFT_METADATA));
   }
 
   function test_construction_thenSetups() external {
@@ -155,7 +153,7 @@ contract TickerNFTTest is BaseTest {
 
     vm.mockCall(
       mockNftPass,
-      abi.encodeWithSelector(INFTPass.getMetadataWithName.selector, IDENTITY_NAME),
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
       abi.encode(mockNftPassMetadata)
     );
 
@@ -175,7 +173,7 @@ contract TickerNFTTest is BaseTest {
 
     vm.mockCall(
       mockNftPass,
-      abi.encodeWithSelector(INFTPass.getMetadataWithName.selector, IDENTITY_NAME),
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
       abi.encode(mockNftPassMetadata)
     );
 
@@ -193,7 +191,7 @@ contract TickerNFTTest is BaseTest {
 
     vm.mockCall(
       mockNftPass,
-      abi.encodeWithSelector(INFTPass.getMetadataWithName.selector, IDENTITY_NAME),
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
       abi.encode(mockNftPassMetadata)
     );
 
@@ -213,7 +211,7 @@ contract TickerNFTTest is BaseTest {
 
     vm.mockCall(
       mockNftPass,
-      abi.encodeWithSelector(INFTPass.getMetadataWithName.selector, IDENTITY_NAME),
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
       abi.encode(mockNftPassMetadata)
     );
 
@@ -283,7 +281,7 @@ contract TickerNFTHarness is TickerNFT {
     canClaim = _canClaim;
   }
 
-  function _claimRequirements(uint256 _tokenId) internal view override returns (bool) {
+  function _claimRequirements(uint256) internal view override returns (bool) {
     return canClaim;
   }
 }

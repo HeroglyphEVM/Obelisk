@@ -96,7 +96,7 @@ abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
     strings.slice memory needle = TICKER_START_IDENTITY.toSlice();
     strings.slice memory substring = nameSlice.find(needle).beyond(needle).split(string(" ").toSlice());
 
-    receiver_ = NFT_PASS.getMetadataWithName(substring.toString()).walletReceiver;
+    receiver_ = NFT_PASS.getMetadata(0, substring.toString()).walletReceiver;
 
     if (receiver_ == address(0)) revert InvalidWalletReceiver();
     identityReceivers[_tokenId] = receiver_;
