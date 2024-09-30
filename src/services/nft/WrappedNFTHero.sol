@@ -21,13 +21,14 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
   IHCT public immutable HCT;
   ERC721 public immutable INPUT_COLLECTION;
 
-  bool public immutable FREE_SLOT_FOR_ODD;
   uint32 public immutable COLLECTION_STARTED_UNIX_TIME;
+  bool public immutable FREE_SLOT_FOR_ODD;
   bool public immutable PREMIUM;
 
   uint256 public freeSlots;
 
   mapping(uint256 => bool) public isMinted;
+  mapping(uint256 => bool) public firstRename;
   mapping(uint256 => uint128) public assignedMultipler;
 
   constructor(
@@ -92,6 +93,11 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
   function _renameRequirements(uint256 _tokenId) internal override {
     if (!isMinted[_tokenId]) revert NotMinted();
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
+
+    if (PREMIUM && !firstRename[_tokenId]) {
+      firstRename[_tokenId] = true;
+      return;
+    }
 
     HCT.usesForRenaming(msg.sender);
   }
