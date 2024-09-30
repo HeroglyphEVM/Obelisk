@@ -224,6 +224,31 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.exposed_renameRequirements(1);
   }
 
+  function test_renameRequirements_whenFirstRenameAndPremium_thenDoesNotHTC() external prankAs(user) {
+    underTest = new WrappedNFTHeroHarness(
+      mockHCT,
+      mockNFTPass,
+      address(mockInputCollection),
+      mockObeliskRegistry,
+      ACTIVE_SUPPLY,
+      uint32(block.timestamp) - YEAR_IN_SECONDS,
+      true
+    );
+
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+
+    underTest.wrap(tokenId);
+
+    vm.mockCallRevert(mockHCT, abi.encodeWithSelector(IHCT.usesForRenaming.selector, user), "Should not be called");
+    underTest.exposed_renameRequirements(1);
+
+    vm.clearMockedCalls();
+    _mockCalls();
+
+    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.usesForRenaming.selector, user));
+    underTest.exposed_renameRequirements(1);
+  }
+
   function test_claimRequirements_whenNotHolder_thenReverts() external prankAs(user) {
     uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
     underTest.wrap(tokenId);
