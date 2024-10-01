@@ -8,7 +8,7 @@ import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { IHashmask, IERC721 } from "src/vendor/IHashmask.sol";
 import { FailOnReceive } from "test/mock/contract/FailOnReceive.t.sol";
 import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
-import { ITickerNFT } from "src/interfaces/ITickerNFT.sol";
+import { IObeliskNFT } from "src/interfaces/IObeliskNFT.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -256,11 +256,11 @@ contract ObeliskHashmaskTest is BaseTest {
     );
 
     expectExactEmit();
-    emit ITickerNFT.TickerActivated(HASH_MASK_ID, POOL_TARGETS[0]);
+    emit IObeliskNFT.TickerActivated(HASH_MASK_ID, POOL_TARGETS[0]);
     expectExactEmit();
-    emit ITickerNFT.TickerActivated(HASH_MASK_ID, POOL_TARGETS[2]);
+    emit IObeliskNFT.TickerActivated(HASH_MASK_ID, POOL_TARGETS[2]);
     expectExactEmit();
-    emit ITickerNFT.TickerActivated(HASH_MASK_ID, POOL_TARGETS[1]);
+    emit IObeliskNFT.TickerActivated(HASH_MASK_ID, POOL_TARGETS[1]);
 
     underTest.exposed_addNewTickers(hashmaskUser, HASH_MASK_ID, name);
 

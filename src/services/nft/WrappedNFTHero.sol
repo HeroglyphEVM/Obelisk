@@ -4,11 +4,11 @@ pragma solidity ^0.8.25;
 import { ERC721, IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IHCT } from "src/interfaces/IHCT.sol";
 import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
-import { TickerNFT } from "./TickerNFT.sol";
+import { ObeliskNFT } from "./ObeliskNFT.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
+contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT {
   uint256 private constant MAX_BPS = 10_000;
   uint256 private constant SECONDS_PER_YEAR = 31_557_600;
 
@@ -39,7 +39,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, TickerNFT {
     uint256 _currentSupply,
     uint32 _collectionStartedUnixTime,
     bool _premium
-  ) ERC721("WrappedNFTHero", "WNH") TickerNFT(_obeliskRegistry, _nftPass) {
+  ) ERC721("WrappedNFTHero", "WNH") ObeliskNFT(_obeliskRegistry, _nftPass) {
     HCT = IHCT(_HCT);
     INPUT_COLLECTION = ERC721(_inputCollection);
 

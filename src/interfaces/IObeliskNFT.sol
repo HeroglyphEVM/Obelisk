@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-interface ITickerNFT {
+interface IObeliskNFT {
   error InvalidNameLength();
   error InvalidWalletReceiver();
   error NotAuthorized();
