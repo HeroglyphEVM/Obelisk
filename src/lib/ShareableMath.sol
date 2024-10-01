@@ -5,18 +5,6 @@ library ShareableMath {
   uint256 constant WAD = 10 ** 18;
   uint256 constant RAY = 10 ** 27;
 
-  function min(uint256 _a, uint256 _b) internal pure returns (uint256) {
-    return (_a < _b) ? _a : _b;
-  }
-
-  function max(uint256 _a, uint256 _b) internal pure returns (uint256) {
-    return (_a >= _b) ? _a : _b;
-  }
-
-  function getAbsoluteDifference(uint256 _a, uint256 _b) internal pure returns (uint256) {
-    return (_a >= _b) ? (_a - _b) : (_b - _a);
-  }
-
   /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or
   /// denominator == 0
   /// @param a The multiplicand
@@ -116,36 +104,8 @@ library ShareableMath {
     }
   }
 
-  /// @notice Calculates ceil(a×b÷denominator) with full precision. Throws if result overflows a uint256 or
-  /// denominator == 0
-  /// @param a The multiplicand
-  /// @param b The multiplier
-  /// @param denominator The divisor
-  /// @return result The 256-bit result
-  function mulDivRoundingUp(uint256 a, uint256 b, uint256 denominator) internal pure returns (uint256 result) {
-    result = mulDiv(a, b, denominator);
-    unchecked {
-      if (mulmod(a, b, denominator) > 0) {
-        require(result < type(uint256).max);
-        result++;
-      }
-    }
-  }
-
   function divup(uint256 x, uint256 y) internal pure returns (uint256 z) {
     z = (x + (y - 1)) / y;
-  }
-
-  function wmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
-    z = (x * y) / WAD;
-  }
-
-  function wdiv(uint256 x, uint256 y) internal pure returns (uint256 z) {
-    z = (x * WAD) / y;
-  }
-
-  function wdivup(uint256 x, uint256 y) internal pure returns (uint256 z) {
-    z = divup((x * WAD), y);
   }
 
   function rmul(uint256 x, uint256 y) internal pure returns (uint256 z) {
