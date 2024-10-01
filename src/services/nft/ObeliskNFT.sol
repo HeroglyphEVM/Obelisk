@@ -44,6 +44,8 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
     names[_tokenId] = _newName;
   }
 
+  function _renameRequirements(uint256 _tokenId) internal virtual;
+
   function updateIdentityReceiver(uint256 _tokenId) external {
     string memory currentName = names[_tokenId];
 
@@ -53,8 +55,6 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
     address newReceiver = _updateIdentity(_tokenId, currentName);
     _addNewTickers(newReceiver, _tokenId, currentName);
   }
-
-  function _renameRequirements(uint256 _tokenId) internal virtual;
 
   function _removeOldTickers(address _registredUserAddress, uint256 _tokenId, bool _ignoreRewards)
     internal
