@@ -21,7 +21,7 @@ The NFT Pass is your Identity, without one, you won’t be able to set a signatu
 
 Like Heroglyphs, this signature is composed by two elements, the Identity and the Tickers.
 
-### Identity:
+### Identity
 
 The Identity is where the reward will be sent to, the syntax is represented by the symbol `@`. Example: `@atum` where `atum` is the name of my identity.
 
