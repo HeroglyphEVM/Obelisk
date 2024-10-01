@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import { ITickerNFT } from "src/interfaces/ITickerNFT.sol";
+import { IObeliskNFT } from "src/interfaces/IObeliskNFT.sol";
 import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
@@ -9,7 +9,7 @@ import { INFTPass } from "src/interfaces/INFTPass.sol";
 import { strings } from "src/lib/strings.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-abstract contract TickerNFT is ITickerNFT, ReentrancyGuard {
+abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
   using strings for string;
   using strings for strings.slice;
 

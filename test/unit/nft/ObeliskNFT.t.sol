@@ -5,10 +5,10 @@ import "test/base/BaseTest.t.sol";
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
-import { TickerNFT, ITickerNFT } from "src/services/nft/TickerNFT.sol";
+import { ObeliskNFT, IObeliskNFT } from "src/services/nft/ObeliskNFT.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
 
-contract TickerNFTTest is BaseTest {
+contract ObeliskNFTTest is BaseTest {
   string[] private TICKERS = ["Hello", "megaPool", "Bobby"];
   address[] private POOL_TARGETS = [generateAddress("Pool A"), generateAddress("Pool B"), generateAddress("Pool C")];
   string private constant IDENTITY_NAME = "M";
@@ -21,13 +21,13 @@ contract TickerNFTTest is BaseTest {
   INFTPass.Metadata private mockNftPassMetadata =
     INFTPass.Metadata({ name: IDENTITY_NAME, walletReceiver: generateAddress("Identity Receiver") });
 
-  TickerNFTHarness private underTest;
+  ObeliskNFTHarness private underTest;
 
   function setUp() public {
     _createVariables();
     _createMockCalls();
 
-    underTest = new TickerNFTHarness(mockObeliskRegistry, mockNftPass);
+    underTest = new ObeliskNFTHarness(mockObeliskRegistry, mockNftPass);
   }
 
   function _createVariables() internal {
@@ -61,7 +61,7 @@ contract TickerNFTTest is BaseTest {
   }
 
   function test_construction_thenSetups() external {
-    underTest = new TickerNFTHarness(mockObeliskRegistry, mockNftPass);
+    underTest = new ObeliskNFTHarness(mockObeliskRegistry, mockNftPass);
 
     assertEq(address(underTest.obeliskRegistry()), mockObeliskRegistry);
     assertEq(address(underTest.NFT_PASS()), mockNftPass);
@@ -70,22 +70,22 @@ contract TickerNFTTest is BaseTest {
   function test_rename_whenNameIsTooLong_thenReverts() external {
     string memory tooLongName = string(new bytes(30));
 
-    vm.expectRevert(ITickerNFT.InvalidNameLength.selector);
+    vm.expectRevert(IObeliskNFT.InvalidNameLength.selector);
     underTest.rename(0, tooLongName);
 
-    vm.expectRevert(ITickerNFT.InvalidNameLength.selector);
+    vm.expectRevert(IObeliskNFT.InvalidNameLength.selector);
     underTest.rename(0, "");
   }
 
   function test_rename_whenRenameRequirementsReverts_thenReverts() external {
     underTest.exposed_setTriggerRevert(true);
 
-    vm.expectRevert(TickerNFTHarness.RequirementsReverted.selector);
+    vm.expectRevert(ObeliskNFTHarness.RequirementsReverted.selector);
     underTest.rename(0, "Hello");
   }
 
   function test_rename_whenNoIdentityFound_thenReverts() external {
-    vm.expectRevert(ITickerNFT.InvalidWalletReceiver.selector);
+    vm.expectRevert(IObeliskNFT.InvalidWalletReceiver.selector);
     underTest.rename(0, "Hello");
   }
 
@@ -94,7 +94,7 @@ contract TickerNFTTest is BaseTest {
     uint256 tokenId = 23;
 
     expectExactEmit();
-    emit ITickerNFT.NameChanged(tokenId, newName);
+    emit IObeliskNFT.NameChanged(tokenId, newName);
     underTest.rename(tokenId, newName);
 
     assertEq(underTest.names(tokenId), newName);
@@ -177,7 +177,7 @@ contract TickerNFTTest is BaseTest {
       abi.encode(mockNftPassMetadata)
     );
 
-    vm.expectRevert(ITickerNFT.InvalidWalletReceiver.selector);
+    vm.expectRevert(IObeliskNFT.InvalidWalletReceiver.selector);
     underTest.updateIdentityReceiver(0);
   }
 
@@ -261,13 +261,13 @@ contract TickerNFTTest is BaseTest {
   }
 }
 
-contract TickerNFTHarness is TickerNFT {
+contract ObeliskNFTHarness is ObeliskNFT {
   bool public canClaim;
   bool public triggerRevert;
 
   error RequirementsReverted();
 
-  constructor(address _obeliskRegistry, address _nftPass) TickerNFT(_obeliskRegistry, _nftPass) { }
+  constructor(address _obeliskRegistry, address _nftPass) ObeliskNFT(_obeliskRegistry, _nftPass) { }
 
   function exposed_setTriggerRevert(bool _triggerRevert) external {
     triggerRevert = _triggerRevert;

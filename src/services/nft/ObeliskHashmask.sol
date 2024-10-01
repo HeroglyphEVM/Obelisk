@@ -3,14 +3,14 @@ pragma solidity ^0.8.25;
 
 import { IObeliskHashmask } from "src/interfaces/IObeliskHashmask.sol";
 
-import { TickerNFT, ILiteTicker } from "src/services/nft/TickerNFT.sol";
+import { ObeliskNFT, ILiteTicker } from "src/services/nft/ObeliskNFT.sol";
 
 import { IHashmask } from "src/vendor/IHashmask.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { strings } from "src/lib/strings.sol";
 
-contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
+contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
   using strings for string;
   using strings for strings.slice;
 
@@ -22,7 +22,7 @@ contract ObeliskHashmask is IObeliskHashmask, TickerNFT, Ownable {
   uint256 public activationPrice;
 
   constructor(address _hashmask, address _owner, address _obeliskRegistry, address _nftPass, address _treasury)
-    TickerNFT(_obeliskRegistry, _nftPass)
+    ObeliskNFT(_obeliskRegistry, _nftPass)
     Ownable(_owner)
   {
     hashmask = IHashmask(_hashmask);
