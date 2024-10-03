@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { WrappedNFTHero } from "./WrappedNFTHero.sol";
-import { LiteTickerFarmPool } from "../tickers/LiteTickerFarmPool.sol";
+import { GenesisTokenPool } from "../tickers/GenesisTokenPool.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
@@ -205,7 +205,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     newPool_ = _createContract(
       abi.encodePacked(
-        type(LiteTickerFarmPool).creationCode, abi.encode(msg.sender, address(this), _wrappedGenesisReward, _genesisKey)
+        type(GenesisTokenPool).creationCode, abi.encode(msg.sender, address(this), _wrappedGenesisReward, _genesisKey)
       )
     );
     tickersLogic[_name] = newPool_;

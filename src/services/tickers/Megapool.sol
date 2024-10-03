@@ -5,13 +5,13 @@ import { LiteTicker } from "./LiteTicker.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ShareableMath } from "src/lib/ShareableMath.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Megapool is LiteTicker, ReentrancyGuard {
+contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   error MaxEntryExceeded();
 
   event MaxEntryUpdated(uint256 newMaxEntry);
 
-  uint256 private constant DEPOSIT_AMOUNT = 1e18;
   uint256 private constant WAD = 1e18;
   ERC20 public immutable REWARD_TOKEN;
 
@@ -25,7 +25,7 @@ contract Megapool is LiteTicker, ReentrancyGuard {
   mapping(address => uint256) internal userShares;
   mapping(address => uint256) private virtualBalances;
 
-  constructor(address _owner, address _registry, address _tokenReward) LiteTicker(_owner, _registry) {
+  constructor(address _owner, address _registry, address _tokenReward) LiteTicker(_registry) Ownable(_owner) {
     REWARD_TOKEN = ERC20(_tokenReward);
     maxEntry = 1000e18;
   }

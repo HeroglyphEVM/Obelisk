@@ -3,12 +3,13 @@ pragma solidity >=0.8.0;
 
 import { ILiteTicker } from "./ILiteTicker.sol";
 
-interface ILiteTickerFarmPool is ILiteTicker {
+interface IGenesisTokenPool is ILiteTicker {
   error AmountTooLarge();
   error NotAuthorized();
 
   event RewardAdded(uint256 reward);
   event RewardPaid(address indexed user, uint256 reward);
+  event RewardIgnored(address indexed user, uint256 reward);
 
   error MissingKey();
 

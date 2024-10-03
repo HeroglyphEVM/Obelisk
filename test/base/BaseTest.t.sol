@@ -95,6 +95,7 @@ contract BaseTest is Test, MockERC20ABI {
       emit log_named_uint("  B", b);
       emit log_named_uint("  Max tolerance", maxForgivness);
       emit log_named_uint("    Actual Difference", diff);
+      emit log_named_uint("    Actual %", (b * 100_000 / a));
       fail();
     }
   }

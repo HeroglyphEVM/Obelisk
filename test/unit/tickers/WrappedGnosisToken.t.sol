@@ -2,7 +2,7 @@
 pragma solidity ^0.8.25;
 
 import "test/base/BaseTest.t.sol";
-import { WrappedPoolRewardToken } from "src/services/tickers/WrappedPoolRewardToken.sol";
+import { WrappedGnosisToken } from "src/services/tickers/WrappedGnosisToken.sol";
 
 import { ILayerZeroEndpointV2 } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/interfaces/IOAppCore.sol";
 import {
@@ -15,9 +15,9 @@ import {
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-import { ILiteTickerFarmPool } from "src/interfaces/ILiteTickerFarmPool.sol";
+import { IGenesisTokenPool } from "src/interfaces/IGenesisTokenPool.sol";
 
-contract WrappedPoolRewardTokenTest is BaseTest {
+contract WrappedGnosisTokenTest is BaseTest {
   uint32 private constant MAINNET_LZ_ENDPOINT_ID = 30_101;
   bytes32 private constant PEER = bytes32("PEER");
   uint256 private constant LZ_FEE = 2_399_482;
@@ -30,7 +30,7 @@ contract WrappedPoolRewardTokenTest is BaseTest {
   MockERC20 private genesisToken;
 
   bytes private defaultLzOption;
-  WrappedPoolRewardTokenHarness private underTest;
+  WrappedGnosisTokenHarness private underTest;
 
   function setUp() external {
     _setupVariables();
@@ -44,14 +44,14 @@ contract WrappedPoolRewardTokenTest is BaseTest {
     vm.mockCall(lzEndpoint, abi.encodeWithSelector(ILayerZeroEndpointV2.send.selector), abi.encode(emptyMsg));
 
     genesisToken.mint(user, 100e18);
-    underTest = new WrappedPoolRewardTokenHarness(owner, lzEndpoint, address(genesisToken));
+    underTest = new WrappedGnosisTokenHarness(owner, lzEndpoint, address(genesisToken));
 
     vm.startPrank(owner);
     underTest.attachPool(pool);
     underTest.setPeer(MAINNET_LZ_ENDPOINT_ID, PEER);
     vm.stopPrank();
 
-    vm.mockCall(pool, abi.encodeWithSelector(ILiteTickerFarmPool.notifyRewardAmount.selector), abi.encode(true));
+    vm.mockCall(pool, abi.encodeWithSelector(IGenesisTokenPool.notifyRewardAmount.selector), abi.encode(true));
 
     defaultLzOption = underTest.defaultLzOption();
   }
@@ -65,7 +65,7 @@ contract WrappedPoolRewardTokenTest is BaseTest {
   }
 
   function test_constructor_thenContractIsInitialized() external {
-    underTest = new WrappedPoolRewardTokenHarness(owner, lzEndpoint, address(genesisToken));
+    underTest = new WrappedGnosisTokenHarness(owner, lzEndpoint, address(genesisToken));
 
     assertEq(underTest.owner(), owner);
     assertEq(underTest.genesisToken(), address(genesisToken));
@@ -74,7 +74,7 @@ contract WrappedPoolRewardTokenTest is BaseTest {
   function test_addRewardOnMainnet_whenOnMainnet_thenReverts() external {
     vm.chainId(1);
 
-    vm.expectRevert(abi.encodeWithSelector(WrappedPoolRewardToken.CannotWrapOnMainnet.selector));
+    vm.expectRevert(abi.encodeWithSelector(WrappedGnosisToken.CannotWrapOnMainnet.selector));
     underTest.addRewardOnMainnet{ value: 1 ether }(100e18);
   }
 
@@ -95,7 +95,7 @@ contract WrappedPoolRewardTokenTest is BaseTest {
 
   function test_unwrap_onMainnet_thenReverts() external {
     vm.chainId(1);
-    vm.expectRevert(abi.encodeWithSelector(WrappedPoolRewardToken.CannotUnwrapOnMainnet.selector));
+    vm.expectRevert(abi.encodeWithSelector(WrappedGnosisToken.CannotUnwrapOnMainnet.selector));
     underTest.unwrap(100e18);
   }
 
@@ -115,7 +115,7 @@ contract WrappedPoolRewardTokenTest is BaseTest {
   function test_lzReceive_whenToIsZero_thenMintsToPool() external {
     uint256 amount = 37.2e18;
 
-    vm.expectCall(pool, abi.encodeWithSelector(ILiteTickerFarmPool.notifyRewardAmount.selector, amount));
+    vm.expectCall(pool, abi.encodeWithSelector(IGenesisTokenPool.notifyRewardAmount.selector, amount));
     underTest.exposed_lzReceive(origin, abi.encode(address(0), amount), defaultLzOption);
 
     assertEq(underTest.balanceOf(pool), amount);
@@ -125,7 +125,7 @@ contract WrappedPoolRewardTokenTest is BaseTest {
     uint256 amount = 37.2e18;
 
     vm.mockCallRevert(
-      pool, abi.encodeWithSelector(ILiteTickerFarmPool.notifyRewardAmount.selector), abi.encode("Shouldn't be called")
+      pool, abi.encodeWithSelector(IGenesisTokenPool.notifyRewardAmount.selector), abi.encode("Shouldn't be called")
     );
     underTest.exposed_lzReceive(origin, abi.encode(user, amount), defaultLzOption);
 
@@ -180,9 +180,9 @@ contract WrappedPoolRewardTokenTest is BaseTest {
   }
 }
 
-contract WrappedPoolRewardTokenHarness is WrappedPoolRewardToken {
+contract WrappedGnosisTokenHarness is WrappedGnosisToken {
   constructor(address _owner, address _lzEndpoint, address _genesisToken)
-    WrappedPoolRewardToken(_owner, _lzEndpoint, _genesisToken)
+    WrappedGnosisToken(_owner, _lzEndpoint, _genesisToken)
   { }
 
   function exposed_mint(address _to, uint256 _amount) external {

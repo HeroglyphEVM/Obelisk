@@ -33,7 +33,6 @@ contract NFTPass is INFTPass, IdentityERC721 {
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
 
     uint256 costAtDuringTx = _updateCost();
-    uint256 remainingValue = msg.value - costAtDuringTx;
     uint256 costAllowed = _maxCost == 0 ? type(uint256).max : _maxCost;
 
     if (msg.value < costAtDuringTx) revert MsgValueTooLow();
@@ -45,6 +44,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
     emit NFTPassCreated(id, _name, _receiverWallet, costAtDuringTx);
 
     if (costAtDuringTx == 0) return;
+    uint256 remainingValue = msg.value - costAtDuringTx;
     bool success;
 
     (success,) = treasury.call{ value: costAtDuringTx }("");

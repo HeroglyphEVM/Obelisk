@@ -5,7 +5,6 @@ import "test/base/BaseTest.t.sol";
 import { LiteTicker, ILiteTicker, IObeliskRegistry } from "src/services/tickers/LiteTicker.sol";
 
 contract LiteTickerTest is BaseTest {
-  address private owner;
   address private registry;
   address private user;
   address private mockWrappedNFT;
@@ -16,11 +15,10 @@ contract LiteTickerTest is BaseTest {
     _setUpMockVariables();
     _setUpMockCalls();
 
-    underTest = new LiteTickerHarness(owner, registry);
+    underTest = new LiteTickerHarness(registry);
   }
 
   function _setUpMockVariables() internal {
-    owner = generateAddress("owner");
     registry = generateAddress("registry");
     user = generateAddress("user");
     mockWrappedNFT = generateAddress("mockWrappedNFT");
@@ -34,9 +32,8 @@ contract LiteTickerTest is BaseTest {
   }
 
   function test_constructor_thenSetsVariables() external {
-    underTest = new LiteTickerHarness(owner, registry);
+    underTest = new LiteTickerHarness(registry);
 
-    assertEq(underTest.owner(), owner);
     assertEq(address(underTest.registry()), registry);
   }
 
@@ -92,7 +89,7 @@ contract LiteTickerHarness is LiteTicker {
   event AfterVirtualWithdraw(address holder, bool ignoreRewards);
   event OnClaimTriggered(address holder, bool ignoreRewards);
 
-  constructor(address _owner, address _registry) LiteTicker(_owner, _registry) { }
+  constructor(address _registry) LiteTicker(_registry) { }
 
   function _afterVirtualDeposit(address _holder) internal override {
     emit AfterVirtualDeposit(_holder);

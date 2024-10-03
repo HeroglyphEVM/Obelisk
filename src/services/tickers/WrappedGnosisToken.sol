@@ -2,7 +2,7 @@
 pragma solidity ^0.8.25;
 
 /**
- * @title WrappedPoolRewardToken
+ * @title WrappedGnosisToken
  * @notice We wrapped our GenesisTokens so we don't have to cross-chain with uint64 limitations from LZ template.
  */
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -10,9 +10,9 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { OApp, MessagingFee, Origin, MessagingReceipt } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/OApp.sol";
 import { OptionsBuilder } from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 
-import { ILiteTickerFarmPool } from "src/interfaces/ILiteTickerFarmPool.sol";
+import { IGenesisTokenPool } from "src/interfaces/IGenesisTokenPool.sol";
 
-contract WrappedPoolRewardToken is ERC20, OApp {
+contract WrappedGnosisToken is ERC20, OApp {
   using OptionsBuilder for bytes;
 
   uint32 public constant MAINNET_LZ_ENDPOINT_ID = 30_101;
@@ -21,7 +21,7 @@ contract WrappedPoolRewardToken is ERC20, OApp {
   uint32 public lzGasLimit;
   bytes public defaultLzOption;
 
-  ILiteTickerFarmPool public pool;
+  IGenesisTokenPool public pool;
 
   event OFTSent(bytes32 indexed guid, uint32 indexed dstEid, address indexed to, uint256 amountOrId);
   event OFTReceived(bytes32 indexed guid, uint32 indexed srcEid, address indexed to, uint256 amountOrId);
@@ -42,7 +42,7 @@ contract WrappedPoolRewardToken is ERC20, OApp {
   }
 
   function attachPool(address _pool) external onlyOwner {
-    pool = ILiteTickerFarmPool(_pool);
+    pool = IGenesisTokenPool(_pool);
     emit NewPoolAttached(_pool);
   }
 
@@ -124,7 +124,7 @@ contract WrappedPoolRewardToken is ERC20, OApp {
   }
 
   function _credit(address _to, uint256 _value, bool) internal returns (uint256) {
-    ILiteTickerFarmPool cachedPool = pool;
+    IGenesisTokenPool cachedPool = pool;
 
     if (_to == address(0)) {
       _to = owner();

@@ -2,18 +2,15 @@
 pragma solidity ^0.8.25;
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
 
-/**
- * @title TickerPool
- * @notice Modified version of Playpen by Zefram -- Removed noises and modified to fit our system.
- */
-abstract contract LiteTicker is ILiteTicker, Ownable {
+abstract contract LiteTicker is ILiteTicker {
+  uint256 internal constant DEPOSIT_AMOUNT = 1e18;
+
   IObeliskRegistry public immutable registry;
   mapping(address service => mapping(uint256 tokenId => bool)) public isTokenDeposited;
 
-  constructor(address _owner, address _registry) Ownable(_owner) {
+  constructor(address _registry) {
     registry = IObeliskRegistry(_registry);
   }
 
