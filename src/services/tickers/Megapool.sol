@@ -7,6 +7,8 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 import { ShareableMath } from "src/lib/ShareableMath.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+import { IInterestManager } from "src/interfaces/IInterestManager.sol";
+
 contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   error MaxEntryExceeded();
 
@@ -21,12 +23,18 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   uint256 public totalVirtualBalance;
   uint256 public maxEntry;
 
+  IInterestManager public immutable INTEREST_MANAGER;
+
   mapping(address => uint256) internal userYieldSnapshot;
   mapping(address => uint256) internal userShares;
   mapping(address => uint256) private virtualBalances;
 
-  constructor(address _owner, address _registry, address _tokenReward) LiteTicker(_registry) Ownable(_owner) {
+  constructor(address _owner, address _registry, address _tokenReward, address _interestManager)
+    LiteTicker(_registry)
+    Ownable(_owner)
+  {
     REWARD_TOKEN = ERC20(_tokenReward);
+    INTEREST_MANAGER = IInterestManager(_interestManager);
     maxEntry = 1000e18;
   }
 
@@ -101,6 +109,7 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   }
 
   function _claim(address _holder, bool _ignoreRewards) internal nonReentrant {
+    INTEREST_MANAGER.claim();
     uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this));
 
     if (totalShares > 0) {

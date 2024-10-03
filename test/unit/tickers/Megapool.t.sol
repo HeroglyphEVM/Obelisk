@@ -5,6 +5,7 @@ import "test/base/BaseTest.t.sol";
 
 import { Megapool } from "src/services/tickers/Megapool.sol";
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
+import { IInterestManager } from "src/interfaces/IInterestManager.sol";
 
 contract MegapoolTest is BaseTest {
   address private owner;
@@ -12,6 +13,7 @@ contract MegapoolTest is BaseTest {
   MockERC20 private rewardToken;
   address private user_01;
   address private user_02;
+  address private interestManager;
 
   MegapoolHarness private underTest;
 
@@ -20,19 +22,22 @@ contract MegapoolTest is BaseTest {
     registry = generateAddress("registry");
     user_01 = generateAddress("user_01");
     user_02 = generateAddress("user_02");
-
+    interestManager = generateAddress("interestManager");
     rewardToken = new MockERC20("Reward Token", "RT", 18);
     vm.label(address(rewardToken), "rewardToken");
 
-    underTest = new MegapoolHarness(owner, registry, address(rewardToken));
+    vm.mockCall(interestManager, abi.encodeWithSelector(IInterestManager.claim.selector), abi.encode(0));
+
+    underTest = new MegapoolHarness(owner, registry, address(rewardToken), interestManager);
   }
 
   function test_constructor_thenContractIsInitialized() external {
-    underTest = new MegapoolHarness(owner, registry, address(rewardToken));
+    underTest = new MegapoolHarness(owner, registry, address(rewardToken), interestManager);
 
     assertEq(underTest.owner(), owner);
     assertEq(address(underTest.registry()), registry);
     assertEq(address(underTest.REWARD_TOKEN()), address(rewardToken));
+    assertEq(address(underTest.INTEREST_MANAGER()), address(interestManager));
   }
 
   function test_afterVirtualDeposit_whenFirstCaller_thenShareIsOne() external {
@@ -112,6 +117,8 @@ contract MegapoolTest is BaseTest {
   function test_claim_01() external {
     rewardToken.mint(address(underTest), 1e18);
     underTest.exposed_afterVirtualDeposit(user_01);
+
+    vm.expectCall(interestManager, abi.encodeWithSelector(IInterestManager.claim.selector));
     underTest.exposed_claim(user_01);
 
     assertEq(rewardToken.balanceOf(user_01), 0);
@@ -188,7 +195,9 @@ contract MegapoolTest is BaseTest {
 }
 
 contract MegapoolHarness is Megapool {
-  constructor(address _owner, address _registry, address _tokenReward) Megapool(_owner, _registry, _tokenReward) { }
+  constructor(address _owner, address _registry, address _tokenReward, address _interestManager)
+    Megapool(_owner, _registry, _tokenReward, _interestManager)
+  { }
 
   function exposed_afterVirtualDeposit(address _holder) external {
     _afterVirtualDeposit(_holder);
