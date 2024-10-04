@@ -8,6 +8,10 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+/**
+ * @title StreamingPool
+ * @notice A way to boost APY for megapools by streaming donations rewards.
+ */
 contract StreamingPool is IStreamingPool, Ownable {
   uint256 private constant SCALED_PRECISION = 1e18;
 

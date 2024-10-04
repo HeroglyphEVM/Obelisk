@@ -15,6 +15,10 @@ import { IWETH } from "src/interfaces/IWETH.sol";
 import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 
+/**
+ * @title InterestManager
+ * @notice It manages the rewards distribution to the megapools based on people votes with their HCT.
+ */
 contract InterestManager is IInterestManager, Ownable {
   uint256 public constant PRECISION = 1e18;
   uint24 private constant DAI_POOL_FEE = 500;

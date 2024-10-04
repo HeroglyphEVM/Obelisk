@@ -10,6 +10,12 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { strings } from "src/lib/strings.sol";
 
+/**
+ * @title ObeliskHashmask
+ * @notice A contract that allows users to link their Hashmasks to their Obelisk identities. It uses the Hashmask's name
+ * instead of HCT & Wrapped NFT Hero.
+ * @dev Users need to link their Hashmask first, which might contain cost.
+ */
 contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
   using strings for string;
   using strings for strings.slice;

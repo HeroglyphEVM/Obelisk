@@ -9,6 +9,11 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
 
+/**
+ * @title Megapool
+ * @notice It receives yield from the deposited ETH from unlocking a collection.
+ * @dev Megapool has a max entry limit.
+ */
 contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   error MaxEntryExceeded();
 

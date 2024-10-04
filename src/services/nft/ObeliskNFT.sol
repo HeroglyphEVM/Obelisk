@@ -9,6 +9,10 @@ import { INFTPass } from "src/interfaces/INFTPass.sol";
 import { strings } from "src/lib/strings.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+/**
+ * @title ObeliskNFT
+ * @notice Base contract for Obelisk NFTs. It contains the staking logic via name.
+ */
 abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
   using strings for string;
   using strings for strings.slice;

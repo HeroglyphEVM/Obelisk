@@ -6,6 +6,11 @@ import { INFTPass } from "src/interfaces/INFTPass.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+/**
+ * @title NFTPass
+ * @notice A contract that allows users to buy NFT passes to create their own identity. Without a pass, the user can't
+ * use Obelisk.
+ */
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
 
@@ -146,5 +151,24 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
   function transferFrom(address, address, uint256) public pure override {
     revert("Non-Transferrable");
+  }
+
+  //TODO: Customize metadata -- This is a place holder
+  function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    _requireOwned(tokenId);
+
+    Metadata memory metadata = metadataPasses[tokenId];
+
+    string memory data = string(
+      abi.encodePacked(
+        '{"name":"NFT Pass: ',
+        metadata.name,
+        '","description":"Required to use Obelisk","image":"',
+        "ipfs://QmdTq1vZ6cZ6mcJBfkG49FocwqTPFQ8duq6j2tL2rpzEWF",
+        '"}'
+      )
+    );
+
+    return string(abi.encodePacked("data:application/json;utf8,", data));
   }
 }
