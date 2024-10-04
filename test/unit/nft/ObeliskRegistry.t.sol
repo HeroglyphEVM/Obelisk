@@ -9,7 +9,7 @@ import {
   IDripVault,
   WrappedNFTHero,
   Ownable,
-  LiteTickerFarmPool
+  GenesisTokenPool
 } from "src/services/nft/ObeliskRegistry.sol";
 
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
@@ -399,8 +399,8 @@ contract ObeliskRegistryTest is BaseTest {
 
     vm.expectEmit(true, false, false, false);
     emit IObeliskRegistry.NewGenesisTickerCreated(ticker, address(0));
-    LiteTickerFarmPool pool =
-      LiteTickerFarmPool(underTest.addNewGenesisTicker(ticker, mockGenesisWrappedToken, mockGenesisKey));
+    GenesisTokenPool pool =
+      GenesisTokenPool(underTest.addNewGenesisTicker(ticker, mockGenesisWrappedToken, mockGenesisKey));
 
     assertEq(underTest.getTickerLogic(ticker), address(pool));
 

@@ -9,6 +9,10 @@ import { INFTPass } from "src/interfaces/INFTPass.sol";
 import { strings } from "src/lib/strings.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+/**
+ * @title ObeliskNFT
+ * @notice Base contract for Obelisk NFTs. It contains the staking logic via name.
+ */
 abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
   using strings for string;
   using strings for strings.slice;
@@ -44,6 +48,8 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
     names[_tokenId] = _newName;
   }
 
+  function _renameRequirements(uint256 _tokenId) internal virtual;
+
   function updateIdentityReceiver(uint256 _tokenId) external {
     string memory currentName = names[_tokenId];
 
@@ -53,8 +59,6 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
     address newReceiver = _updateIdentity(_tokenId, currentName);
     _addNewTickers(newReceiver, _tokenId, currentName);
   }
-
-  function _renameRequirements(uint256 _tokenId) internal virtual;
 
   function _removeOldTickers(address _registredUserAddress, uint256 _tokenId, bool _ignoreRewards)
     internal

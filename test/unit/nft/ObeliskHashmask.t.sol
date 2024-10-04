@@ -124,7 +124,7 @@ contract ObeliskHashmaskTest is BaseTest {
 
   function test_transferLink_whenNotLinkedToHolder_thenReverts() external prankAs(hashmaskUser) {
     vm.expectRevert(abi.encodeWithSelector(IObeliskHashmask.NotLinkedToHolder.selector));
-    underTest.transferLink(HASH_MASK_ID, false);
+    underTest.transferLink(HASH_MASK_ID);
   }
 
   function test_transferLink_thenTransfersLinkToNewHolder() external prankAs(hashmaskUser) {
@@ -134,12 +134,12 @@ contract ObeliskHashmaskTest is BaseTest {
 
     expectExactEmit();
     emit IObeliskHashmask.HashmaskLinked(HASH_MASK_ID, hashmaskUser, user);
-    underTest.transferLink(HASH_MASK_ID, false);
+    underTest.transferLink(HASH_MASK_ID);
 
     assertEq(underTest.getIdentityReceiver(HASH_MASK_ID), user);
   }
 
-  function test_transferLink_givenNoUpdateTrigger_whenLinkedTickers_thenRemovesOldTickersWithoutRewards()
+  function test_transferLink_whenLinkedTickers_thenRemovesOldTickersAndDepositsWithoutRewards()
     external
     prankAs(hashmaskUser)
   {
@@ -147,24 +147,15 @@ contract ObeliskHashmaskTest is BaseTest {
     underTest.exposed_injectTicker(HASH_MASK_ID, POOL_TARGETS[1]);
 
     vm.mockCall(mockHashmask, abi.encodeWithSelector(IERC721.ownerOf.selector, HASH_MASK_ID), abi.encode(user));
+    _mockHashmaskName(string.concat("O", TICKERS[0]));
 
     vm.expectCall(
       POOL_TARGETS[1], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector, HASH_MASK_ID, hashmaskUser, true)
     );
 
-    underTest.transferLink(HASH_MASK_ID, false);
-  }
-
-  function test_transferLink_givenNameUpdateTrigger_whenLinkedTickers_thenUpdatesName() external prankAs(hashmaskUser) {
-    underTest.link{ value: activationPrice }(HASH_MASK_ID);
-
-    vm.mockCall(mockHashmask, abi.encodeWithSelector(IERC721.ownerOf.selector, HASH_MASK_ID), abi.encode(user));
-
-    _mockHashmaskName(string.concat("O", TICKERS[0]));
-
     expectExactEmit();
     emit IObeliskHashmask.HashmaskLinked(HASH_MASK_ID, hashmaskUser, user);
-    underTest.transferLink(HASH_MASK_ID, true);
+    underTest.transferLink(HASH_MASK_ID);
   }
 
   function test_updateName_whenNotHashmaskHolder_thenReverts() external prankAs(user) {
@@ -174,15 +165,6 @@ contract ObeliskHashmaskTest is BaseTest {
 
   function test_updateName_whenNotLinker_thenReverts() external prankAs(hashmaskUser) {
     vm.expectRevert(abi.encodeWithSelector(IObeliskHashmask.NotLinkedToHolder.selector));
-    underTest.updateName(HASH_MASK_ID);
-  }
-
-  function test_updateName_whenNoTickers_thenReverts() external prankAs(hashmaskUser) {
-    underTest.link{ value: activationPrice }(HASH_MASK_ID);
-
-    _mockHashmaskName(string.concat("Hello World ", TICKERS[2]));
-
-    vm.expectRevert(abi.encodeWithSelector(IObeliskHashmask.NoTickersFound.selector));
     underTest.updateName(HASH_MASK_ID);
   }
 
@@ -218,16 +200,6 @@ contract ObeliskHashmaskTest is BaseTest {
     );
 
     underTest.updateName(HASH_MASK_ID);
-  }
-
-  function test_addNewTickers_whenEmptyString_thenReverts() external {
-    vm.expectRevert(abi.encodeWithSelector(IObeliskHashmask.NoTickersFound.selector));
-    underTest.exposed_addNewTickers(hashmaskUser, HASH_MASK_ID, "");
-  }
-
-  function test_addNewTickers_whenNoTickers_thenReverts() external {
-    vm.expectRevert(abi.encodeWithSelector(IObeliskHashmask.NoTickersFound.selector));
-    underTest.exposed_addNewTickers(hashmaskUser, HASH_MASK_ID, "Hello Orange");
   }
 
   function test_addNewTickers_whenContainsTickers_thenReverts() external {

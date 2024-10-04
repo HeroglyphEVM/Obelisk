@@ -6,6 +6,11 @@ import { INFTPass } from "src/interfaces/INFTPass.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+/**
+ * @title NFTPass
+ * @notice A contract that allows users to buy NFT passes to create their own identity. Without a pass, the user can't
+ * use Obelisk.
+ */
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
 
@@ -31,6 +36,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
   function create(string calldata _name, address _receiverWallet, uint256 _maxCost) external payable {
     if (cost == 0 && msg.value != 0) revert NoNeedToPay();
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
+
     uint256 costAtDuringTx = _updateCost();
     uint256 costAllowed = _maxCost == 0 ? type(uint256).max : _maxCost;
 
@@ -40,14 +46,19 @@ contract NFTPass is INFTPass, IdentityERC721 {
     uint256 id = _create(_name, 0);
     metadataPasses[id] = Metadata({ name: _name, walletReceiver: _receiverWallet });
 
+    emit NFTPassCreated(id, _name, _receiverWallet, costAtDuringTx);
+
+    if (costAtDuringTx == 0) return;
+    uint256 remainingValue = msg.value - costAtDuringTx;
     bool success;
-    (success,) = msg.sender.call{ value: msg.value - costAtDuringTx }("");
-    if (!success) revert TransferFailed();
 
     (success,) = treasury.call{ value: costAtDuringTx }("");
     if (!success) revert TransferFailed();
 
-    emit NFTPassCreated(id, _name, _receiverWallet, costAtDuringTx);
+    if (remainingValue == 0) return;
+
+    (success,) = msg.sender.call{ value: remainingValue }("");
+    if (!success) revert TransferFailed();
   }
 
   function updateReceiverAddress(uint256 _nftId, string calldata _name, address _receiver) external {
@@ -87,6 +98,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
     resetCounterTimestampReturn_ = resetCounterTimestamp;
     boughtTodayReturn_ = boughtToday;
     currentCostReturn_ = currentPrice;
+    uint256 cachedCost = cost;
 
     if (block.timestamp >= resetCounterTimestampReturn_) {
       uint256 totalDayPassed = (block.timestamp - resetCounterTimestampReturn_) / 1 days + 1;
@@ -95,19 +107,19 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
       for (uint256 i = 0; i < totalDayPassed; ++i) {
         currentCostReturn_ =
-          Math.max(cost, currentCostReturn_ - Math.mulDiv(currentCostReturn_, priceDecayBPS, MAX_BPS));
+          Math.max(cachedCost, currentCostReturn_ - Math.mulDiv(currentCostReturn_, priceDecayBPS, MAX_BPS));
 
-        if (currentCostReturn_ <= cost) break;
+        if (currentCostReturn_ <= cachedCost) break;
       }
     }
 
     bool boughtExceedsMaxPerDay = boughtTodayReturn_ > maxPerDayCached;
 
     if (boughtExceedsMaxPerDay && (boughtTodayReturn_ - maxPerDayCached) % priceIncreaseThreshold == 0) {
-      currentCostReturn_ += cost / 2;
+      currentCostReturn_ += cachedCost / 2;
     }
 
-    userCost_ = !boughtExceedsMaxPerDay ? cost : currentCostReturn_;
+    userCost_ = !boughtExceedsMaxPerDay ? cachedCost : currentCostReturn_;
     boughtTodayReturn_++;
 
     return (resetCounterTimestampReturn_, boughtTodayReturn_, currentCostReturn_, userCost_);
@@ -139,5 +151,24 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
   function transferFrom(address, address, uint256) public pure override {
     revert("Non-Transferrable");
+  }
+
+  //TODO: Customize metadata -- This is a place holder
+  function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    _requireOwned(tokenId);
+
+    Metadata memory metadata = metadataPasses[tokenId];
+
+    string memory data = string(
+      abi.encodePacked(
+        '{"name":"NFT Pass: ',
+        metadata.name,
+        '","description":"Required to use Obelisk","image":"',
+        "ipfs://QmdTq1vZ6cZ6mcJBfkG49FocwqTPFQ8duq6j2tL2rpzEWF",
+        '"}'
+      )
+    );
+
+    return string(abi.encodePacked("data:application/json;utf8,", data));
   }
 }

@@ -8,6 +8,10 @@ import { ObeliskNFT } from "./ObeliskNFT.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+/**
+ * @title WrappedNFTHero
+ * @notice It allows users to wrap their NFT to get a WrappedNFTHero NFT.
+ */
 contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT {
   uint256 private constant MAX_BPS = 10_000;
   uint256 private constant SECONDS_PER_YEAR = 31_557_600;
@@ -134,5 +138,26 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
   function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
     return this.onERC721Received.selector;
+  }
+
+  //TODO: Customize metadata -- This is a place holder
+  function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    _requireOwned(tokenId);
+
+    string memory name = names[tokenId];
+
+    if (bytes(name).length == 0) name = "Unnamed";
+
+    string memory data = string(
+      abi.encodePacked(
+        '{"name":"',
+        name,
+        '","description":"Wrapped Version of an external collection","image":"',
+        "ipfs://QmdTq1vZ6cZ6mcJBfkG49FocwqTPFQ8duq6j2tL2rpzEWF",
+        '"}'
+      )
+    );
+
+    return string(abi.encodePacked("data:application/json;utf8,", data));
   }
 }

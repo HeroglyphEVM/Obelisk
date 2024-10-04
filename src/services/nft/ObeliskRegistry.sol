@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { WrappedNFTHero } from "./WrappedNFTHero.sol";
-import { LiteTickerFarmPool } from "../tickers/LiteTickerFarmPool.sol";
+import { GenesisTokenPool } from "../tickers/GenesisTokenPool.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
@@ -11,6 +11,11 @@ import { IDripVault } from "src/interfaces/IDripVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+/**
+ * @title ObeliskRegistry
+ * @notice It can creates / allow / modify Tickers, have supporting option to boost yield for 30 days and handle
+ * Collection access & unlocking.
+ */
 contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint256 private constant MINIMUM_SENDING_ETH = 0.005 ether;
   uint256 public constant MIN_SUPPORT_AMOUNT = 1e18;
@@ -205,7 +210,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     newPool_ = _createContract(
       abi.encodePacked(
-        type(LiteTickerFarmPool).creationCode, abi.encode(msg.sender, address(this), _wrappedGenesisReward, _genesisKey)
+        type(GenesisTokenPool).creationCode, abi.encode(msg.sender, address(this), _wrappedGenesisReward, _genesisKey)
       )
     );
     tickersLogic[_name] = newPool_;

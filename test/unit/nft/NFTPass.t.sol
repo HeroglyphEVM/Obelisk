@@ -19,7 +19,7 @@ contract NFTPassTest is BaseTest {
   address private user;
   address private oldIdentity;
 
-  NFTPass private underTest;
+  NFTPassHarness private underTest;
 
   function setUp() public pranking {
     _generateAddresses();
@@ -27,7 +27,7 @@ contract NFTPassTest is BaseTest {
 
     changePrank(owner);
 
-    underTest = new NFTPass(owner, treasury, mockNameFilter, COST);
+    underTest = new NFTPassHarness(owner, treasury, mockNameFilter, COST);
 
     vm.mockCall(
       mockNameFilter, abi.encodeWithSelector(INameFilter.isNameValidWithIndexError.selector), abi.encode(true, 0)
@@ -48,7 +48,7 @@ contract NFTPassTest is BaseTest {
   }
 
   function test_constructor_thenContractWellConfigured() external {
-    underTest = new NFTPass(owner, treasury, mockNameFilter, COST);
+    underTest = new NFTPassHarness(owner, treasury, mockNameFilter, COST);
 
     assertEq(underTest.owner(), owner);
     assertEq(address(underTest.nameFilter()), mockNameFilter);
@@ -169,6 +169,34 @@ contract NFTPassTest is BaseTest {
     underTest.safeTransferFrom(user, generateAddress(), 1);
   }
 
+  //UpdateCost adds 1 to the boughtToday tracker
+  function test_updateCost_simpleVerification() external {
+    underTest.exposed_resetCounterTimestamp(block.timestamp + 1 days);
+    uint256 expectedCost = COST;
+    uint32 maxPerDay = underTest.maxIdentityPerDayAtInitialPrice();
+    uint32 priceIncreaseThreshold = underTest.priceIncreaseThreshold();
+
+    underTest.exposed_addBoughtToday(maxPerDay);
+    console.log("Next: (MaxPerDay) | Current:", underTest.boughtToday());
+    assertEq(underTest.exposed_updateCost(), expectedCost);
+
+    underTest.exposed_addBoughtToday(priceIncreaseThreshold - 2);
+    console.log("Next: (MaxPerDay + threshold - 1) | Current:", underTest.boughtToday());
+    assertEq(underTest.exposed_updateCost(), expectedCost);
+
+    expectedCost += COST / 2;
+    console.log("Next: (MaxPerDay + threshold) | Current:", underTest.boughtToday());
+    assertEq(underTest.exposed_updateCost(), expectedCost);
+
+    underTest.exposed_addBoughtToday(priceIncreaseThreshold - 2);
+    console.log("Next: (MaxPerDay + threshold * 2 - 1) | Current:", underTest.boughtToday());
+    assertEq(underTest.exposed_updateCost(), expectedCost);
+
+    expectedCost += COST / 2;
+    console.log("Next: (MaxPerDay + threshold * 2) | Current:", underTest.boughtToday());
+    assertEq(underTest.exposed_updateCost(), expectedCost);
+  }
+
   function test_getCost_thenReturnsValue() external prankAs(user) {
     uint256 expectedCost = COST;
     uint32 maxIdentityPerDay = underTest.maxIdentityPerDayAtInitialPrice();
@@ -285,6 +313,24 @@ contract NFTPassTest is BaseTest {
     underTest.updatePriceDecayBPS(newPriceDecayBPS);
 
     assertEq(underTest.priceDecayBPS(), newPriceDecayBPS);
+  }
+}
+
+contract NFTPassHarness is NFTPass {
+  constructor(address _owner, address _treasury, address _nameFilter, uint256 _cost)
+    NFTPass(_owner, _treasury, _nameFilter, _cost)
+  { }
+
+  function exposed_addBoughtToday(uint32 _amount) external {
+    boughtToday += _amount;
+  }
+
+  function exposed_updateCost() external returns (uint256) {
+    return _updateCost();
+  }
+
+  function exposed_resetCounterTimestamp(uint256 _resetTime) external {
+    resetCounterTimestamp = uint32(_resetTime);
   }
 }
 
