@@ -7,6 +7,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import { IStreamingPool } from "src/interfaces/IStreamingPool.sol";
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
 import { TransferHelper } from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -15,15 +16,13 @@ import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 
 contract InterestManager is IInterestManager, Ownable {
-  // @dev for security, we lock the apply gauges function for 6 days. It doesn't mean after 6 days we are re-applying
-  // the gauges // snapshot.
-  uint32 public constant BLOCK_APPLY_GAUGES_TIMER = 6 days;
   uint256 public constant PRECISION = 1e18;
   uint24 private constant DAI_POOL_FEE = 500;
 
   uint64 public epochId;
-  uint32 public nextApplyGaugesUnlock;
+  uint32 public override epochDuration;
   address public gaugeController;
+  IStreamingPool public streamingPool;
 
   address public immutable SWAP_ROUTER;
   IDripVault public immutable DRIP_VAULT_ETH;
@@ -53,19 +52,18 @@ contract InterestManager is IInterestManager, Ownable {
     DAI = IERC20(IDripVault(_dripVaultDAI).getInputToken());
     APX_ETH = IERC20(IDripVault(_dripVaultETH).getOutputToken());
     PIREX_ETH = IPirexEth(IApxETH(address(APX_ETH)).pirexEth());
+
+    epochDuration = 7 days;
   }
 
   function applyGauges(address[] memory _megapools, uint128[] memory _weights) external override {
     uint256 megapoolsLength = _megapools.length;
 
     if (msg.sender != gaugeController) revert NotGaugeController();
-    if (block.timestamp < nextApplyGaugesUnlock) revert ApplyGaugesLocked();
     if (megapoolsLength != _weights.length) revert InvalidInputLength();
 
     _endEpoch();
-
     Epoch storage epoch = epochs[epochId];
-    nextApplyGaugesUnlock = uint32(block.timestamp) + BLOCK_APPLY_GAUGES_TIMER;
 
     uint128 weight;
     uint128 totalWeight;
@@ -81,14 +79,18 @@ contract InterestManager is IInterestManager, Ownable {
     }
 
     epoch.totalWeight = totalWeight;
+    epoch.endOfEpoch = uint32(block.timestamp + epochDuration);
+
     emit EpochIntialized(epochId, _megapools, _weights, totalWeight);
   }
 
   function _endEpoch() internal {
     uint64 currentEpoch = epochId;
-
     Epoch storage epoch = epochs[currentEpoch];
-    epoch.totalRewards += uint128(DRIP_VAULT_ETH.claim() + _claimDaiAndConvertToApxETH());
+
+    if (epoch.endOfEpoch > block.timestamp) revert EpochNotFinished();
+
+    epoch.totalRewards += uint128(_claimFromServices());
 
     for (uint256 i = 0; i < epoch.megapools.length; ++i) {
       _assignRewardToMegapool(epoch, epoch.megapools[i]);
@@ -100,7 +102,7 @@ contract InterestManager is IInterestManager, Ownable {
 
   function claim() external override returns (uint256 rewards_) {
     Epoch storage epoch = epochs[epochId];
-    epoch.totalRewards += uint128(DRIP_VAULT_ETH.claim() + _claimDaiAndConvertToApxETH());
+    epoch.totalRewards += uint128(_claimFromServices());
 
     _assignRewardToMegapool(epoch, msg.sender);
 
@@ -112,6 +114,24 @@ contract InterestManager is IInterestManager, Ownable {
     APX_ETH.transfer(msg.sender, rewards_);
 
     emit RewardClaimed(msg.sender, rewards_);
+
+    return rewards_;
+  }
+
+  function getRealTimeRewards_Reverting(address _megapool) external {
+    Epoch storage epoch = epochs[epochId];
+    epoch.totalRewards += uint128(_claimFromServices());
+
+    _assignRewardToMegapool(epoch, _megapool);
+    uint256 rewards = pendingRewards[_megapool];
+
+    revert RealTimeRewards(rewards);
+  }
+
+  function _claimFromServices() internal returns (uint256 rewards_) {
+    rewards_ += address(streamingPool) != address(0) ? streamingPool.claim() : 0;
+    rewards_ += _claimDaiAndConvertToApxETH();
+    rewards_ += DRIP_VAULT_ETH.claim();
 
     return rewards_;
   }
@@ -157,6 +177,16 @@ contract InterestManager is IInterestManager, Ownable {
     emit GaugeControllerSet(gaugeController);
   }
 
+  function setEpochDuration(uint32 _epochDuration) external onlyOwner {
+    epochDuration = _epochDuration;
+    emit EpochDurationSet(_epochDuration);
+  }
+
+  function setStreamingPool(address _streamingPool) external onlyOwner {
+    streamingPool = IStreamingPool(_streamingPool);
+    emit StreamingPoolSet(_streamingPool);
+  }
+
   function getRewards(address _megapool) external view override returns (uint256 totalRewards_) {
     (totalRewards_,) = _getRewards(epochs[epochId], _megapool);
     return totalRewards_;
@@ -182,28 +212,19 @@ contract InterestManager is IInterestManager, Ownable {
     return (totalRewards_, addedRewards_);
   }
 
-  function getRealTimeRewards_Reverting(address _megapool) external {
-    Epoch storage epoch = epochs[epochId];
-    epoch.totalRewards += uint128(DRIP_VAULT_ETH.claim() + _claimDaiAndConvertToApxETH());
-
-    _assignRewardToMegapool(epoch, _megapool);
-    uint256 rewards = pendingRewards[_megapool];
-
-    revert RealTimeRewards(rewards);
-  }
-
   function getEpochData(uint64 _epochId)
     external
     view
-    returns (uint128 totalRewards_, uint128 totalWeight_, address[] memory megapools_)
+    returns (uint128 totalRewards_, uint128 totalWeight_, uint32 endOfEpoch_, address[] memory megapools_)
   {
     Epoch storage epoch = epochs[_epochId];
 
     totalRewards_ = epoch.totalRewards;
     totalWeight_ = epoch.totalWeight;
     megapools_ = epoch.megapools;
+    endOfEpoch_ = epoch.endOfEpoch;
 
-    return (totalRewards_, totalWeight_, megapools_);
+    return (totalRewards_, totalWeight_, endOfEpoch_, megapools_);
   }
 
   function getMegapoolWeight(uint64 _epochId, address _megapool) external view returns (uint128 weight_) {
