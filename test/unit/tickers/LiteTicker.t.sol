@@ -82,6 +82,20 @@ contract LiteTickerTest is BaseTest {
 
     assertFalse(underTest.isTokenDeposited(mockWrappedNFT, tokenId));
   }
+
+  function test_claim_whenNotDeposited_reverts() external prankAs(mockWrappedNFT) {
+    vm.expectRevert(ILiteTicker.NotDeposited.selector);
+    underTest.claim(0, user, false);
+  }
+
+  function test_claim_whenDeposited_thenCallsOnClaimTriggered() external prankAs(mockWrappedNFT) {
+    uint256 tokenId = 923;
+
+    underTest.virtualDeposit(tokenId, user);
+    expectExactEmit();
+    emit LiteTickerHarness.OnClaimTriggered(user, false);
+    underTest.claim(tokenId, user, false);
+  }
 }
 
 contract LiteTickerHarness is LiteTicker {

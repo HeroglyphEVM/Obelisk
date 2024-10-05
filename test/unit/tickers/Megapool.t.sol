@@ -40,6 +40,15 @@ contract MegapoolTest is BaseTest {
     assertEq(address(underTest.INTEREST_MANAGER()), address(interestManager));
   }
 
+  function test_afterVirtualDeposit_whenMaxEntry_thenReverts() external {
+    uint256 maxEntry = 1e18;
+    underTest.exposed_setMaxEntry(maxEntry);
+
+    underTest.exposed_afterVirtualDeposit(user_01);
+    vm.expectRevert(Megapool.MaxEntryExceeded.selector);
+    underTest.exposed_afterVirtualDeposit(user_02);
+  }
+
   function test_afterVirtualDeposit_whenFirstCaller_thenShareIsOne() external {
     underTest.exposed_afterVirtualDeposit(user_01);
     assertEq(underTest.getShareOf(user_01), 1e18);
@@ -209,5 +218,9 @@ contract MegapoolHarness is Megapool {
 
   function exposed_claim(address _holder) external {
     _claim(_holder, false);
+  }
+
+  function exposed_setMaxEntry(uint256 _maxEntry) external {
+    maxEntry = _maxEntry;
   }
 }
