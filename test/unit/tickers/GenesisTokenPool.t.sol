@@ -110,10 +110,13 @@ contract GenesisTokenPoolTest is BaseTest {
     underTest.exposed_afterVirtualDeposit(user_A);
 
     skip(underTest.DISTRIBUTION_DURATION());
+    assertEqTolerance(underTest.earned(user_A), REWARD_AMOUNT, 1);
+
     underTest.exposed_afterVirtualWithdraw(user_A, false);
 
     assertEqTolerance(wrappedReward.balanceOf(address(underTest)), queuedReward, 1); //0.001% difference
     assertEq(underTest.rewardRatePerSecond(), Math.mulDiv(queuedReward, PRECISION, underTest.DISTRIBUTION_DURATION()));
+    assertEqTolerance(wrappedReward.balanceOf(user_A), REWARD_AMOUNT, 1);
   }
 
   function test_onClaimTriggered_thenUpdatesRewards() external {
