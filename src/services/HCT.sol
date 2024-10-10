@@ -75,6 +75,10 @@ contract HCT is ERC20, IHCT {
     emit BurnedForRenaming(msg.sender, _user, NAME_COST);
   }
 
+  function claim() external {
+    _claim(msg.sender, usersInfo[msg.sender]);
+  }
+
   function _claim(address _user, UserInfo storage _userInfo) internal {
     uint128 amount = _getPendingToBeClaimed(uint32(block.timestamp), _userInfo);
     _userInfo.lastUnixTimeClaim = uint32(block.timestamp);
