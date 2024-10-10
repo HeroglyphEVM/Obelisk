@@ -9,7 +9,6 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract HCT is ERC20, IHCT {
   uint256 private constant PRECISION = 1e18;
-  uint128 private constant POWER_BY_NFT = 1e18;
   uint128 public constant NAME_COST = 90e18;
 
   bool private isInitialized;
@@ -33,39 +32,17 @@ contract HCT is ERC20, IHCT {
   function addPower(address _user, uint128 _addMultiplier) external override onlyHeroglyphWrappedNFT {
     UserInfo storage userInfo = usersInfo[_user];
     _claim(_user, userInfo);
-    _increasePowerAndMultiplier(userInfo, POWER_BY_NFT, _addMultiplier);
+    userInfo.multiplier += _addMultiplier;
 
-    emit PowerAdded(msg.sender, _user, POWER_BY_NFT, _addMultiplier);
+    emit PowerAdded(msg.sender, _user, _addMultiplier);
   }
 
   function removePower(address _user, uint128 _removeMultiplier) external override onlyHeroglyphWrappedNFT {
     UserInfo storage userInfo = usersInfo[_user];
     _claim(_user, userInfo);
-    _reducePowerAndMultiplier(userInfo, POWER_BY_NFT, _removeMultiplier);
+    userInfo.multiplier -= uint128(_removeMultiplier);
 
-    emit PowerRemoved(msg.sender, _user, POWER_BY_NFT, _removeMultiplier);
-  }
-
-  function _increasePowerAndMultiplier(UserInfo storage _userInfo, uint128 _addingPower, uint128 _addMultiplier)
-    internal
-  {
-    uint256 totalMultiplier = _userInfo.totalMultiplier + _addMultiplier;
-    uint256 totalPower = _userInfo.power + _addingPower;
-
-    _userInfo.power = uint128(totalPower);
-    _userInfo.totalMultiplier = uint128(totalMultiplier);
-    _userInfo.multiplier = totalPower == 0 ? 0 : uint128(Math.mulDiv(totalMultiplier, PRECISION, totalPower));
-  }
-
-  function _reducePowerAndMultiplier(UserInfo storage _userInfo, uint128 _removingPower, uint128 _removeMultiplier)
-    internal
-  {
-    uint256 totalMultiplier = _userInfo.totalMultiplier - _removeMultiplier;
-    uint256 totalPower = _userInfo.power - _removingPower;
-
-    _userInfo.power = uint128(totalPower);
-    _userInfo.totalMultiplier = uint128(totalMultiplier);
-    _userInfo.multiplier = totalPower == 0 ? 0 : uint128(Math.mulDiv(totalMultiplier, PRECISION, totalPower));
+    emit PowerRemoved(msg.sender, _user, _removeMultiplier);
   }
 
   function usesForRenaming(address _user) external override onlyHeroglyphWrappedNFT {
@@ -76,17 +53,20 @@ contract HCT is ERC20, IHCT {
   }
 
   function claim() external {
-    _claim(msg.sender, usersInfo[msg.sender]);
+    uint128 amount_ = _claim(msg.sender, usersInfo[msg.sender]);
+    if (amount_ == 0) revert NothingToClaim();
   }
 
-  function _claim(address _user, UserInfo storage _userInfo) internal {
-    uint128 amount = _getPendingToBeClaimed(uint32(block.timestamp), _userInfo);
+  function _claim(address _user, UserInfo storage _userInfo) internal returns (uint128 amount_) {
+    amount_ = _getPendingToBeClaimed(uint32(block.timestamp), _userInfo);
     _userInfo.lastUnixTimeClaim = uint32(block.timestamp);
 
-    if (amount == 0) return;
+    if (amount_ == 0) return amount_;
 
-    _mint(_user, amount);
-    emit Claimed(_user, amount);
+    _mint(_user, amount_);
+    emit Claimed(_user, amount_);
+
+    return amount_;
   }
 
   function balanceOf(address _user) public view override returns (uint256) {
@@ -101,7 +81,7 @@ contract HCT is ERC20, IHCT {
     uint32 timePassed = _currentTime - _userInfo.lastUnixTimeClaim;
     if (timePassed == 0) return 0;
 
-    uint256 rateReward = Math.sqrt(_userInfo.power * _userInfo.multiplier) / 1 days;
+    uint256 rateReward = Math.sqrt(_userInfo.multiplier * PRECISION) / 1 days;
 
     return uint128(timePassed * rateReward);
   }
