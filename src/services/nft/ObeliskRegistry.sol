@@ -60,6 +60,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     DRIP_VAULT_DAI = IDripVault(_dripVaultDAI);
     NFT_PASS = _nftPass;
     DAI = IERC20(_dai);
+
+    DAI.approve(address(DRIP_VAULT_DAI), type(uint256).max);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -169,7 +171,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (token == address(0)) {
       DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
     } else {
-      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), santizedAmount);
+      DAI.transferFrom(msg.sender, address(this), santizedAmount);
       DRIP_VAULT_DAI.deposit(santizedAmount);
     }
 

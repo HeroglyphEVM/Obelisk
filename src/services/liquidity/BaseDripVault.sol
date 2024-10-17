@@ -28,14 +28,14 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     if (INPUT_TOKEN != address(0) && msg.value != 0) revert NativeNotAccepted();
     if (INPUT_TOKEN != address(0) && _amount == 0) revert InvalidAmount();
 
-    uint256 sanitizedAmount = INPUT_TOKEN == address(0) ? msg.value : _amount;
-
-    if (INPUT_TOKEN != address(0)) {
-      sanitizedAmount = IERC20(INPUT_TOKEN).balanceOf(address(this)) - totalDeposit;
+    if (INPUT_TOKEN == address(0)) {
+      _amount = msg.value;
+    } else {
+      IERC20(INPUT_TOKEN).transferFrom(msg.sender, address(this), _amount);
     }
 
-    totalDeposit += sanitizedAmount;
-    _afterDeposit(sanitizedAmount);
+    totalDeposit += _amount;
+    _afterDeposit(_amount);
   }
 
   function _afterDeposit(uint256 _amount) internal virtual;

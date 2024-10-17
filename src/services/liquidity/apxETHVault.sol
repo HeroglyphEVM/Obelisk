@@ -22,7 +22,6 @@ contract apxETHVault is BaseDripVault {
   }
 
   function _beforeWithdrawal(address _to, uint256 _amount) internal override {
-    _transfer(address(APXETH), interestRateReceiver, _getPendingClaiming());
     _transfer(address(APXETH), _to, APXETH.convertToShares(_amount));
   }
 

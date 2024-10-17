@@ -6,4 +6,5 @@ interface IChaiMoney {
   function draw(address dst, uint256 wad) external payable;
   function exit(address src, uint256 wad) external;
   function balanceOf(address src) external view returns (uint256);
+  function pot() external view returns (address);
 }

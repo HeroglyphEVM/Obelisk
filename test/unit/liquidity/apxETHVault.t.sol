@@ -74,10 +74,7 @@ contract apxETHVaultTest is BaseTest {
     underTest.withdraw(user, withdrawAmount);
 
     assertEq(MockERC20(apxETH).balanceOf(user), withdrawAmountApx);
-    assertEq(MockERC20(apxETH).balanceOf(rateReceiver), interestInAPX);
-    assertEq(
-      MockERC20(apxETH).balanceOf(address(underTest)), (interestInAPX + apxAmount) - (withdrawAmountApx + interestInAPX)
-    );
+    assertEq(MockERC20(apxETH).balanceOf(address(underTest)), (interestInAPX + apxAmount) - withdrawAmountApx);
   }
 
   function test_beforeWithdrawal_whenWithdrawAmountIsEqualToTotalDeposit_thenTransfersInterestAndApxETH()
@@ -112,8 +109,7 @@ contract apxETHVaultTest is BaseTest {
     underTest.withdraw(user, withdrawAmount);
 
     assertEq(MockERC20(apxETH).balanceOf(user), withdrawAmountApx);
-    assertEq(MockERC20(apxETH).balanceOf(rateReceiver), interestInAPX);
-    assertEq(MockERC20(apxETH).balanceOf(address(underTest)), 0);
+    assertEq(MockERC20(apxETH).balanceOf(address(underTest)), interestInAPX);
   }
 }
 
