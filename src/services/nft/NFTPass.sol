@@ -13,6 +13,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
  */
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
+  uint256 internal constant SEND_ETH_GAS_MINIMUM = 20_000 * 2;
 
   uint32 public maxIdentityPerDayAtInitialPrice;
   uint32 public priceIncreaseThreshold;
@@ -55,7 +56,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
     (success,) = treasury.call{ value: costAtDuringTx }("");
     if (!success) revert TransferFailed();
 
-    if (remainingValue == 0) return;
+    if (remainingValue < tx.gasprice * SEND_ETH_GAS_MINIMUM) return;
 
     (success,) = msg.sender.call{ value: remainingValue }("");
     if (!success) revert TransferFailed();
