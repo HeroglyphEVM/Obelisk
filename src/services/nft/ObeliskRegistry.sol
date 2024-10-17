@@ -140,11 +140,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     userSupportedCollections[msg.sender][_collection].deposit -= uint128(_amount);
     DRIP_VAULT_ETH.withdraw(msg.sender, _amount);
 
-    (bool success,) = msg.sender.call{ value: _amount }("");
-    if (!success) {
-      revert TransferFailed();
-    }
-
     emit CollectionContributionWithdrawn(_collection, msg.sender, _amount);
   }
 
