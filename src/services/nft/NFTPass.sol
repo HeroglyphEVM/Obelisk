@@ -157,7 +157,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     _requireOwned(tokenId);
 
-    Metadata memory metadata = metadataPasses[tokenId];
+    Metadata storage metadata = metadataPasses[tokenId];
 
     string memory data = string(
       abi.encodePacked(

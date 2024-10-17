@@ -18,7 +18,6 @@ contract StreamingPool is IStreamingPool, Ownable {
   address public immutable inputToken;
   address public immutable interestManager;
 
-  uint32 public startEpoch;
   uint32 public endEpoch;
   uint32 public lastClaimedUnix;
   uint256 public ratePerSecondInRay;

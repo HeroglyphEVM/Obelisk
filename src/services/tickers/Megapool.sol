@@ -19,7 +19,6 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
 
   event MaxEntryUpdated(uint256 newMaxEntry);
 
-  uint256 private constant WAD = 1e18;
   ERC20 public immutable REWARD_TOKEN;
 
   uint256 public yieldPerTokenInRay;
