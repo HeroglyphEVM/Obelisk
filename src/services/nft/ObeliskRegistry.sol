@@ -24,6 +24,14 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint256 public constant BPS = 10_000;
   uint128 public constant REQUIRED_ETH_TO_ENABLE_COLLECTION = 100e18;
 
+  mapping(address => Collection) internal supportedCollections;
+  mapping(address wrappedCollection => CollectionRewards) internal wrappedCollectionRewards;
+  mapping(address wrappedNFT => bool isValid) public override isWrappedNFT;
+
+  mapping(string ticker => address logic) private tickersLogic;
+  mapping(address user => mapping(address collection => ContributionInfo)) internal userSupportedCollections;
+  mapping(uint32 => Supporter) private supporters;
+
   address public immutable HCT;
   address public immutable NFT_PASS;
   IERC20 public immutable DAI;
@@ -34,14 +42,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   address public dataAsserter;
   uint32 public supportId;
   uint256 public maxRewardPerCollection;
-
-  mapping(address => Collection) internal supportedCollections;
-  mapping(address wrappedCollection => CollectionRewards) internal wrappedCollectionRewards;
-  mapping(address wrappedNFT => bool isValid) public override isWrappedNFT;
-
-  mapping(string ticker => address logic) private tickersLogic;
-  mapping(address user => mapping(address collection => ContributionInfo)) internal userSupportedCollections;
-  mapping(uint32 => Supporter) private supporters;
 
   constructor(
     address _owner,

@@ -23,9 +23,12 @@ contract InterestManager is IInterestManager, Ownable {
   uint256 public constant PRECISION = 1e18;
   uint24 private constant DAI_POOL_FEE = 500;
 
+  mapping(address => uint128) internal pendingRewards;
+  mapping(uint64 => Epoch) public epochs;
+
+  address public gaugeController;
   uint64 public epochId;
   uint32 public override epochDuration;
-  address public gaugeController;
   IStreamingPool public streamingPool;
 
   address public immutable SWAP_ROUTER;
@@ -36,9 +39,6 @@ contract InterestManager is IInterestManager, Ownable {
   IWETH public immutable WETH;
   IERC20 public immutable APX_ETH;
   IPirexEth public immutable PIREX_ETH;
-
-  mapping(address => uint128) internal pendingRewards;
-  mapping(uint64 => Epoch) public epochs;
 
   constructor(
     address _owner,
