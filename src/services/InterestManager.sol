@@ -133,9 +133,10 @@ contract InterestManager is IInterestManager, Ownable {
   }
 
   function _claimFromServices() internal returns (uint256 rewards_) {
+    DRIP_VAULT_ETH.claim();
+    rewards_ += APX_ETH.balanceOf(address(this));
     rewards_ += address(streamingPool) != address(0) ? streamingPool.claim() : 0;
     rewards_ += _claimDaiAndConvertToApxETH();
-    rewards_ += DRIP_VAULT_ETH.claim();
 
     return rewards_;
   }
