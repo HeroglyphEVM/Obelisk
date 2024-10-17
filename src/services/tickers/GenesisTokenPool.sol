@@ -36,11 +36,6 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   mapping(address user => uint256) public userRewardPerTokenPaid;
   mapping(address user => uint256) public rewards;
 
-  modifier onlyCanRefillReward() {
-    if (msg.sender != address(REWARD_TOKEN) && msg.sender != owner()) revert NotAuthorized();
-    _;
-  }
-
   constructor(address _owner, address _registry, address _wrappedReward, address _genesisKey)
     LiteTicker(_registry)
     Ownable(_owner)
@@ -88,7 +83,9 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     emit RewardPaid(_holder, reward);
   }
 
-  function notifyRewardAmount(uint256 reward) external override onlyCanRefillReward {
+  function notifyRewardAmount(uint256 reward) external override {
+    if (msg.sender != address(REWARD_TOKEN) && msg.sender != owner()) revert NotAuthorized();
+
     _queueNewRewards(reward);
   }
 

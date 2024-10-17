@@ -36,17 +36,9 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
     activationPrice = 0.1 ether;
   }
 
-  modifier onlyHashmaskHolder(uint256 _hashmaskId) {
+  function link(uint256 _hashmaskId) external payable {
     if (hashmask.ownerOf(_hashmaskId) != msg.sender) revert NotHashmaskHolder();
-    _;
-  }
 
-  modifier onlyHashmaskLinker(uint256 _hashmaskId) {
-    if (identityReceivers[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
-    _;
-  }
-
-  function link(uint256 _hashmaskId) external payable onlyHashmaskHolder(_hashmaskId) {
     if (msg.value != activationPrice) revert InsufficientActivationPrice();
 
     _removeOldTickers(identityReceivers[_hashmaskId], _hashmaskId, true);
@@ -59,7 +51,9 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
     emit HashmaskLinked(_hashmaskId, address(0), msg.sender);
   }
 
-  function transferLink(uint256 _hashmaskId) external onlyHashmaskLinker(_hashmaskId) {
+  function transferLink(uint256 _hashmaskId) external {
+    if (identityReceivers[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
+
     address newOwner = hashmask.ownerOf(_hashmaskId);
     identityReceivers[_hashmaskId] = newOwner;
     _updateName(_hashmaskId, msg.sender, newOwner);
