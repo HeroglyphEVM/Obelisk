@@ -7,6 +7,7 @@ interface IWrappedNFTHero {
   error NotNFTHolder();
   error NoFreeSlots();
   error FreeSlotAvailable();
+  error CannotTransferUnwrapFirst();
 
   event Wrapped(uint256 indexed tokenId);
   event Unwrapped(uint256 indexed tokenId);

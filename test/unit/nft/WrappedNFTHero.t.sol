@@ -254,7 +254,9 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.wrap(tokenId);
 
     changePrank(generateAddress("NotHolder"));
-    assertFalse(underTest.exposed_claimRequirements(1));
+
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotNFTHolder.selector));
+    underTest.exposed_claimRequirements(1);
   }
 
   function test_claimRequirements_whenHolder_thenReturnsTrue() external prankAs(user) {
@@ -298,44 +300,13 @@ contract WrappedNFTHeroTest is BaseTest {
     assertGt(underTest.getWrapperMultiplier(), expectingMultiplier);
   }
 
-  function test_transfer_thenRemoveFromPowerAndAddToPower() external {
-    address from = generateAddress("From");
-    address to = generateAddress("To");
+  function test_transfer_whenCannotTransferUnwrapFirst_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
 
-    uint256 tokenId = 33;
-    uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
+    underTest.wrap(tokenId);
 
-    underTest.exposed_mint(from, tokenId);
-
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, from, expectingMultiplier));
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, to, expectingMultiplier));
-
-    vm.prank(from);
-    underTest.transferFrom(from, to, tokenId);
-
-    assertEq(underTest.getNFTData(tokenId).assignedMultiplier, expectingMultiplier);
-    assertEq(underTest.ownerOf(tokenId), to);
-  }
-
-  function test_transfer_whenMultiplierChanged_thenRemovesCorrectPowerAndAddsNewPower() external {
-    uint256 tokenId = 33;
-    uint256 expectingRemovingMultiplier = 1 * underTest.RATE_PER_YEAR();
-    uint256 expectingAddingMultiplier = 2 * underTest.RATE_PER_YEAR();
-
-    address from = generateAddress("From");
-    address to = generateAddress("To");
-
-    underTest.exposed_mint(from, tokenId);
-    skip(YEAR_IN_SECONDS);
-
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, from, expectingRemovingMultiplier));
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, to, expectingAddingMultiplier));
-
-    vm.prank(from);
-    underTest.transferFrom(from, to, tokenId);
-
-    assertEq(underTest.getNFTData(tokenId).assignedMultiplier, expectingAddingMultiplier);
-    assertEq(underTest.ownerOf(tokenId), to);
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.CannotTransferUnwrapFirst.selector));
+    underTest.transferFrom(user, generateAddress("To"), tokenId);
   }
 
   function test_onERC721Received_whenCalled_thenReturnsSelector() external view {

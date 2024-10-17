@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "test/base/BaseTest.t.sol";
 
-import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
+import { MockERC20, DefaultERC20 } from "test/mock/contract/MockERC20.t.sol";
 import { InterestManager, IInterestManager, IDripVault, IApxETH, IPirexEth } from "src/services/InterestManager.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IStreamingPool } from "src/interfaces/IStreamingPool.sol";
@@ -71,6 +71,8 @@ contract InterestManagerTest is BaseTest {
 
     vm.mockCall(mockPirexEth, abi.encodeWithSelector(IPirexEth.deposit.selector), abi.encode(0, 0));
     vm.mockCall(address(weth), abi.encodeWithSelector(IWETH.withdraw.selector), abi.encode(true));
+
+    vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(0));
   }
 
   function test_constructor_thenSetsVariables() external {
@@ -147,7 +149,8 @@ contract InterestManagerTest is BaseTest {
     uint256 expectingForPool1 = (reward * WEIGHTS[0]) / (WEIGHTS[0] + WEIGHTS[1]);
     uint256 expectingForPool2 = reward - expectingForPool1;
 
-    vm.mockCall(mockDripVaultETH, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(reward));
+    axpETH.mint(address(underTest), reward);
+    vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(reward));
 
     vm.expectEmit(true, false, false, false);
     emit IInterestManager.RewardAssigned(ADDRESSES[0], expectingForPool1, expectingForPool1);
@@ -205,7 +208,9 @@ contract InterestManagerTest is BaseTest {
     axpETH.mint(address(underTest), reward);
     underTest.applyGauges(ADDRESSES, WEIGHTS);
 
-    vm.mockCall(mockDripVaultETH, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(reward));
+    axpETH.mint(address(underTest), reward);
+
+    vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(reward));
 
     vm.expectRevert(abi.encodeWithSelector(IInterestManager.RealTimeRewards.selector, reward));
     underTest.getRealTimeRewards_Reverting(ADDRESSES[0]);
@@ -291,7 +296,8 @@ contract InterestManagerTest is BaseTest {
     dai.mint(address(underTest), daiReward);
     axpETH.mint(address(underTest), reward);
 
-    vm.mockCall(mockDripVaultETH, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(ethReward));
+    vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(ethReward));
+
     vm.mockCall(
       mockSwapRouter, abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector), abi.encode(convertedDaiReward)
     );

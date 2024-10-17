@@ -119,9 +119,11 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
   }
 
   function _claimRequirements(uint256 _tokenId) internal view override returns (bool) {
-    bool sameName = keccak256(bytes(hashmask.tokenNameByIndex(_tokenId))) == keccak256(bytes(names[_tokenId]));
     address owner = hashmask.ownerOf(_tokenId);
-    return owner == msg.sender && owner == identityReceivers[_tokenId] && sameName;
+    if (owner != msg.sender) revert NotHashmaskHolder();
+
+    bool sameName = keccak256(bytes(hashmask.tokenNameByIndex(_tokenId))) == keccak256(bytes(names[_tokenId]));
+    return owner == identityReceivers[_tokenId] && sameName;
   }
 
   function setActivationPrice(uint256 _price) external onlyOwner {

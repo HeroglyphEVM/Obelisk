@@ -110,7 +110,6 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
 
   function claim(uint256 _tokenId) external {
     address[] memory activePools = linkedTickers[_tokenId];
-
     bool canClaim = _claimRequirements(_tokenId);
 
     for (uint256 i = 0; i < activePools.length; i++) {
