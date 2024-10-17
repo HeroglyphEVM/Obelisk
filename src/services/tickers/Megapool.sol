@@ -53,11 +53,7 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
       revert MaxEntryExceeded();
     }
 
-    _addShare(_holder, userVirtualBalance);
-  }
-
-  function _addShare(address _wallet, uint256 _userVirtualBalance) internal virtual {
-    userYieldSnapshot[_wallet] = ShareableMath.rmulup(_userVirtualBalance, yieldPerTokenInRay);
+    userYieldSnapshot[_holder] = ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
   }
 
   function _afterVirtualWithdraw(address _holder, bool _ignoreRewards) internal override {
@@ -67,11 +63,7 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     virtualBalances[_holder] = userVirtualBalance;
 
     totalVirtualBalance -= DEPOSIT_AMOUNT;
-    _exit(_holder, userVirtualBalance);
-  }
-
-  function _exit(address _wallet, uint256 _userVirtualBalance) internal virtual {
-    userYieldSnapshot[_wallet] = ShareableMath.rmulup(_userVirtualBalance, yieldPerTokenInRay);
+    userYieldSnapshot[_holder] = ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
   }
 
   function _getNewYield() internal view returns (uint256) {
