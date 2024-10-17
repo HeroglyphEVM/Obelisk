@@ -35,7 +35,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint32 public supportId;
   uint256 public maxRewardPerCollection;
 
-  mapping(address => Collection) public supportedCollections;
+  mapping(address => Collection) internal supportedCollections;
   mapping(address wrappedCollection => CollectionRewards) internal wrappedCollectionRewards;
   mapping(address wrappedNFT => bool isValid) public override isWrappedNFT;
 
