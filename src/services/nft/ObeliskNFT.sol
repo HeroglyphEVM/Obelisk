@@ -38,8 +38,8 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
     if (nameBytesLength == 0 || nameBytesLength > MAX_NAME_BYTES_LENGTH) revert InvalidNameLength();
     _renameRequirements(_tokenId);
 
-    address registredUserAddress = identityReceivers[_tokenId];
-    _removeOldTickers(registredUserAddress, _tokenId, false);
+    address registeredUserAddress = identityReceivers[_tokenId];
+    _removeOldTickers(registeredUserAddress, _tokenId, false);
 
     address newReceiver = _updateIdentity(_tokenId, _newName);
     _addNewTickers(newReceiver, _tokenId, _newName);
@@ -53,14 +53,14 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
   function updateIdentityReceiver(uint256 _tokenId) external {
     string memory currentName = names[_tokenId];
 
-    address registredUserAddress = identityReceivers[_tokenId];
-    _removeOldTickers(registredUserAddress, _tokenId, false);
+    address registeredUserAddress = identityReceivers[_tokenId];
+    _removeOldTickers(registeredUserAddress, _tokenId, false);
 
     address newReceiver = _updateIdentity(_tokenId, currentName);
     _addNewTickers(newReceiver, _tokenId, currentName);
   }
 
-  function _removeOldTickers(address _registredUserAddress, uint256 _tokenId, bool _ignoreRewards)
+  function _removeOldTickers(address _registeredUserAddress, uint256 _tokenId, bool _ignoreRewards)
     internal
     nonReentrant
   {
@@ -68,12 +68,12 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
     delete linkedTickers[_tokenId];
 
     for (uint256 i = 0; i < activePools.length; i++) {
-      ILiteTicker(activePools[i]).virtualWithdraw(_tokenId, _registredUserAddress, _ignoreRewards);
+      ILiteTicker(activePools[i]).virtualWithdraw(_tokenId, _registeredUserAddress, _ignoreRewards);
       emit TickerDeactivated(_tokenId, activePools[i]);
     }
   }
 
-  function _addNewTickers(address _registredUserAddress, uint256 _tokenId, string memory _name) internal virtual {
+  function _addNewTickers(address _registeredUserAddress, uint256 _tokenId, string memory _name) internal virtual {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory needle = TICKER_START_INDICE.toSlice();
     strings.slice memory substring = nameSlice.find(needle).beyond(needle).split(string(" ").toSlice());
@@ -88,7 +88,7 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
 
       poolTargets[i] = poolTarget;
 
-      ILiteTicker(poolTarget).virtualDeposit(_tokenId, _registredUserAddress);
+      ILiteTicker(poolTarget).virtualDeposit(_tokenId, _registeredUserAddress);
       emit TickerActivated(_tokenId, poolTarget);
     }
 

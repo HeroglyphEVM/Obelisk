@@ -85,7 +85,7 @@ contract InterestManager is IInterestManager, Ownable {
     epoch.totalWeight = totalWeight;
     epoch.endOfEpoch = uint32(block.timestamp + epochDuration);
 
-    emit EpochIntialized(epochId, _megapools, _weights, totalWeight);
+    emit EpochInitialized(epochId, _megapools, _weights, totalWeight);
   }
 
   function _endEpoch() internal {

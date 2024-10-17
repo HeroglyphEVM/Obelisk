@@ -155,15 +155,15 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (msg.value != 0 && _amount != 0) revert OnlyOneValue();
 
     address token = msg.value != 0 ? address(0) : address(DAI);
-    uint256 santizedAmount = msg.value != 0 ? msg.value : _amount;
+    uint256 sanitizedAmount = msg.value != 0 ? msg.value : _amount;
 
-    if (santizedAmount < MIN_SUPPORT_AMOUNT) revert AmountTooLow();
+    if (sanitizedAmount < MIN_SUPPORT_AMOUNT) revert AmountTooLow();
 
     supportId++;
     supporters[supportId] = Supporter({
       depositor: msg.sender,
       token: token,
-      amount: uint128(santizedAmount),
+      amount: uint128(sanitizedAmount),
       lockUntil: uint32(block.timestamp + SUPPORT_LOCK_DURATION),
       removed: false
     });
@@ -171,11 +171,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (token == address(0)) {
       DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
     } else {
-      DAI.transferFrom(msg.sender, address(this), santizedAmount);
-      DRIP_VAULT_DAI.deposit(santizedAmount);
+      DAI.transferFrom(msg.sender, address(this), sanitizedAmount);
+      DRIP_VAULT_DAI.deposit(sanitizedAmount);
     }
 
-    emit Supported(supportId, msg.sender, santizedAmount);
+    emit Supported(supportId, msg.sender, sanitizedAmount);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -253,11 +253,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     uint128 totalCollectionReward = collectionRewards.totalRewards;
     uint256 totalUserReward = Math.mulDiv(userContribution.deposit, totalCollectionReward, contributionBalance);
     uint128 rewardsToClaim = uint128(totalUserReward - userContribution.claimed);
-    uint128 totalCollactionClaimedRewards = collectionRewards.claimedRewards;
+    uint128 totalCollectionClaimedRewards = collectionRewards.claimedRewards;
 
     if (rewardsToClaim == 0) revert NothingToClaim();
 
-    collectionRewards.claimedRewards = totalCollactionClaimedRewards + rewardsToClaim;
+    collectionRewards.claimedRewards = totalCollectionClaimedRewards + rewardsToClaim;
     userContribution.claimed = uint128(totalUserReward);
 
     (bool success,) = msg.sender.call{ value: rewardsToClaim }("");

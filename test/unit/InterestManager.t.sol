@@ -119,7 +119,7 @@ contract InterestManagerTest is BaseTest {
     WEIGHTS.push(2e18);
 
     expectExactEmit();
-    emit IInterestManager.EpochIntialized(1, ADDRESSES, WEIGHTS, WEIGHTS[0] + WEIGHTS[1]);
+    emit IInterestManager.EpochInitialized(1, ADDRESSES, WEIGHTS, WEIGHTS[0] + WEIGHTS[1]);
 
     underTest.applyGauges(ADDRESSES, WEIGHTS);
 
