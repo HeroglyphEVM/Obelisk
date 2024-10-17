@@ -195,6 +195,26 @@ contract NFTPassTest is BaseTest {
     expectedCost += COST / 2;
     console.log("Next: (MaxPerDay + threshold * 2) | Current:", underTest.boughtToday());
     assertEq(underTest.exposed_updateCost(), expectedCost);
+
+    skip(1 days);
+    uint256 actualPrice = Math.max(COST, expectedCost - (expectedCost * underTest.priceDecayBPS() / MAX_BPS));
+
+    expectedCost = COST;
+    assertEq(underTest.getCost(), expectedCost);
+    assertEq(underTest.exposed_updateCost(), expectedCost);
+
+    underTest.exposed_addBoughtToday(maxPerDay - 1);
+
+    console.log("Next: (MaxPerDay) | Current:", underTest.boughtToday());
+    assertEq(underTest.exposed_updateCost(), expectedCost);
+
+    expectedCost = actualPrice;
+    assertEq(underTest.exposed_updateCost(), actualPrice);
+
+    expectedCost += COST / 2;
+    underTest.exposed_addBoughtToday(priceIncreaseThreshold - 2);
+    console.log("Next: (MaxPerDay + threshold) | Current:", underTest.boughtToday());
+    assertEq(underTest.exposed_updateCost(), expectedCost);
   }
 
   function test_getCost_thenReturnsValue() external prankAs(user) {
