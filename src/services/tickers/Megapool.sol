@@ -23,14 +23,12 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
 
   uint256 public yieldPerTokenInRay;
   uint256 public yieldBalance;
-  uint256 public totalShares;
   uint256 public totalVirtualBalance;
   uint256 public maxEntry;
 
   IInterestManager public immutable INTEREST_MANAGER;
 
   mapping(address => uint256) internal userYieldSnapshot;
-  mapping(address => uint256) internal userShares;
   mapping(address => uint256) private virtualBalances;
 
   constructor(address _owner, address _registry, address _tokenReward, address _interestManager)
@@ -44,13 +42,10 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
 
   function _afterVirtualDeposit(address _holder) internal override {
     _claim(_holder, false);
-    uint256 addedShare = 1e18;
 
-    virtualBalances[_holder] += DEPOSIT_AMOUNT;
+    uint256 userVirtualBalance = virtualBalances[_holder] + DEPOSIT_AMOUNT;
 
-    if (totalShares > 0) {
-      addedShare = (totalShares * DEPOSIT_AMOUNT) / totalVirtualBalance;
-    }
+    virtualBalances[_holder] = userVirtualBalance;
 
     totalVirtualBalance += DEPOSIT_AMOUNT;
 
@@ -58,50 +53,25 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
       revert MaxEntryExceeded();
     }
 
-    _addShare(_holder, addedShare);
+    _addShare(_holder, userVirtualBalance);
   }
 
-  function _addShare(address _wallet, uint256 _value) internal virtual {
-    if (_value > 0) {
-      totalShares += _value;
-      userShares[_wallet] += _value;
-    }
-
-    userYieldSnapshot[_wallet] = ShareableMath.rmulup(userShares[_wallet], yieldPerTokenInRay);
+  function _addShare(address _wallet, uint256 _userVirtualBalance) internal virtual {
+    userYieldSnapshot[_wallet] = ShareableMath.rmulup(_userVirtualBalance, yieldPerTokenInRay);
   }
 
   function _afterVirtualWithdraw(address _holder, bool _ignoreRewards) internal override {
     _claim(_holder, _ignoreRewards);
-    virtualBalances[_holder] -= DEPOSIT_AMOUNT;
 
-    uint256 newShare = 0;
-    uint256 holderBalance = virtualBalances[_holder];
-
-    if (totalShares > 0 && holderBalance > 0) {
-      newShare = (totalShares * holderBalance) / totalVirtualBalance;
-    }
+    uint256 userVirtualBalance = virtualBalances[_holder] - DEPOSIT_AMOUNT;
+    virtualBalances[_holder] = userVirtualBalance;
 
     totalVirtualBalance -= DEPOSIT_AMOUNT;
-    _exit(_holder, newShare);
+    _exit(_holder, userVirtualBalance);
   }
 
-  function _exit(address _wallet, uint256 _newShare) internal virtual {
-    _deleteShare(_wallet);
-
-    if (_newShare > 0) {
-      _addShare(_wallet, _newShare);
-    }
-  }
-
-  function _deleteShare(address _wallet) private {
-    uint256 value = userShares[_wallet];
-
-    if (value > 0) {
-      totalShares -= value;
-      userShares[_wallet] -= value;
-    }
-
-    userYieldSnapshot[_wallet] = ShareableMath.rmulup(userShares[_wallet], yieldPerTokenInRay);
+  function _exit(address _wallet, uint256 _userVirtualBalance) internal virtual {
+    userYieldSnapshot[_wallet] = ShareableMath.rmulup(_userVirtualBalance, yieldPerTokenInRay);
   }
 
   function _getNewYield() internal view returns (uint256) {
@@ -116,14 +86,14 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     INTEREST_MANAGER.claim();
     uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this));
 
-    if (totalShares > 0) {
-      yieldPerTokenInRay = yieldPerTokenInRay + ShareableMath.rdiv(_getNewYield(), totalShares);
+    if (totalVirtualBalance > 0) {
+      yieldPerTokenInRay = yieldPerTokenInRay + ShareableMath.rdiv(_getNewYield(), totalVirtualBalance);
     } else if (currentYieldBalance != 0) {
       REWARD_TOKEN.transfer(owner(), currentYieldBalance);
     }
 
     uint256 last = userYieldSnapshot[_holder];
-    uint256 curr = ShareableMath.rmul(userShares[_holder], yieldPerTokenInRay);
+    uint256 curr = ShareableMath.rmul(virtualBalances[_holder], yieldPerTokenInRay);
 
     if (curr > last && !_ignoreRewards) {
       uint256 sendingReward = curr - last;
@@ -144,9 +114,5 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
 
   function getYieldSnapshotOf(address _target) external view returns (uint256) {
     return userYieldSnapshot[_target];
-  }
-
-  function getShareOf(address owner) public view returns (uint256) {
-    return userShares[owner];
   }
 }
