@@ -659,6 +659,21 @@ contract ObeliskRegistryTest is BaseTest {
 
     assertEq(underTest.dataAsserter(), newDataAsserter);
   }
+
+  function test_toggleIsWrappedNFTFor_whenNotOwner_thenReverts() external prankAs(user) {
+    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    underTest.toggleIsWrappedNFTFor(collectionMock, generateAddress("WrappedNFT"), true);
+  }
+
+  function test_toggleIsWrappedNFTFor_thenUpdatesWrappedNFT() external prankAs(owner) {
+    address wrappedNFT = generateAddress("WrappedNFT");
+
+    expectExactEmit();
+    emit IObeliskRegistry.WrappedNFTCreated(collectionMock, wrappedNFT);
+    underTest.toggleIsWrappedNFTFor(collectionMock, wrappedNFT, true);
+
+    assertEq(underTest.isWrappedNFT(wrappedNFT), true);
+  }
 }
 
 contract ObeliskRegistryHarness is ObeliskRegistry {

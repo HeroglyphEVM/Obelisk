@@ -304,6 +304,12 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     emit CollectionAllowed(_collection, _totalSupply, _collectionStartedUnixTime, _premium);
   }
 
+  function toggleIsWrappedNFTFor(address _collection, address _wrappedVersion, bool _allowed) external onlyOwner {
+    isWrappedNFT[_wrappedVersion] = _allowed;
+
+    emit WrappedNFTCreated(_collection, _wrappedVersion);
+  }
+
   function setTreasury(address _treasury) external onlyOwner {
     if (_treasury == address(0)) revert ZeroAddress();
     treasury = _treasury;
