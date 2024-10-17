@@ -60,8 +60,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     DRIP_VAULT_DAI = IDripVault(_dripVaultDAI);
     NFT_PASS = _nftPass;
     DAI = IERC20(_dai);
-
-    DAI.approve(address(DRIP_VAULT_DAI), type(uint256).max);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -75,7 +73,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     collection.contributionBalance = newTotalContribution;
     userSupportedCollections[msg.sender][_collection].deposit += uint128(msg.value);
-    DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
+    DRIP_VAULT_ETH.deposit{ value: msg.value }();
 
     if (newTotalContribution > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       revert TooManyEth();
@@ -169,10 +167,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     });
 
     if (token == address(0)) {
-      DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
+      DRIP_VAULT_ETH.deposit{ value: msg.value }();
     } else {
-      DAI.transferFrom(msg.sender, address(this), sanitizedAmount);
-      DRIP_VAULT_DAI.deposit(sanitizedAmount);
+      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), sanitizedAmount);
+      DRIP_VAULT_DAI.deposit();
     }
 
     emit Supported(supportId, msg.sender, sanitizedAmount);

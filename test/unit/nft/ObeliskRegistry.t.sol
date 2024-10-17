@@ -298,7 +298,7 @@ contract ObeliskRegistryTest is BaseTest {
       removed: false
     });
 
-    vm.expectCall(dripVaultDAIMock, abi.encodeWithSelector(IDripVault.deposit.selector, supportAmount));
+    vm.expectCall(dripVaultDAIMock, abi.encodeWithSelector(IDripVault.deposit.selector));
 
     expectExactEmit();
     emit IObeliskRegistry.Supported(1, user, supportAmount);

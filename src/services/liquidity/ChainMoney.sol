@@ -38,15 +38,10 @@ contract ChaiMoneyVault is BaseDripVault {
     uint256 totalDepositInChai = _convertToChai(cachedTotalDeposit);
     interest_ = cachedChaiMoney.balanceOf(address(this)) - totalDepositInChai;
 
-    if (interest_ != 0) {
-      cachedChaiMoney.exit(address(this), interest_);
-    }
+    if (interest_ == 0) return 0;
 
-    interest_ = cachedDai.balanceOf(address(this));
-
-    if (interest_ != 0) {
-      cachedDai.transfer(interestRateReceiver, interest_);
-    }
+    cachedChaiMoney.exit(address(this), interest_);
+    cachedDai.transfer(interestRateReceiver, cachedDai.balanceOf(address(this)));
 
     return interest_;
   }

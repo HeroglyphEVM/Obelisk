@@ -23,19 +23,22 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     INPUT_TOKEN = _inputToken;
   }
 
-  function deposit(uint256 _amount) external payable override onlyObeliskRegistry {
+  function deposit() external payable override onlyObeliskRegistry {
     if (INPUT_TOKEN == address(0) && msg.value == 0) revert InvalidAmount();
     if (INPUT_TOKEN != address(0) && msg.value != 0) revert NativeNotAccepted();
-    if (INPUT_TOKEN != address(0) && _amount == 0) revert InvalidAmount();
+
+    uint256 cachedTotalBalance = totalDeposit;
+
+    uint256 amount;
 
     if (INPUT_TOKEN == address(0)) {
-      _amount = msg.value;
+      amount = msg.value;
     } else {
-      IERC20(INPUT_TOKEN).transferFrom(msg.sender, address(this), _amount);
+      amount = IERC20(INPUT_TOKEN).balanceOf(msg.sender) - cachedTotalBalance;
     }
 
-    totalDeposit += _amount;
-    _afterDeposit(_amount);
+    totalDeposit = cachedTotalBalance + amount;
+    _afterDeposit(amount);
   }
 
   function _afterDeposit(uint256 _amount) internal virtual;
