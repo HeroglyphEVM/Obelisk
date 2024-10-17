@@ -13,6 +13,13 @@ interface IWrappedNFTHero {
   event SlotBought(address indexed user, uint256 indexed inputCollectionNFTId);
   event FreeSlotUsed(uint256 freeSlotLeft);
 
+  struct NFTData {
+    bool isMinted;
+    bool firstRename;
+    bool wrappedOnce;
+    uint128 assignedMultiplier;
+  }
+
   function wrap(uint256 _inputCollectionNFTId) external payable;
 
   function unwrap(uint256 _tokenId) external;

@@ -137,14 +137,14 @@ contract WrappedNFTHeroTest is BaseTest {
     vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier));
 
     expectExactEmit();
-    emit IWrappedNFTHero.SlotBought(user, tokenId);
-    expectExactEmit();
     emit IWrappedNFTHero.Wrapped(tokenId);
+    expectExactEmit();
+    emit IWrappedNFTHero.SlotBought(user, tokenId);
     underTest.wrap{ value: SLOT_PRICE }(tokenId);
 
     assertEq(underTest.ownerOf(tokenId), user);
     assertEq(mockInputCollection.ownerOf(tokenId), address(underTest));
-    assertEq(underTest.assignedMultipler(tokenId), expectingMultiplier);
+    assertEq(underTest.getNFTData(tokenId).assignedMultiplier, expectingMultiplier);
   }
 
   function test_wrap_whenFreeSlotAvailable_thenWraps() external prankAs(user) {
@@ -155,15 +155,15 @@ contract WrappedNFTHeroTest is BaseTest {
     vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier));
 
     expectExactEmit();
-    emit IWrappedNFTHero.FreeSlotUsed(freeSlotsBefore - 1);
-    expectExactEmit();
     emit IWrappedNFTHero.Wrapped(tokenId);
+    expectExactEmit();
+    emit IWrappedNFTHero.FreeSlotUsed(freeSlotsBefore - 1);
 
     underTest.wrap(tokenId);
 
     assertEq(underTest.ownerOf(tokenId), user);
     assertEq(mockInputCollection.ownerOf(tokenId), address(underTest));
-    assertEq(underTest.assignedMultipler(tokenId), expectingMultiplier);
+    assertEq(underTest.getNFTData(tokenId).assignedMultiplier, expectingMultiplier);
     assertEq(underTest.freeSlots(), freeSlotsBefore - 1);
   }
 
@@ -196,8 +196,8 @@ contract WrappedNFTHeroTest is BaseTest {
 
     assertEq(mockInputCollection.ownerOf(tokenId), user);
     assertEq(bytes(underTest.names(tokenId)).length, 0);
-    assertEq(underTest.assignedMultipler(tokenId), 0);
-    assertEq(underTest.isMinted(tokenId), false);
+    assertEq(underTest.getNFTData(tokenId).assignedMultiplier, 0);
+    assertEq(underTest.getNFTData(tokenId).isMinted, false);
   }
 
   function test_renameRequirements_whenNotMinted_thenReverts() external prankAs(user) {
@@ -281,7 +281,7 @@ contract WrappedNFTHeroTest is BaseTest {
     vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, user, expectingMultiplier));
     underTest.exposed_burn(tokenId);
 
-    assertEq(underTest.assignedMultipler(tokenId), 0);
+    assertEq(underTest.getNFTData(tokenId).assignedMultiplier, 0);
   }
 
   function test_burn_whenMultiplierChanged_thenRemovesCorrectPower() external {
@@ -313,7 +313,7 @@ contract WrappedNFTHeroTest is BaseTest {
     vm.prank(from);
     underTest.transferFrom(from, to, tokenId);
 
-    assertEq(underTest.assignedMultipler(tokenId), expectingMultiplier);
+    assertEq(underTest.getNFTData(tokenId).assignedMultiplier, expectingMultiplier);
     assertEq(underTest.ownerOf(tokenId), to);
   }
 
@@ -334,7 +334,7 @@ contract WrappedNFTHeroTest is BaseTest {
     vm.prank(from);
     underTest.transferFrom(from, to, tokenId);
 
-    assertEq(underTest.assignedMultipler(tokenId), expectingAddingMultiplier);
+    assertEq(underTest.getNFTData(tokenId).assignedMultiplier, expectingAddingMultiplier);
     assertEq(underTest.ownerOf(tokenId), to);
   }
 
