@@ -179,7 +179,7 @@ contract InterestManager is IInterestManager, Ownable {
 
   function setGaugeController(address _gaugeController) external onlyOwner {
     gaugeController = _gaugeController;
-    emit GaugeControllerSet(gaugeController);
+    emit GaugeControllerSet(_gaugeController);
   }
 
   function setEpochDuration(uint32 _epochDuration) external onlyOwner {

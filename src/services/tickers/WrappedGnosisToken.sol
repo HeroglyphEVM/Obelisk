@@ -157,6 +157,6 @@ contract WrappedGnosisToken is ERC20, OApp {
     if (_lzGasLimit == 0) revert GasLimitCannotBeZero();
 
     lzGasLimit = _lzGasLimit;
-    defaultLzOption = OptionsBuilder.newOptions().addExecutorLzReceiveOption(lzGasLimit, 0);
+    defaultLzOption = OptionsBuilder.newOptions().addExecutorLzReceiveOption(_lzGasLimit, 0);
   }
 }
