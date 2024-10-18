@@ -24,13 +24,22 @@ interface IObeliskRegistry {
   event TickerLogicSet(string indexed ticker, address pool);
   event NewGenesisTickerCreated(string indexed ticker, address pool);
   event Supported(uint32 indexed supportId, address indexed supporter, uint256 amount);
-  event SupportRetrieved(uint32 indexed supportId, address indexed supporter, uint256 amount);
-  event CollectionContributed(address indexed collection, address indexed contributor, uint256 amount);
-  event CollectionContributionWithdrawn(address indexed collection, address indexed contributor, uint256 amount);
+  event SupportRetrieved(
+    uint32 indexed supportId, address indexed supporter, uint256 amount
+  );
+  event CollectionContributed(
+    address indexed collection, address indexed contributor, uint256 amount
+  );
+  event CollectionContributionWithdrawn(
+    address indexed collection, address indexed contributor, uint256 amount
+  );
   event Claimed(address indexed collection, address indexed contributor, uint256 amount);
   event SlotBought(address indexed wrappedNFT, uint256 toCollection, uint256 toTreasury);
   event CollectionAllowed(
-    address indexed collection, uint256 totalSupply, uint32 collectionStartedUnixTime, bool premium
+    address indexed collection,
+    uint256 totalSupply,
+    uint32 collectionStartedUnixTime,
+    bool premium
   );
   event TreasurySet(address indexed treasury);
   event MaxRewardPerCollectionSet(uint256 maxRewardPerCollection);
@@ -115,13 +124,19 @@ interface IObeliskRegistry {
    * @param _user User address
    * @param _collection Collection address
    */
-  function getUserContribution(address _user, address _collection) external view returns (ContributionInfo memory);
+  function getUserContribution(address _user, address _collection)
+    external
+    view
+    returns (ContributionInfo memory);
 
   /**
    * @notice Get collection rewards
    * @param _collection Collection address
    */
-  function getCollectionRewards(address _collection) external view returns (CollectionRewards memory);
+  function getCollectionRewards(address _collection)
+    external
+    view
+    returns (CollectionRewards memory);
 
   /**
    * @notice Get collection

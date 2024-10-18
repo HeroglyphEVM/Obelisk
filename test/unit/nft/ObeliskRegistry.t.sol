@@ -8,8 +8,7 @@ import {
   IObeliskRegistry,
   IDripVault,
   WrappedNFTHero,
-  Ownable,
-  GenesisTokenPool
+  Ownable
 } from "src/services/nft/ObeliskRegistry.sol";
 
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
@@ -17,6 +16,7 @@ import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 import { FailOnReceive } from "test/mock/contract/FailOnReceive.t.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { Create } from "src/lib/Create.sol";
 
 contract ObeliskRegistryTest is BaseTest {
   uint256 private constant REQUIRED_ETH_TO_ENABLE_COLLECTION = 100e18;
@@ -44,11 +44,22 @@ contract ObeliskRegistryTest is BaseTest {
     _setupMockCalls();
 
     underTest = new ObeliskRegistryHarness(
-      owner, treasury, hctMock, nftPassMock, dripVaultETHMock, dripVaultDAIMock, address(DAI)
+      owner,
+      treasury,
+      hctMock,
+      nftPassMock,
+      dripVaultETHMock,
+      dripVaultDAIMock,
+      address(DAI)
     );
 
     vm.prank(owner);
-    underTest.allowNewCollection(collectionMock, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED);
+    underTest.allowNewCollection(
+      collectionMock, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED, false
+    );
+
+    vm.prank(owner);
+    underTest.setDataAsserter(dataAsserterMock);
   }
 
   function _setupMockVariables() internal {
@@ -69,21 +80,45 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function _setupMockCalls() internal {
-    vm.mockCall(dripVaultETHMock, abi.encodeWithSelector(IDripVault.deposit.selector), abi.encode(true));
-    vm.mockCall(dripVaultETHMock, abi.encodeWithSelector(IDripVault.withdraw.selector), abi.encode(true));
-    vm.mockCall(dripVaultDAIMock, abi.encodeWithSelector(IDripVault.deposit.selector), abi.encode(true));
-    vm.mockCall(dripVaultDAIMock, abi.encodeWithSelector(IDripVault.withdraw.selector), abi.encode(true));
+    vm.mockCall(
+      dripVaultETHMock,
+      abi.encodeWithSelector(IDripVault.deposit.selector),
+      abi.encode(true)
+    );
+    vm.mockCall(
+      dripVaultETHMock,
+      abi.encodeWithSelector(IDripVault.withdraw.selector),
+      abi.encode(true)
+    );
+    vm.mockCall(
+      dripVaultDAIMock,
+      abi.encodeWithSelector(IDripVault.deposit.selector),
+      abi.encode(true)
+    );
+    vm.mockCall(
+      dripVaultDAIMock,
+      abi.encodeWithSelector(IDripVault.withdraw.selector),
+      abi.encode(true)
+    );
   }
 
   function test_constructor() external {
     underTest = new ObeliskRegistryHarness(
-      owner, treasury, hctMock, nftPassMock, dripVaultETHMock, dripVaultDAIMock, address(DAI)
+      owner,
+      treasury,
+      hctMock,
+      nftPassMock,
+      dripVaultETHMock,
+      dripVaultDAIMock,
+      address(DAI)
     );
 
     assertEq(underTest.owner(), owner);
     assertEq(underTest.HCT(), hctMock);
     assertEq(underTest.NFT_PASS(), nftPassMock);
-    assertEq(underTest.REQUIRED_ETH_TO_ENABLE_COLLECTION(), REQUIRED_ETH_TO_ENABLE_COLLECTION);
+    assertEq(
+      underTest.REQUIRED_ETH_TO_ENABLE_COLLECTION(), REQUIRED_ETH_TO_ENABLE_COLLECTION
+    );
   }
 
   function test_addToCollection_whenTooLowValue_thenReverts() external prankAs(user) {
@@ -93,7 +128,9 @@ contract ObeliskRegistryTest is BaseTest {
 
   function test_addToCollection_whenOverRequiredETH_thenReverts() external prankAs(user) {
     vm.expectRevert(IObeliskRegistry.TooManyEth.selector);
-    underTest.addToCollection{ value: REQUIRED_ETH_TO_ENABLE_COLLECTION + 1 }(collectionMock);
+    underTest.addToCollection{ value: REQUIRED_ETH_TO_ENABLE_COLLECTION + 1 }(
+      collectionMock
+    );
 
     underTest.addToCollection{ value: REQUIRED_ETH_TO_ENABLE_COLLECTION }(collectionMock);
 
@@ -101,10 +138,15 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.addToCollection{ value: 0.01e18 }(collectionMock);
   }
 
-  function test_addToCollection_whenGoalNotReached_thenAddsEthAndDepositsIntoDripVault() external prankAs(user) {
+  function test_addToCollection_whenGoalNotReached_thenAddsEthAndDepositsIntoDripVault()
+    external
+    prankAs(user)
+  {
     uint256 givingAmount = 1.32e18;
 
-    vm.expectCall(dripVaultETHMock, givingAmount, abi.encodeWithSelector(IDripVault.deposit.selector));
+    vm.expectCall(
+      dripVaultETHMock, givingAmount, abi.encodeWithSelector(IDripVault.deposit.selector)
+    );
 
     expectExactEmit();
     emit IObeliskRegistry.CollectionContributed(collectionMock, user, givingAmount);
@@ -114,7 +156,10 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(underTest.getUserContribution(user, collectionMock).deposit, givingAmount);
   }
 
-  function test_addToCollection_whenGoalReached_thenCreatesWrappedNFT() external prankAs(user) {
+  function test_addToCollection_whenGoalReached_thenCreatesWrappedNFT()
+    external
+    prankAs(user)
+  {
     uint256 givingAmount = REQUIRED_ETH_TO_ENABLE_COLLECTION;
 
     expectExactEmit();
@@ -126,11 +171,16 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_forceActiveCollection_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.forceActiveCollection(collectionMock);
   }
 
-  function test_forceActiveCollection_whenCollectionNotAllowed_thenReverts() external pranking {
+  function test_forceActiveCollection_whenCollectionNotAllowed_thenReverts()
+    external
+    pranking
+  {
     changePrank(owner);
     vm.expectRevert(IObeliskRegistry.CollectionNotAllowed.selector);
     underTest.forceActiveCollection(generateAddress());
@@ -145,16 +195,25 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.forceActiveCollection(collectionMock);
   }
 
-  function test_forceActiveCollection_whenNoContribution_thenAddsToAllowedCollections() external prankAs(owner) {
+  function test_forceActiveCollection_whenNoContribution_thenAddsToAllowedCollections()
+    external
+    prankAs(owner)
+  {
     changePrank(owner);
     vm.expectEmit(true, false, false, false);
     emit IObeliskRegistry.WrappedNFTCreated(collectionMock, address(0));
     underTest.forceActiveCollection(collectionMock);
 
-    assertEq(underTest.getCollection(collectionMock).contributionBalance, REQUIRED_ETH_TO_ENABLE_COLLECTION);
+    assertEq(
+      underTest.getCollection(collectionMock).contributionBalance,
+      REQUIRED_ETH_TO_ENABLE_COLLECTION
+    );
   }
 
-  function test_forceActiveCollection_whenSomeContribution_thenAddsToAllowedCollections() external pranking {
+  function test_forceActiveCollection_whenSomeContribution_thenAddsToAllowedCollections()
+    external
+    pranking
+  {
     changePrank(user);
     underTest.addToCollection{ value: 25e18 }(collectionMock);
 
@@ -163,7 +222,10 @@ contract ObeliskRegistryTest is BaseTest {
     emit IObeliskRegistry.WrappedNFTCreated(collectionMock, address(0));
     underTest.forceActiveCollection(collectionMock);
 
-    assertEq(underTest.getCollection(collectionMock).contributionBalance, REQUIRED_ETH_TO_ENABLE_COLLECTION);
+    assertEq(
+      underTest.getCollection(collectionMock).contributionBalance,
+      REQUIRED_ETH_TO_ENABLE_COLLECTION
+    );
   }
 
   function test_createWrappedNFT_thenVerifyWrappedNFTConfiguration() external {
@@ -172,7 +234,9 @@ contract ObeliskRegistryTest is BaseTest {
     uint32 collectionStartedUnixTime = 999_928;
 
     WrappedNFTHero wrappedNFT_nonPremium = WrappedNFTHero(
-      underTest.exposed_createWrappedNFT(collection_nonPremium, 10_000, collectionStartedUnixTime, false)
+      underTest.exposed_createWrappedNFT(
+        collection_nonPremium, 10_000, collectionStartedUnixTime, false
+      )
     );
 
     assertTrue(underTest.isWrappedNFT(address(wrappedNFT_nonPremium)));
@@ -180,11 +244,16 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(address(wrappedNFT_nonPremium.HCT()), hctMock);
     assertEq(address(wrappedNFT_nonPremium.INPUT_COLLECTION()), collection_nonPremium);
     assertEq(address(wrappedNFT_nonPremium.obeliskRegistry()), address(underTest));
-    assertEq(wrappedNFT_nonPremium.COLLECTION_STARTED_UNIX_TIME(), collectionStartedUnixTime);
+    assertEq(
+      wrappedNFT_nonPremium.COLLECTION_STARTED_UNIX_TIME(), collectionStartedUnixTime
+    );
     assertFalse(wrappedNFT_nonPremium.PREMIUM());
 
-    WrappedNFTHero wrappedNFT_premium =
-      WrappedNFTHero(underTest.exposed_createWrappedNFT(collection_premium, 10_000, collectionStartedUnixTime, true));
+    WrappedNFTHero wrappedNFT_premium = WrappedNFTHero(
+      underTest.exposed_createWrappedNFT(
+        collection_premium, 10_000, collectionStartedUnixTime, true
+      )
+    );
 
     assertTrue(underTest.isWrappedNFT(address(wrappedNFT_premium)));
 
@@ -195,7 +264,10 @@ contract ObeliskRegistryTest is BaseTest {
     assertTrue(wrappedNFT_premium.PREMIUM());
   }
 
-  function test_removeFromCollection_whenAmountExceedsDeposit_thenReverts() external prankAs(user) {
+  function test_removeFromCollection_whenAmountExceedsDeposit_thenReverts()
+    external
+    prankAs(user)
+  {
     vm.expectRevert(IObeliskRegistry.AmountExceedsDeposit.selector);
     underTest.removeFromCollection(collectionMock, 1);
   }
@@ -208,36 +280,59 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.removeFromCollection(collectionMock, 1);
   }
 
-  function test_removeFromCollection_whenAmountIsZero_thenRemovesAll() external prankAs(user) {
+  function test_removeFromCollection_whenAmountIsZero_thenRemovesAll()
+    external
+    prankAs(user)
+  {
     uint256 givingAmount = 32.32e18;
     underTest.addToCollection{ value: givingAmount }(collectionMock);
 
-    vm.expectCall(dripVaultETHMock, abi.encodeWithSelector(IDripVault.withdraw.selector, user, givingAmount));
+    vm.expectCall(
+      dripVaultETHMock,
+      abi.encodeWithSelector(IDripVault.withdraw.selector, user, givingAmount)
+    );
 
     expectExactEmit();
-    emit IObeliskRegistry.CollectionContributionWithdrawn(collectionMock, user, givingAmount);
+    emit IObeliskRegistry.CollectionContributionWithdrawn(
+      collectionMock, user, givingAmount
+    );
     underTest.removeFromCollection(collectionMock, 0);
 
     assertEq(underTest.getCollection(collectionMock).contributionBalance, 0);
     assertEq(underTest.getUserContribution(user, collectionMock).deposit, 0);
   }
 
-  function test_removeFromCollection_whenGoalNotReached_thenRemovesAmount() external prankAs(user) {
+  function test_removeFromCollection_whenGoalNotReached_thenRemovesAmount()
+    external
+    prankAs(user)
+  {
     uint256 givingAmount = 32.32e18;
     uint256 withdrawn = 13.211e18;
     underTest.addToCollection{ value: givingAmount }(collectionMock);
 
-    vm.expectCall(dripVaultETHMock, abi.encodeWithSelector(IDripVault.withdraw.selector, user, withdrawn));
+    vm.expectCall(
+      dripVaultETHMock,
+      abi.encodeWithSelector(IDripVault.withdraw.selector, user, withdrawn)
+    );
 
     expectExactEmit();
     emit IObeliskRegistry.CollectionContributionWithdrawn(collectionMock, user, withdrawn);
     underTest.removeFromCollection(collectionMock, withdrawn);
 
-    assertEq(underTest.getCollection(collectionMock).contributionBalance, givingAmount - withdrawn);
-    assertEq(underTest.getUserContribution(user, collectionMock).deposit, givingAmount - withdrawn);
+    assertEq(
+      underTest.getCollection(collectionMock).contributionBalance,
+      givingAmount - withdrawn
+    );
+    assertEq(
+      underTest.getUserContribution(user, collectionMock).deposit,
+      givingAmount - withdrawn
+    );
   }
 
-  function test_supportYieldPool_whenBothAmountsAreSet_thenReverts() external prankAs(user) {
+  function test_supportYieldPool_whenBothAmountsAreSet_thenReverts()
+    external
+    prankAs(user)
+  {
     vm.expectRevert(IObeliskRegistry.OnlyOneValue.selector);
     underTest.supportYieldPool{ value: 1 }(1);
   }
@@ -250,7 +345,10 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.supportYieldPool{ value: 0 }(0.9e18);
   }
 
-  function test_supportYieldPool_whenETH_thenUpdatesSupportersAndDepositInDripVault() external prankAs(user) {
+  function test_supportYieldPool_whenETH_thenUpdatesSupportersAndDepositInDripVault()
+    external
+    prankAs(user)
+  {
     uint256 supportAmount = 13.32e18;
 
     IObeliskRegistry.Supporter memory expectedSupporter = IObeliskRegistry.Supporter({
@@ -261,7 +359,9 @@ contract ObeliskRegistryTest is BaseTest {
       removed: false
     });
 
-    vm.expectCall(dripVaultETHMock, supportAmount, abi.encodeWithSelector(IDripVault.deposit.selector));
+    vm.expectCall(
+      dripVaultETHMock, supportAmount, abi.encodeWithSelector(IDripVault.deposit.selector)
+    );
 
     expectExactEmit();
     emit IObeliskRegistry.Supported(1, user, supportAmount);
@@ -271,7 +371,10 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(underTest.supportId(), 1);
   }
 
-  function test_supportYieldPool_whenDAI_thenUpdatesSupportersAndDepositInDripVault() external prankAs(user) {
+  function test_supportYieldPool_whenDAI_thenUpdatesSupportersAndDepositInDripVault()
+    external
+    prankAs(user)
+  {
     uint256 supportAmount = 13.32e18;
 
     IObeliskRegistry.Supporter memory expectedSupporter = IObeliskRegistry.Supporter({
@@ -292,12 +395,18 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(underTest.supportId(), 1);
   }
 
-  function test_retrieveSupportToYieldPool_whenNotSupporter_thenReverts() external prankAs(user) {
+  function test_retrieveSupportToYieldPool_whenNotSupporter_thenReverts()
+    external
+    prankAs(user)
+  {
     vm.expectRevert(IObeliskRegistry.NotSupporterDepositor.selector);
     underTest.retrieveSupportToYieldPool(1);
   }
 
-  function test_retrieveSupportToYieldPool_whenSupportNotFinished_thenReverts() external prankAs(user) {
+  function test_retrieveSupportToYieldPool_whenSupportNotFinished_thenReverts()
+    external
+    prankAs(user)
+  {
     underTest.supportYieldPool{ value: 1.1e18 }(0);
 
     skip(underTest.SUPPORT_LOCK_DURATION() - 1);
@@ -306,7 +415,10 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.retrieveSupportToYieldPool(1);
   }
 
-  function test_retrieveSupportToYieldPool_whenAlreadyRemoved_thenReverts() external prankAs(user) {
+  function test_retrieveSupportToYieldPool_whenAlreadyRemoved_thenReverts()
+    external
+    prankAs(user)
+  {
     underTest.supportYieldPool{ value: 1.1e18 }(0);
 
     skip(underTest.SUPPORT_LOCK_DURATION());
@@ -316,13 +428,19 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.retrieveSupportToYieldPool(1);
   }
 
-  function test_retrieveSupportToYieldPool_whenETH_thenWithdrawsFromDripVault() external prankAs(user) {
+  function test_retrieveSupportToYieldPool_whenETH_thenWithdrawsFromDripVault()
+    external
+    prankAs(user)
+  {
     uint256 supportAmount = 13.32e18;
     underTest.supportYieldPool{ value: supportAmount }(0);
 
     skip(underTest.SUPPORT_LOCK_DURATION());
 
-    vm.expectCall(dripVaultETHMock, abi.encodeWithSelector(IDripVault.withdraw.selector, user, supportAmount));
+    vm.expectCall(
+      dripVaultETHMock,
+      abi.encodeWithSelector(IDripVault.withdraw.selector, user, supportAmount)
+    );
 
     expectExactEmit();
     emit IObeliskRegistry.SupportRetrieved(1, user, supportAmount);
@@ -331,13 +449,19 @@ contract ObeliskRegistryTest is BaseTest {
     assertTrue(underTest.getSupporter(1).removed);
   }
 
-  function test_retrieveSupportToYieldPool_whenDAI_thenWithdrawsFromDripVault() external prankAs(user) {
+  function test_retrieveSupportToYieldPool_whenDAI_thenWithdrawsFromDripVault()
+    external
+    prankAs(user)
+  {
     uint256 supportAmount = 13.32e18;
     underTest.supportYieldPool(supportAmount);
 
     skip(underTest.SUPPORT_LOCK_DURATION());
 
-    vm.expectCall(dripVaultDAIMock, abi.encodeWithSelector(IDripVault.withdraw.selector, user, supportAmount));
+    vm.expectCall(
+      dripVaultDAIMock,
+      abi.encodeWithSelector(IDripVault.withdraw.selector, user, supportAmount)
+    );
 
     expectExactEmit();
     emit IObeliskRegistry.SupportRetrieved(1, user, supportAmount);
@@ -347,7 +471,9 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_setTickerLogic_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setTickerLogic("ticker", generateAddress("TickerPool"));
   }
 
@@ -360,38 +486,6 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.setTickerLogic(ticker, expectedPool);
 
     assertEq(underTest.getTickerLogic(ticker), expectedPool);
-  }
-
-  function test_addNewGenesisTicker_asNonOwner_thenReverts() external prankAs(user) {
-    string memory ticker = "Ticker";
-
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
-    underTest.addNewGenesisTicker(ticker, mockGenesisWrappedToken, mockGenesisKey);
-  }
-
-  function test_addNewGenesisTicker_whenTickerExists_thenReverts() external prankAs(owner) {
-    string memory ticker = "Ticker";
-
-    underTest.setTickerLogic(ticker, generateAddress("TickerPool"));
-
-    vm.expectRevert(IObeliskRegistry.TickerAlreadyExists.selector);
-    underTest.addNewGenesisTicker(ticker, mockGenesisWrappedToken, mockGenesisKey);
-  }
-
-  function test_addNewGenesisTicker_thenCreatesNewTickerPool() external prankAs(owner) {
-    string memory ticker = "Ticker";
-
-    vm.expectEmit(true, false, false, false);
-    emit IObeliskRegistry.NewGenesisTickerCreated(ticker, address(0));
-    GenesisTokenPool pool =
-      GenesisTokenPool(underTest.addNewGenesisTicker(ticker, mockGenesisWrappedToken, mockGenesisKey));
-
-    assertEq(underTest.getTickerLogic(ticker), address(pool));
-
-    assertEq(pool.owner(), owner);
-    assertEq(address(pool.registry()), address(underTest));
-    assertEq(address(pool.GENESIS_KEY()), mockGenesisKey);
-    assertEq(address(pool.REWARD_TOKEN()), mockGenesisWrappedToken);
   }
 
   function test_onSlotBought_whenNotWrappedNFT_thenReverts() external prankAs(user) {
@@ -418,7 +512,8 @@ contract ObeliskRegistryTest is BaseTest {
 
   function test_onSlotBought_thenSplitBetweenCollectionAndTreasury() external pranking {
     uint256 givingAmount = 1.32e18;
-    uint256 expectedCollectionReward = givingAmount * underTest.COLLECTION_REWARD_PERCENT() / 10_000;
+    uint256 expectedCollectionReward =
+      givingAmount * underTest.COLLECTION_REWARD_PERCENT() / 10_000;
     uint256 expectedTreasuryReward = givingAmount - expectedCollectionReward;
 
     changePrank(owner);
@@ -430,14 +525,22 @@ contract ObeliskRegistryTest is BaseTest {
     changePrank(wrappedNFT);
 
     expectExactEmit();
-    emit IObeliskRegistry.SlotBought(wrappedNFT, expectedCollectionReward, expectedTreasuryReward);
+    emit IObeliskRegistry.SlotBought(
+      wrappedNFT, expectedCollectionReward, expectedTreasuryReward
+    );
     underTest.onSlotBought{ value: givingAmount }();
 
-    assertEq(underTest.getCollectionRewards(collectionMock).totalRewards, expectedCollectionReward);
+    assertEq(
+      underTest.getCollectionRewards(collectionMock).totalRewards,
+      expectedCollectionReward
+    );
     assertEq(treasury.balance, expectedTreasuryReward);
   }
 
-  function test_onSlotBought_whenMaxRewardPerCollection_thenSendsExtraToTreasury() external pranking {
+  function test_onSlotBought_whenMaxRewardPerCollection_thenSendsExtraToTreasury()
+    external
+    pranking
+  {
     uint256 maxReward = underTest.maxRewardPerCollection();
     uint256 sending = maxReward * 3;
 
@@ -453,10 +556,15 @@ contract ObeliskRegistryTest is BaseTest {
     changePrank(wrappedNFT);
 
     expectExactEmit();
-    emit IObeliskRegistry.SlotBought(wrappedNFT, expectedCollectionReward, expectedTreasuryReward);
+    emit IObeliskRegistry.SlotBought(
+      wrappedNFT, expectedCollectionReward, expectedTreasuryReward
+    );
     underTest.onSlotBought{ value: sending }();
 
-    assertEq(underTest.getCollectionRewards(collectionMock).totalRewards, expectedCollectionReward);
+    assertEq(
+      underTest.getCollectionRewards(collectionMock).totalRewards,
+      expectedCollectionReward
+    );
     assertEq(treasury.balance, expectedTreasuryReward);
   }
 
@@ -467,7 +575,8 @@ contract ObeliskRegistryTest is BaseTest {
 
   function test_claim_thenSendsRewards() external pranking {
     uint256 givingAmount = 1.32e18;
-    uint256 expectedCollectionReward = givingAmount * underTest.COLLECTION_REWARD_PERCENT() / 10_000;
+    uint256 expectedCollectionReward =
+      givingAmount * underTest.COLLECTION_REWARD_PERCENT() / 10_000;
 
     changePrank(owner);
     underTest.forceActiveCollection(collectionMock);
@@ -505,7 +614,8 @@ contract ObeliskRegistryTest is BaseTest {
       totalAmount += sanitizedAmount;
       _amounts[i] = sanitizedAmount;
 
-      currentUser = generateAddress(string.concat("User-", Strings.toString(i)), sanitizedAmount);
+      currentUser =
+        generateAddress(string.concat("User-", Strings.toString(i)), sanitizedAmount);
       fizzUsers[i] = currentUser;
 
       changePrank(currentUser);
@@ -514,7 +624,8 @@ contract ObeliskRegistryTest is BaseTest {
     }
 
     address wrappedNFT = address(underTest.getCollection(collectionMock).wrappedVersion);
-    uint256 totalRewardToContributor = _slotBought * underTest.COLLECTION_REWARD_PERCENT() / 10_000;
+    uint256 totalRewardToContributor =
+      _slotBought * underTest.COLLECTION_REWARD_PERCENT() / 10_000;
 
     changePrank(wrappedNFT);
     vm.deal(wrappedNFT, _slotBought);
@@ -540,52 +651,14 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.exposed_createContract(type(ObeliskRegistry).creationCode);
   }
 
-  function test_allowNewCollectionPremium_whenNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
-    underTest.allowNewCollectionPremium(collectionMock, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED);
-  }
-
-  function test_allowNewCollectionPremium_whenCollectionAlreadyExists_thenReverts() external pranking {
-    address collection = generateAddress("Collection");
-
-    changePrank(owner);
-    underTest.allowNewCollectionPremium(collection, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED);
-
-    vm.expectRevert(IObeliskRegistry.CollectionAlreadyAllowed.selector);
-    underTest.allowNewCollectionPremium(collection, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED);
-  }
-
-  function test_allowNewCollectionPremium_thenUpdatesCollection() external pranking {
-    address collection = generateAddress("Collection");
-    uint256 totalSupply = 123.3e18;
-    uint32 startedAt = 1_714_329_600;
-
-    IObeliskRegistry.Collection memory expectedCollection = IObeliskRegistry.Collection({
-      wrappedVersion: address(0),
-      totalSupply: totalSupply,
-      contributionBalance: 0,
-      collectionStartedUnixTime: startedAt,
-      allowed: true,
-      premium: true
-    });
-
-    changePrank(owner);
-    expectExactEmit();
-    emit IObeliskRegistry.CollectionAllowed(collection, totalSupply, startedAt, true);
-    underTest.allowNewCollectionPremium(collection, totalSupply, startedAt);
-
-    assertEq(abi.encode(underTest.getCollection(collection)), abi.encode(expectedCollection));
-  }
-
   function test_allowNewCollection_whenNotAuthorized_thenReverts() external prankAs(user) {
     vm.expectRevert(abi.encodeWithSelector(IObeliskRegistry.NotAuthorized.selector));
-    underTest.allowNewCollection(collectionMock, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED);
+    underTest.allowNewCollection(
+      collectionMock, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED, false
+    );
   }
 
   function test_allowNewCollection_thenUpdatesCollection() external pranking {
-    changePrank(owner);
-    underTest.setDataAsserter(dataAsserterMock);
-
     address[2] memory authorizedUsers;
     authorizedUsers[0] = owner;
     authorizedUsers[1] = dataAsserterMock;
@@ -609,14 +682,44 @@ contract ObeliskRegistryTest is BaseTest {
       changePrank(owner);
       expectExactEmit();
       emit IObeliskRegistry.CollectionAllowed(collection, totalSupply, startedAt, false);
-      underTest.allowNewCollection(collection, totalSupply, startedAt);
+      underTest.allowNewCollection(collection, totalSupply, startedAt, false);
 
-      assertEq(abi.encode(underTest.getCollection(collection)), abi.encode(expectedCollection));
+      assertEq(
+        abi.encode(underTest.getCollection(collection)), abi.encode(expectedCollection)
+      );
     }
   }
 
+  function test_allowNewCollection_givenPremium_whenNotOwner_thenPremiumIsSetToFalse()
+    external
+    prankAs(dataAsserterMock)
+  {
+    address collection = generateAddress("Collection");
+
+    underTest.allowNewCollection(
+      collection, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED, true
+    );
+
+    assertFalse(underTest.getCollection(collection).premium);
+  }
+
+  function test_allowNewCollection_givenPremium_whenOwner_thenSetsPremiumTrue()
+    external
+    prankAs(owner)
+  {
+    address collection = generateAddress("Collection");
+
+    underTest.allowNewCollection(
+      collection, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED, true
+    );
+
+    assertTrue(underTest.getCollection(collection).premium);
+  }
+
   function test_setTreasury_whenNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setTreasury(generateAddress("Treasury"));
   }
 
@@ -630,12 +733,20 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(underTest.treasury(), newTreasury);
   }
 
-  function test_setMaxRewardPerCollection_whenNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+  function test_setMaxRewardPerCollection_whenNotOwner_thenReverts()
+    external
+    prankAs(user)
+  {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setMaxRewardPerCollection(1e18);
   }
 
-  function test_setMaxRewardPerCollection_thenUpdatesMaxRewardPerCollection() external prankAs(owner) {
+  function test_setMaxRewardPerCollection_thenUpdatesMaxRewardPerCollection()
+    external
+    prankAs(owner)
+  {
     uint256 newMaxReward = 1e18;
 
     expectExactEmit();
@@ -646,7 +757,9 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_setDataAsserter_asNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setDataAsserter(address(0));
   }
 
@@ -661,7 +774,9 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_toggleIsWrappedNFTFor_whenNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.toggleIsWrappedNFTFor(collectionMock, generateAddress("WrappedNFT"), true);
   }
 
@@ -685,16 +800,20 @@ contract ObeliskRegistryHarness is ObeliskRegistry {
     address _dripVaultETH,
     address _dripVaultDAI,
     address _dai
-  ) ObeliskRegistry(_owner, _treasury, _hct, _nftPass, _dripVaultETH, _dripVaultDAI, _dai) { }
+  )
+    ObeliskRegistry(_owner, _treasury, _hct, _nftPass, _dripVaultETH, _dripVaultDAI, _dai)
+  { }
 
-  function exposed_createWrappedNFT(address _collection, uint256 _totalSupply, uint32 _blockOfCreation, bool _premium)
-    external
-    returns (address addr_)
-  {
+  function exposed_createWrappedNFT(
+    address _collection,
+    uint256 _totalSupply,
+    uint32 _blockOfCreation,
+    bool _premium
+  ) external returns (address addr_) {
     addr_ = _createWrappedNFT(_collection, _totalSupply, _blockOfCreation, _premium);
   }
 
   function exposed_createContract(bytes memory bytecode) external returns (address addr_) {
-    addr_ = _createContract(bytecode);
+    addr_ = Create.createContract(bytecode);
   }
 }

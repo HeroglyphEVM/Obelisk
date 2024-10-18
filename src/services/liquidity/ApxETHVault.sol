@@ -10,9 +10,12 @@ contract ApxETHVault is BaseDripVault {
   IApxETH public immutable APXETH;
   IPirexEth public immutable PIREX_ETH;
 
-  constructor(address _owner, address _gob, address _apxETH, address _rateReceiver)
-    BaseDripVault(address(0), _owner, _gob, _rateReceiver)
-  {
+  constructor(
+    address _owner,
+    address _obeliskRegistry,
+    address _apxETH,
+    address _rateReceiver
+  ) BaseDripVault(address(0), _owner, _obeliskRegistry, _rateReceiver) {
     APXETH = IApxETH(_apxETH);
     PIREX_ETH = IPirexEth(IApxETH(_apxETH).pirexEth());
   }

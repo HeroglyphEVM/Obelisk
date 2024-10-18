@@ -54,6 +54,7 @@ include_push_bytes = true
 localhost = "http://127.0.0.1:8545"
 mainnet = "${RPC_MAINNET}"
 sepolia = "${RPC_SEPOLIA}"
+forkSepolia = "${RPC_SEPOLIA_FORK}"
 arbitrum = "${RPC_ARBITRUM}"
 arbitrumOneTestnet = "${RPC_ARBITRUM_SEPOLIA}"
 polygon = "${RPC_POLYGON}"
@@ -86,7 +87,7 @@ gnosis = { key = "${GNOSISSCAN_KEY}",  url = "https://api.gnosisscan.io/api"}
 
 
 [fmt]
-line_length = 120
+line_length = 90
 tab_width = 2
 bracket_spacing = true
 int_types = "long"

@@ -6,6 +6,7 @@ library Chains {
     uint256 chainId = block.chainid;
 
     if (chainId == 1) return "ethereum";
+    if (chainId == 16_969) return "forkSepolia";
     if (chainId == 56) return "bsc";
     if (chainId == 10) return "optimism";
     if (chainId == 42_161) return "arbitrum";
