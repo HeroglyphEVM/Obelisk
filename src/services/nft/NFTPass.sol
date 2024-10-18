@@ -53,12 +53,14 @@ contract NFTPass is INFTPass, IdentityERC721 {
     uint256 remainingValue = msg.value - costAtDuringTx;
     bool success;
 
-    (success,) = treasury.call{ value: costAtDuringTx }("");
-    if (!success) revert TransferFailed();
+    if (remainingValue > tx.gasprice * SEND_ETH_GAS_MINIMUM) {
+      (success,) = msg.sender.call{ value: remainingValue }("");
+      if (!success) revert TransferFailed();
 
-    if (remainingValue < tx.gasprice * SEND_ETH_GAS_MINIMUM) return;
+      remainingValue = 0;
+    }
 
-    (success,) = msg.sender.call{ value: remainingValue }("");
+    (success,) = treasury.call{ value: costAtDuringTx + remainingValue }("");
     if (!success) revert TransferFailed();
   }
 
