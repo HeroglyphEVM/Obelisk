@@ -41,8 +41,10 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
 
     if (msg.value != activationPrice) revert InsufficientActivationPrice();
 
-    _removeOldTickers(identityReceivers[_hashmaskId], _hashmaskId, true);
+    address oldReceiver = identityReceivers[_hashmaskId];
     identityReceivers[_hashmaskId] = msg.sender;
+
+    _updateName(_hashmaskId, oldReceiver, msg.sender);
 
     (bool success,) = treasury.call{ value: msg.value }("");
     if (!success) revert TransferFailed();
