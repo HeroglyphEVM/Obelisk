@@ -121,9 +121,7 @@ contract WrappedGnosisToken is ERC20, OApp {
   function _credit(address _to, uint256 _value, bool) internal returns (uint256) {
     IGenesisTokenPool cachedPool = pool;
 
-    if (_to == address(0)) {
-      _to = owner();
-    } else if (_to == address(cachedPool)) {
+    if (_to == address(cachedPool)) {
       cachedPool.notifyRewardAmount(_value);
     }
 
