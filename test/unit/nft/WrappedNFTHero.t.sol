@@ -266,6 +266,23 @@ contract WrappedNFTHeroTest is BaseTest {
     assertTrue(underTest.exposed_claimRequirements(1));
   }
 
+  function test_updateMultiplier_whenNotNFTHolder_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+    underTest.wrap(tokenId);
+
+    changePrank(generateAddress("NotHolder"));
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotNFTHolder.selector));
+    underTest.updateMultiplier(tokenId);
+  }
+
+  function test_updateMultiplier_whenSameMultiplier_thenReverts() external prankAs(user) {
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+    underTest.wrap(tokenId);
+
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.SameMultiplier.selector));
+    underTest.updateMultiplier(tokenId);
+  }
+
   function test_mint_thenAddPower() external {
     uint256 tokenId = 33;
     uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();

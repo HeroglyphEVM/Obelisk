@@ -141,6 +141,20 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     return super._update(to, tokenId, auth);
   }
 
+  function updateMultiplier(uint256 _tokenId) external {
+    NFTData storage nftdata = nftData[_tokenId];
+    if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
+
+    uint128 newMultiplier = getWrapperMultiplier();
+    uint128 multiplier = nftdata.assignedMultiplier;
+
+    if (newMultiplier == multiplier) revert SameMultiplier();
+
+    HCT.removePower(msg.sender, multiplier);
+    HCT.addPower(msg.sender, newMultiplier);
+    nftData[_tokenId].assignedMultiplier = newMultiplier;
+  }
+
   function getWrapperMultiplier() public view returns (uint128) {
     if (PREMIUM) return uint128(MAX_RATE);
 
