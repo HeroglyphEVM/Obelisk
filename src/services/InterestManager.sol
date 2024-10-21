@@ -59,6 +59,8 @@ contract InterestManager is IInterestManager, Ownable {
     PIREX_ETH = IPirexEth(IApxETH(address(APX_ETH)).pirexEth());
 
     epochDuration = 7 days;
+
+    TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, type(uint256).max);
   }
 
   function applyGauges(address[] memory _megapools, uint128[] memory _weights) external override {
@@ -146,8 +148,6 @@ contract InterestManager is IInterestManager, Ownable {
     DRIP_VAULT_DAI.claim();
     uint256 daiBalance = DAI.balanceOf(address(this));
     if (daiBalance < MINIMUM_SWAP_DAI) return 0;
-
-    TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, daiBalance);
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
       tokenIn: address(DAI),

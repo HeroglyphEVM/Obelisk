@@ -90,6 +90,8 @@ contract InterestManagerTest is BaseTest {
     assertEq(address(underTest.WETH()), address(weth));
     assertEq(address(underTest.PIREX_ETH()), mockPirexEth);
     assertEq(address(underTest.APX_ETH()), address(axpETH));
+    assertEq(dai.allowance(address(underTest), mockSwapRouter), type(uint256).max);
+
     assertEq(underTest.epochId(), 0);
   }
 
@@ -269,8 +271,6 @@ contract InterestManagerTest is BaseTest {
 
     assertEq(claimed, reward);
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
-    //Since we are mocking the swap router, allowance won't be consumed.
-    assertEq(dai.allowance(address(underTest), mockSwapRouter), daiReward);
   }
 
   function test_claim_thenSendsRewards() external pranking {
