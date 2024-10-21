@@ -77,15 +77,18 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   function _claim(address _holder, bool _ignoreRewards) internal nonReentrant {
     INTEREST_MANAGER.claim();
     uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this));
+    uint256 holderVirtualBalance = virtualBalances[_holder];
+    uint256 yieldPerTokenInRayCached = yieldPerTokenInRay;
+    uint256 totalVirtualBalanceCached = totalVirtualBalance;
 
-    if (totalVirtualBalance > 0) {
-      yieldPerTokenInRay = yieldPerTokenInRay + ShareableMath.rdiv(_getNewYield(), totalVirtualBalance);
+    if (totalVirtualBalanceCached > 0) {
+      yieldPerTokenInRayCached += ShareableMath.rdiv(_getNewYield(), totalVirtualBalanceCached);
     } else if (currentYieldBalance != 0) {
       REWARD_TOKEN.transfer(owner(), currentYieldBalance);
     }
 
     uint256 last = userYieldSnapshot[_holder];
-    uint256 curr = ShareableMath.rmul(virtualBalances[_holder], yieldPerTokenInRay);
+    uint256 curr = ShareableMath.rmul(holderVirtualBalance, yieldPerTokenInRayCached);
 
     if (curr > last && !_ignoreRewards) {
       uint256 sendingReward = curr - last;
@@ -93,6 +96,8 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     }
 
     yieldBalance = REWARD_TOKEN.balanceOf(address(this));
+    userYieldSnapshot[_holder] = ShareableMath.rmulup(holderVirtualBalance, yieldPerTokenInRayCached);
+    yieldPerTokenInRay = yieldPerTokenInRayCached;
   }
 
   function updateMaxEntry(uint256 _newMaxEntry) external onlyOwner {

@@ -6,6 +6,7 @@ import "test/base/BaseTest.t.sol";
 import { Megapool } from "src/services/tickers/Megapool.sol";
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
+import { ShareableMath } from "src/lib/ShareableMath.sol";
 
 contract MegapoolTest is BaseTest {
   address private owner;
@@ -120,6 +121,7 @@ contract MegapoolTest is BaseTest {
 
     assertEq(rewardToken.balanceOf(user_01), 0.5e18);
     assertEq(rewardToken.balanceOf(user_02), 0.5e18);
+    assertEq(underTest.getYieldSnapshotOf(user_01), 0.5e18);
   }
 
   function test_claim_03() external {
