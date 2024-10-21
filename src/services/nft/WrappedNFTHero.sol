@@ -48,7 +48,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     INPUT_COLLECTION = ERC721(_inputCollection);
 
     freeSlots = _currentSupply * FREE_SLOT_BPS / MAX_BPS;
-    FREE_SLOT_FOR_ODD = uint256(keccak256(abi.encode(tx.origin, _inputCollection))) % 2 == 1;
+    FREE_SLOT_FOR_ODD = uint256(keccak256(abi.encode(_inputCollection))) % 2 == 1;
     COLLECTION_STARTED_UNIX_TIME = _collectionStartedUnixTime;
     PREMIUM = _premium;
   }
