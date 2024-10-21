@@ -82,8 +82,8 @@ contract WrappedGnosisToken is ERC20, OApp {
     emit OFTSent(msgReceipt.guid, MAINNET_LZ_ENDPOINT_ID, msg.sender, _amount);
   }
 
-  function estimateFee(uint32 _dstEid, address _to, uint256 _tokenId) external view returns (uint256) {
-    return _estimateFee(_dstEid, _generateMessage(_to, _tokenId), defaultLzOption).nativeFee;
+  function estimateFee(uint32 _dstEid, address _to, uint256 _amount) external view returns (uint256) {
+    return _estimateFee(_dstEid, _generateMessage(_to, _amount), defaultLzOption).nativeFee;
   }
 
   function _estimateFee(uint32 _dstEid, bytes memory _message, bytes memory _options)
