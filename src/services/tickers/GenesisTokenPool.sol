@@ -18,7 +18,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   uint256 internal constant PRECISION = 1e18;
   uint256 internal constant REAL_VALUE_PRECISION = PRECISION * PRECISION;
-  uint256 internal constant RATIO_DENOMINATOR = 1000;
 
   uint64 public immutable DISTRIBUTION_DURATION;
   IERC721 public immutable GENESIS_KEY;
@@ -101,10 +100,8 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
 
     uint256 elapsedTime = unixPeriodFinish - block.timestamp;
     uint256 currentAtNow = _getTimeBasedValue(elapsedTime, rewardRatePerSecond);
-    uint256 queuedRatio = Math.mulDiv(currentAtNow, RATIO_DENOMINATOR, _rewards);
 
-    //If the rewardRatePerSecond is lower than the current one, we queue the rewards
-    if (queuedRatio < RATIO_DENOMINATOR) {
+    if (_rewards > currentAtNow) {
       _notifyRewardAmount(_rewards);
       queuedReward = 0;
     } else {
