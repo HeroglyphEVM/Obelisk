@@ -39,7 +39,7 @@ contract apxETHVaultTest is BaseTest {
     uint256 amount = 2.32e18;
 
     vm.expectCall(pirexEth, amount, abi.encodeWithSelector(IPirexEth.deposit.selector, address(underTest), true));
-    underTest.deposit{ value: amount }();
+    underTest.deposit{ value: amount }(0);
   }
 
   function test_beforeWithdrawal_whenTotalBalanceIsNotZero_thenWithdrawsTransferEverything()
@@ -59,7 +59,7 @@ contract apxETHVaultTest is BaseTest {
 
     MockERC20(apxETH).mint(address(underTest), interestInAPX);
 
-    underTest.deposit{ value: depositAmount }();
+    underTest.deposit{ value: depositAmount }(0);
 
     vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.maxRedeem.selector, address(underTest)), abi.encode(apxAmount));
     vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToAssets.selector, apxAmount), abi.encode(totalValueETH));
@@ -94,7 +94,7 @@ contract apxETHVaultTest is BaseTest {
 
     MockERC20(apxETH).mint(address(underTest), interestInAPX);
 
-    underTest.deposit{ value: depositAmount }();
+    underTest.deposit{ value: depositAmount }(0);
 
     vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.maxRedeem.selector, address(underTest)), abi.encode(apxAmount));
     vm.mockCall(apxETH, abi.encodeWithSelector(IERC4626.convertToAssets.selector, apxAmount), abi.encode(totalValueETH));

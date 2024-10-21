@@ -50,7 +50,7 @@ contract ChainMoneyE2E is BaseTest {
     IERC20(dai).transfer(address(vault), deposit);
 
     changePrank(obeliskRegistry);
-    vault.deposit();
+    vault.deposit(deposit);
     skip(30 days);
     vault.withdraw(mockUser, deposit);
 

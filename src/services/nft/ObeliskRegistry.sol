@@ -73,7 +73,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     collection.contributionBalance = newTotalContribution;
     userSupportedCollections[msg.sender][_collection].deposit += uint128(msg.value);
-    DRIP_VAULT_ETH.deposit{ value: msg.value }();
+    DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
 
     if (newTotalContribution > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       revert TooManyEth();
@@ -162,10 +162,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     });
 
     if (token == address(0)) {
-      DRIP_VAULT_ETH.deposit{ value: msg.value }();
+      DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
     } else {
       DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), sanitizedAmount);
-      DRIP_VAULT_DAI.deposit();
+      DRIP_VAULT_DAI.deposit(sanitizedAmount);
     }
 
     emit Supported(supportId, msg.sender, sanitizedAmount);

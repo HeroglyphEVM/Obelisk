@@ -28,12 +28,12 @@ contract BaseDripVaultTest is BaseTest {
 
   function test_deposit_whenNotObeliskRegistry_reverts() public {
     vm.expectRevert(IDripVault.NotObeliskRegistry.selector);
-    underTest.deposit{ value: 1 ether }();
+    underTest.deposit{ value: 1 ether }(0);
   }
 
   function test_deposit_whenZeroAmount_reverts() public prankAs(registry) {
     vm.expectRevert(IDripVault.InvalidAmount.selector);
-    underTest.deposit{ value: 0 }();
+    underTest.deposit{ value: 0 }(0);
   }
 
   function test_deposit_whenValidAmount_thenDeposits() public prankAs(registry) {
@@ -41,7 +41,7 @@ contract BaseDripVaultTest is BaseTest {
 
     expectExactEmit();
     emit BaseDripVaultHarness.AfterDeposit(amount);
-    underTest.deposit{ value: amount }();
+    underTest.deposit{ value: amount }(0);
 
     assertEq(underTest.getTotalDeposit(), amount);
   }
@@ -53,7 +53,7 @@ contract BaseDripVaultTest is BaseTest {
 
   function test_withdraw_thenWithdraws() public prankAs(registry) {
     uint256 amount = 1 ether;
-    underTest.deposit{ value: amount }();
+    underTest.deposit{ value: amount }(0);
 
     expectExactEmit();
     emit BaseDripVaultHarness.BeforeWithdrawal(address(0), amount);

@@ -14,7 +14,7 @@ interface IDripVault {
    * @notice Deposits ETH or a specified amount of ERC20 token into the vault.
    * @dev ERC20 has to be transferred before calling this function
    */
-  function deposit() external payable;
+  function deposit(uint256 _amount) external payable;
 
   /**
    * @notice Withdraws ETH or a specified amount of ERC20 token from the vault.
