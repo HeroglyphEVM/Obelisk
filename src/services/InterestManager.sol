@@ -21,6 +21,7 @@ import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
  */
 contract InterestManager is IInterestManager, Ownable {
   uint256 public constant PRECISION = 1e18;
+  uint256 public constant MINIMUM_SWAP_DAI = 100e18;
   uint24 private constant DAI_POOL_FEE = 500;
 
   mapping(address => uint128) internal pendingRewards;
@@ -144,7 +145,7 @@ contract InterestManager is IInterestManager, Ownable {
   function _claimDaiAndConvertToApxETH() internal returns (uint256 apxOut_) {
     DRIP_VAULT_DAI.claim();
     uint256 daiBalance = DAI.balanceOf(address(this));
-    if (daiBalance == 0) return 0;
+    if (daiBalance < MINIMUM_SWAP_DAI) return 0;
 
     TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, daiBalance);
 
