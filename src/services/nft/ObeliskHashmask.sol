@@ -83,20 +83,21 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
   function _addNewTickers(address _receiver, uint256 _tokenId, string memory _name) internal override {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory delim = TICKER_SPLIT_HASHMASK.toSlice();
-    strings.slice[] memory potentialTickers = new strings.slice[](nameSlice.count(delim) + 1);
+    uint256 potentialTickers = nameSlice.count(delim) + 1;
 
     address[] storage poolTargets = linkedTickers[_tokenId];
     strings.slice memory potentialTicker;
     address poolTarget;
 
-    for (uint256 i = 0; i < potentialTickers.length; ++i) {
+    for (uint256 i = 0; i < potentialTickers; ++i) {
       potentialTicker = nameSlice.split(delim);
 
-      if (!potentialTicker.copy().startsWith(string("O").toSlice())) {
+      if (!potentialTicker.copy().startsWith(TICKER_HASHMASK_START_INCIDE.toSlice())) {
         continue;
       }
 
-      poolTarget = obeliskRegistry.getTickerLogic(potentialTicker.beyond(string("O").toSlice()).toString());
+      poolTarget =
+        obeliskRegistry.getTickerLogic(potentialTicker.beyond(TICKER_HASHMASK_START_INCIDE.toSlice()).toString());
       if (poolTarget == address(0)) continue;
 
       poolTargets.push(poolTarget);
