@@ -54,11 +54,10 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
   }
 
   function wrap(uint256 _inputCollectionNFTId) external payable override {
-    uint256 catchedDepositNFTID = _inputCollectionNFTId;
-    bool isIdOdd = catchedDepositNFTID % 2 == 1;
+    bool isIdOdd = _inputCollectionNFTId % 2 == 1;
     bool canHaveFreeSlot = freeSlots != 0 && FREE_SLOT_FOR_ODD == isIdOdd;
 
-    NFTData storage nftdata = nftData[catchedDepositNFTID];
+    NFTData storage nftdata = nftData[_inputCollectionNFTId];
     bool didWrapBefore = nftdata.wrappedOnce;
 
     if (nftdata.isMinted) revert AlreadyMinted();
@@ -67,9 +66,9 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     if ((!canHaveFreeSlot && !didWrapBefore) && msg.value != SLOT_PRICE) revert NoFreeSlots();
 
     nftdata.isMinted = true;
-    INPUT_COLLECTION.transferFrom(msg.sender, address(this), catchedDepositNFTID);
+    INPUT_COLLECTION.transferFrom(msg.sender, address(this), _inputCollectionNFTId);
 
-    _safeMint(msg.sender, catchedDepositNFTID);
+    _safeMint(msg.sender, _inputCollectionNFTId);
     emit Wrapped(_inputCollectionNFTId);
 
     if (didWrapBefore) return;
