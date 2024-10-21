@@ -45,14 +45,20 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   }
 
   function _afterVirtualDeposit(address _holder) internal override {
+    uint256 cachedTotalSupply = totalSupply;
+    if (cachedTotalSupply == 0 && latestRewardPerTokenStored == 0 && rewardRatePerSecond > 0) {
+      unixPeriodFinish = uint64(block.timestamp + DISTRIBUTION_DURATION);
+    }
+
     _queueNewRewards(0);
 
     if (address(GENESIS_KEY) != address(0) && GENESIS_KEY.balanceOf(_holder) == 0) revert MissingKey();
+
     uint256 accountBalance = balanceOf[_holder];
 
     _updateReward(_holder, accountBalance);
 
-    totalSupply += DEPOSIT_AMOUNT;
+    totalSupply = cachedTotalSupply + DEPOSIT_AMOUNT;
     accountBalance += DEPOSIT_AMOUNT;
 
     balanceOf[_holder] = accountBalance;

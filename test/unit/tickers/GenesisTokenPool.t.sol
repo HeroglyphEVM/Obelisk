@@ -71,13 +71,26 @@ contract GenesisTokenPoolTest is BaseTest {
     assertEq(underTest.balanceOf(user_A), 1e18);
   }
 
+  function test_afterVirtualDeposit_whenFirstDepositAndTimePassed_thenResetUnixEndTime() external prankAs(owner) {
+    skip(underTest.DISTRIBUTION_DURATION());
+    underTest.exposed_afterVirtualDeposit(user_A);
+
+    assertEq(underTest.rewardRatePerSecond(), Math.mulDiv(REWARD_AMOUNT, PRECISION, underTest.DISTRIBUTION_DURATION()));
+    assertEq(underTest.lastUpdateUnixTime(), block.timestamp);
+    assertEq(underTest.unixPeriodFinish(), block.timestamp + underTest.DISTRIBUTION_DURATION());
+    assertEq(underTest.totalSupply(), 1e18);
+    assertEq(underTest.balanceOf(user_A), 1e18);
+  }
+
   function test_afterVirtualDeposit_whenRefillCanHappen_thenRefillsAndDeposits() external prankAs(owner) {
     uint256 queuedReward = REWARD_AMOUNT / 2;
 
     wrappedReward.mint(address(underTest), queuedReward);
     underTest.notifyRewardAmount(queuedReward);
+    underTest.exposed_afterVirtualDeposit(user_A);
 
     skip(underTest.DISTRIBUTION_DURATION());
+    underTest.exposed_afterVirtualWithdraw(user_A, false);
     underTest.exposed_afterVirtualDeposit(user_A);
 
     assertEq(underTest.rewardRatePerSecond(), Math.mulDiv(queuedReward, PRECISION, underTest.DISTRIBUTION_DURATION()));
