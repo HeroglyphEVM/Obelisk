@@ -238,7 +238,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     address wrappedNFT = collection.wrappedVersion;
     uint256 contributionBalance = collection.contributionBalance;
 
-    if (contributionBalance == 0 || !collection.allowed) revert NothingToClaim();
+    if (contributionBalance != REQUIRED_ETH_TO_ENABLE_COLLECTION) revert NothingToClaim();
 
     CollectionRewards storage collectionRewards = wrappedCollectionRewards[wrappedNFT];
     ContributionInfo storage userContribution = userSupportedCollections[msg.sender][_collection];
