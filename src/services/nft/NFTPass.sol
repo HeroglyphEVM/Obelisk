@@ -34,15 +34,13 @@ contract NFTPass is INFTPass, IdentityERC721 {
     priceDecayBPS = 2500;
   }
 
-  function create(string calldata _name, address _receiverWallet, uint256 _maxCost) external payable {
+  function create(string calldata _name, address _receiverWallet) external payable {
     if (cost == 0 && msg.value != 0) revert NoNeedToPay();
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
 
     uint256 costAtDuringTx = _updateCost();
-    uint256 costAllowed = _maxCost == 0 ? type(uint256).max : _maxCost;
 
     if (msg.value < costAtDuringTx) revert MsgValueTooLow();
-    if (costAtDuringTx > costAllowed) revert ExceededCostAllowance();
 
     uint256 id = _create(_name, 0);
     metadataPasses[id] = Metadata({ name: _name, walletReceiver: _receiverWallet });
