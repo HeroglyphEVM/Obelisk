@@ -4,7 +4,14 @@ pragma solidity ^0.8.20;
 import "test/base/BaseTest.t.sol";
 
 import { MockERC20, DefaultERC20 } from "test/mock/contract/MockERC20.t.sol";
-import { InterestManager, IInterestManager, IDripVault, IApxETH, IPirexEth } from "src/services/InterestManager.sol";
+import {
+  InterestManager,
+  IInterestManager,
+  IDripVault,
+  IApxETH,
+  IPirexEth,
+  IChainlinkOracle
+} from "src/services/InterestManager.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IStreamingPool } from "src/interfaces/IStreamingPool.sol";
 
@@ -13,6 +20,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract InterestManagerTest is BaseTest {
+  uint256 private constant DAI_ETH_RATION = 379_939_613_755_910;
   uint24 private constant DAI_POOL_FEE = 500;
 
   address[] private ADDRESSES;
@@ -25,6 +33,7 @@ contract InterestManagerTest is BaseTest {
   address private mockDripVaultDAI;
   address private mockSwapRouter;
   address private mockPirexEth;
+  address private mockChainlink;
 
   MockERC20 private dai;
   MockERC20 private axpETH;
@@ -39,7 +48,7 @@ contract InterestManagerTest is BaseTest {
     _createMockCalls();
 
     underTest = new InterestManagerHarness(
-      owner, gaugeController, mockDripVaultETH, mockDripVaultDAI, mockSwapRouter, address(weth)
+      owner, gaugeController, mockDripVaultETH, mockDripVaultDAI, mockSwapRouter, mockChainlink, address(weth)
     );
   }
 
@@ -52,6 +61,7 @@ contract InterestManagerTest is BaseTest {
     mockSwapRouter = generateAddress("mockSwapRouter");
     mockPirexEth = generateAddress("mockPirexEth");
     weth = generateAddress("WETH");
+    mockChainlink = generateAddress("mockChainlink");
 
     axpETH = new MockERC20("ApxETH", "ApxETH", 18);
     dai = new MockERC20("DAI", "DAI", 18);
@@ -73,11 +83,15 @@ contract InterestManagerTest is BaseTest {
     vm.mockCall(address(weth), abi.encodeWithSelector(IWETH.withdraw.selector), abi.encode(true));
 
     vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(0));
+
+    vm.mockCall(
+      mockChainlink, abi.encodeWithSelector(IChainlinkOracle.latestAnswer.selector), abi.encode(DAI_ETH_RATION)
+    );
   }
 
   function test_constructor_thenSetsVariables() external {
     underTest = new InterestManagerHarness(
-      owner, gaugeController, mockDripVaultETH, mockDripVaultDAI, mockSwapRouter, address(weth)
+      owner, gaugeController, mockDripVaultETH, mockDripVaultDAI, mockSwapRouter, mockChainlink, address(weth)
     );
 
     assertEq(underTest.owner(), owner);
@@ -91,7 +105,7 @@ contract InterestManagerTest is BaseTest {
     assertEq(address(underTest.PIREX_ETH()), mockPirexEth);
     assertEq(address(underTest.APX_ETH()), address(axpETH));
     assertEq(dai.allowance(address(underTest), mockSwapRouter), type(uint256).max);
-
+    assertEq(address(underTest.CHAINLINK_DAI_ETH()), mockChainlink);
     assertEq(underTest.epochId(), 0);
   }
 
@@ -214,8 +228,6 @@ contract InterestManagerTest is BaseTest {
 
     vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(reward));
 
-    vm.expectRevert(abi.encodeWithSelector(IInterestManager.RealTimeRewards.selector, reward));
-    underTest.getRealTimeRewards_Reverting(ADDRESSES[0]);
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
 
     changePrank(ADDRESSES[0]);
@@ -235,6 +247,9 @@ contract InterestManagerTest is BaseTest {
 
     underTest.applyGauges(ADDRESSES, WEIGHTS);
 
+    uint256 minimumOut = daiReward * uint256(DAI_ETH_RATION) / 1e18;
+    minimumOut -= minimumOut * underTest.ALLOWED_SLIPPAGE() / 10_000;
+
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
       tokenIn: address(dai),
       tokenOut: address(weth),
@@ -242,7 +257,7 @@ contract InterestManagerTest is BaseTest {
       recipient: address(underTest),
       deadline: block.timestamp,
       amountIn: daiReward,
-      amountOutMinimum: 0,
+      amountOutMinimum: minimumOut,
       sqrtPriceLimitX96: 0
     });
 
@@ -260,8 +275,6 @@ contract InterestManagerTest is BaseTest {
       abi.encode(reward, 0)
     );
 
-    vm.expectRevert(abi.encodeWithSelector(IInterestManager.RealTimeRewards.selector, reward));
-    underTest.getRealTimeRewards_Reverting(ADDRESSES[0]);
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
 
     changePrank(ADDRESSES[0]);
@@ -304,8 +317,6 @@ contract InterestManagerTest is BaseTest {
     vm.mockCall(address(weth), abi.encodeWithSelector(IWETH.withdraw.selector), abi.encode(true));
     vm.mockCall(mockPirexEth, abi.encodeWithSelector(IPirexEth.deposit.selector), abi.encode(convertedDaiReward, 0));
 
-    vm.expectRevert(abi.encodeWithSelector(IInterestManager.RealTimeRewards.selector, reward));
-    underTest.getRealTimeRewards_Reverting(ADDRESSES[0]);
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
 
     changePrank(ADDRESSES[0]);
@@ -406,8 +417,9 @@ contract InterestManagerHarness is InterestManager {
     address _dripVaultETH,
     address _dripVaultDAI,
     address _swapRouter,
+    address _chainlinkDaiEth,
     address _weth
-  ) InterestManager(_owner, _gaugeController, _dripVaultETH, _dripVaultDAI, _swapRouter, _weth) { }
+  ) InterestManager(_owner, _gaugeController, _dripVaultETH, _dripVaultDAI, _swapRouter, _chainlinkDaiEth, _weth) { }
 
   function exposed_endEpoch() external {
     _endEpoch();

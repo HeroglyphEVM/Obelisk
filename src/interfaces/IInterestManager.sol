@@ -5,7 +5,6 @@ interface IInterestManager {
   error InvalidInputLength();
   error NotGaugeController();
   error EpochNotFinished();
-  error RealTimeRewards(uint256 rewards);
 
   event EpochInitialized(uint64 indexed epochId, address[] megapools, uint128[] weights, uint128 totalWeight);
   event GaugeControllerSet(address indexed gaugeController);

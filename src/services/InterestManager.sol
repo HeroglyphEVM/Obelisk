@@ -15,6 +15,10 @@ import { IWETH } from "src/interfaces/IWETH.sol";
 import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 
+interface IChainlinkOracle {
+  function latestAnswer() external view returns (int256);
+}
+
 /**
  * @title InterestManager
  * @notice It manages the rewards distribution to the megapools based on people votes with their HCT.
@@ -22,6 +26,8 @@ import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 contract InterestManager is IInterestManager, Ownable {
   uint256 public constant PRECISION = 1e18;
   uint256 public constant MINIMUM_SWAP_DAI = 100e18;
+  uint256 public constant ALLOWED_SLIPPAGE = 1000; // 10%
+  uint256 public constant BPS = 10_000;
   uint24 private constant DAI_POOL_FEE = 500;
 
   mapping(address => uint128) internal pendingRewards;
@@ -35,6 +41,7 @@ contract InterestManager is IInterestManager, Ownable {
   address public immutable SWAP_ROUTER;
   IDripVault public immutable DRIP_VAULT_ETH;
   IDripVault public immutable DRIP_VAULT_DAI;
+  IChainlinkOracle public immutable CHAINLINK_DAI_ETH;
 
   IERC20 public immutable DAI;
   IWETH public immutable WETH;
@@ -47,6 +54,7 @@ contract InterestManager is IInterestManager, Ownable {
     address _dripVaultETH,
     address _dripVaultDAI,
     address _swapRouter,
+    address _chainlinkDaiETH,
     address _weth
   ) Ownable(_owner) {
     gaugeController = _gaugeController;
@@ -57,6 +65,7 @@ contract InterestManager is IInterestManager, Ownable {
     DAI = IERC20(IDripVault(_dripVaultDAI).getInputToken());
     APX_ETH = IERC20(IDripVault(_dripVaultETH).getOutputToken());
     PIREX_ETH = IPirexEth(IApxETH(address(APX_ETH)).pirexEth());
+    CHAINLINK_DAI_ETH = IChainlinkOracle(_chainlinkDaiETH);
 
     epochDuration = 7 days;
 
@@ -125,16 +134,6 @@ contract InterestManager is IInterestManager, Ownable {
     return rewards_;
   }
 
-  function getRealTimeRewards_Reverting(address _megapool) external {
-    Epoch storage epoch = epochs[epochId];
-    epoch.totalRewards += uint128(_claimFromServices());
-
-    _assignRewardToMegapool(epoch, _megapool);
-    uint256 rewards = pendingRewards[_megapool];
-
-    revert RealTimeRewards(rewards);
-  }
-
   function _claimFromServices() internal returns (uint256 rewards_) {
     DRIP_VAULT_ETH.claim();
     rewards_ += APX_ETH.balanceOf(address(this));
@@ -149,6 +148,9 @@ contract InterestManager is IInterestManager, Ownable {
     uint256 daiBalance = DAI.balanceOf(address(this));
     if (daiBalance < MINIMUM_SWAP_DAI) return 0;
 
+    uint256 minimumOut = daiBalance * uint256(CHAINLINK_DAI_ETH.latestAnswer()) / PRECISION;
+    minimumOut -= minimumOut * ALLOWED_SLIPPAGE / BPS;
+
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
       tokenIn: address(DAI),
       tokenOut: address(WETH),
@@ -156,7 +158,7 @@ contract InterestManager is IInterestManager, Ownable {
       recipient: address(this),
       deadline: block.timestamp,
       amountIn: daiBalance,
-      amountOutMinimum: 0,
+      amountOutMinimum: minimumOut,
       sqrtPriceLimitX96: 0
     });
 
