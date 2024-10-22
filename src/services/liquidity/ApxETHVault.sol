@@ -6,7 +6,7 @@ import { BaseDripVault } from "./BaseDripVault.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 
-contract apxETHVault is BaseDripVault {
+contract ApxETHVault is BaseDripVault {
   IApxETH public immutable APXETH;
   IPirexEth public immutable PIREX_ETH;
 
@@ -22,7 +22,6 @@ contract apxETHVault is BaseDripVault {
   }
 
   function _beforeWithdrawal(address _to, uint256 _amount) internal override {
-    _transfer(address(APXETH), interestRateReceiver, _getPendingClaiming());
     _transfer(address(APXETH), _to, APXETH.convertToShares(_amount));
   }
 

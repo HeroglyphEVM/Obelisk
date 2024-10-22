@@ -24,18 +24,16 @@ abstract contract BaseDripVault is IDripVault, Ownable {
   }
 
   function deposit(uint256 _amount) external payable override onlyObeliskRegistry {
-    if (INPUT_TOKEN == address(0) && msg.value == 0) revert InvalidAmount();
-    if (INPUT_TOKEN != address(0) && msg.value != 0) revert NativeNotAccepted();
-    if (INPUT_TOKEN != address(0) && _amount == 0) revert InvalidAmount();
+    address cachedInputToken = INPUT_TOKEN;
+    uint256 cachedTotalBalance = totalDeposit;
 
-    uint256 sanitizedAmount = INPUT_TOKEN == address(0) ? msg.value : _amount;
+    if (msg.value != 0) _amount = msg.value;
 
-    if (INPUT_TOKEN != address(0)) {
-      sanitizedAmount = IERC20(INPUT_TOKEN).balanceOf(address(this)) - totalDeposit;
-    }
+    if (cachedInputToken == address(0) && msg.value == 0) revert InvalidAmount();
+    if (cachedInputToken != address(0) && msg.value != 0) revert NativeNotAccepted();
 
-    totalDeposit += sanitizedAmount;
-    _afterDeposit(sanitizedAmount);
+    totalDeposit = cachedTotalBalance + _amount;
+    _afterDeposit(_amount);
   }
 
   function _afterDeposit(uint256 _amount) internal virtual;
@@ -75,6 +73,4 @@ abstract contract BaseDripVault is IDripVault, Ownable {
   function getInputToken() external view returns (address) {
     return INPUT_TOKEN;
   }
-
-  receive() external payable { }
 }

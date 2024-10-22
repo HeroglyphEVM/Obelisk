@@ -12,7 +12,6 @@ interface IDripVault {
 
   /**
    * @notice Deposits ETH or a specified amount of ERC20 token into the vault.
-   * @param _amount The amount of ETH or ERC20 token to deposit. Use 0 for ETH.
    * @dev ERC20 has to be transferred before calling this function
    */
   function deposit(uint256 _amount) external payable;

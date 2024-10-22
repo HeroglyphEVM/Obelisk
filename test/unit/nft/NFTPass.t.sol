@@ -65,17 +65,12 @@ contract NFTPassTest is BaseTest {
 
     changePrank(user);
     vm.expectRevert(INFTPass.NoNeedToPay.selector);
-    underTest.create{ value: COST }(name, receiver, 0);
+    underTest.create{ value: COST }(name, receiver);
   }
 
   function test_create_whenValueIsLowerThanCost_thenReverts() external prankAs(user) {
     vm.expectRevert(INFTPass.MsgValueTooLow.selector);
-    underTest.create{ value: COST - 1 }("!", address(0), 0);
-  }
-
-  function test_create_whenValueIsHigerhThanMaxiumAllowance_thenReverts() external prankAs(user) {
-    vm.expectRevert(INFTPass.ExceededCostAllowance.selector);
-    underTest.create{ value: COST }("!", address(0), COST - 1);
+    underTest.create{ value: COST - 1 }("!", address(0));
   }
 
   function test_create_whenSendingTooMuchEth_thenReturnsExtra() external prankAs(user) {
@@ -83,7 +78,7 @@ contract NFTPassTest is BaseTest {
     uint256 balanceBefore = address(user).balance;
 
     changePrank(user);
-    underTest.create{ value: sending }("!", address(0), 0);
+    underTest.create{ value: sending }("!", address(0));
 
     assertEq(balanceBefore - address(user).balance, COST);
     assertEq(address(treasury).balance, COST);
@@ -94,7 +89,7 @@ contract NFTPassTest is BaseTest {
     address receiver = generateAddress();
 
     changePrank(user);
-    underTest.create{ value: COST }(name, receiver, 0);
+    underTest.create{ value: COST }(name, receiver);
 
     assertEq(underTest.getMetadata(0, name).walletReceiver, receiver);
     assertEq(underTest.getMetadata(1, "").walletReceiver, receiver);
@@ -110,13 +105,13 @@ contract NFTPassTest is BaseTest {
 
     expectExactEmit();
     emit INFTPass.NFTPassCreated(1, name, user_B, COST);
-    underTest.create{ value: COST }(name, address(0), 0);
+    underTest.create{ value: COST }(name, address(0));
 
     changePrank(user);
 
     expectExactEmit();
     emit INFTPass.NFTPassCreated(2, name_2, user, COST);
-    underTest.create{ value: COST }(name_2, address(0), 0);
+    underTest.create{ value: COST }(name_2, address(0));
 
     assertEq(underTest.getMetadata(0, name).walletReceiver, user_B);
     assertEq(underTest.getMetadata(1, "").walletReceiver, user_B);
@@ -129,7 +124,7 @@ contract NFTPassTest is BaseTest {
 
   function test_updateReceiverAddress_asNoneIdentifier_thenReverts() external pranking {
     changePrank(user);
-    underTest.create{ value: COST }("A", address(0), 0);
+    underTest.create{ value: COST }("A", address(0));
 
     changePrank(generateAddress());
 
@@ -144,7 +139,7 @@ contract NFTPassTest is BaseTest {
     address tokenReceiverB = generateAddress();
 
     changePrank(user);
-    underTest.create{ value: COST }("A", address(0), 0);
+    underTest.create{ value: COST }("A", address(0));
 
     expectExactEmit();
     emit INFTPass.NFTPassUpdated(1, "A", tokenReceiverA);
@@ -160,7 +155,7 @@ contract NFTPassTest is BaseTest {
   }
 
   function test_transferFrom_thenReverts() external prankAs(user) {
-    underTest.create{ value: COST }("A", address(0), 0);
+    underTest.create{ value: COST }("A", address(0));
 
     vm.expectRevert("Non-Transferrable");
     underTest.transferFrom(user, generateAddress(), 1);
@@ -227,7 +222,7 @@ contract NFTPassTest is BaseTest {
       id++;
 
       assertEq(underTest.getCost(), expectedCost);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0), 0);
+      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
     }
 
     expectedCost += COST / 2;
@@ -240,7 +235,7 @@ contract NFTPassTest is BaseTest {
 
       expectExactEmit();
       emit INFTPass.NFTPassCreated(id, string(abi.encode(id)), user, expectedCost);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0), 0);
+      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
     }
 
     assertEq(underTest.getCost(), expectedCost + COST / 2);
@@ -251,7 +246,7 @@ contract NFTPassTest is BaseTest {
       id++;
 
       assertEq(underTest.getCost(), COST);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0), 0);
+      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
     }
 
     expectedCost = Math.max(COST, expectedCost - Math.mulDiv(expectedCost, underTest.priceDecayBPS(), MAX_BPS));
@@ -260,14 +255,14 @@ contract NFTPassTest is BaseTest {
     id++;
     expectExactEmit();
     emit INFTPass.NFTPassCreated(id, string(abi.encode(id)), user, expectedCost);
-    underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0), 0);
+    underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
 
     expectedCost = COST;
 
     skip(10 days);
     for (uint32 i = 0; i <= maxIdentityPerDay + (priceIncreaseThreshold * 10); ++i) {
       id++;
-      underTest.create{ value: 2e18 }(string(abi.encode(id)), address(0), 0);
+      underTest.create{ value: 2e18 }(string(abi.encode(id)), address(0));
     }
 
     expectedCost += (COST / 2) * 10;
@@ -276,11 +271,11 @@ contract NFTPassTest is BaseTest {
     skip(60 days);
     for (uint32 i = 0; i <= maxIdentityPerDay; ++i) {
       id++;
-      underTest.create{ value: 2e18 }(string(abi.encode(id)), address(0), 0);
+      underTest.create{ value: 2e18 }(string(abi.encode(id)), address(0));
     }
 
     id++;
-    underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0), 0);
+    underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
 
     assertEq(underTest.currentPrice(), COST);
   }

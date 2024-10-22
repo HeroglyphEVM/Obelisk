@@ -15,30 +15,38 @@ import { IWETH } from "src/interfaces/IWETH.sol";
 import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 
+interface IChainlinkOracle {
+  function latestAnswer() external view returns (int256);
+}
+
 /**
  * @title InterestManager
  * @notice It manages the rewards distribution to the megapools based on people votes with their HCT.
  */
 contract InterestManager is IInterestManager, Ownable {
   uint256 public constant PRECISION = 1e18;
+  uint256 public constant MINIMUM_SWAP_DAI = 100e18;
+  uint256 public constant ALLOWED_SLIPPAGE = 1000; // 10%
+  uint256 public constant BPS = 10_000;
   uint24 private constant DAI_POOL_FEE = 500;
 
+  mapping(address => uint128) internal pendingRewards;
+  mapping(uint64 => Epoch) public epochs;
+
+  address public gaugeController;
   uint64 public epochId;
   uint32 public override epochDuration;
-  address public gaugeController;
   IStreamingPool public streamingPool;
 
   address public immutable SWAP_ROUTER;
   IDripVault public immutable DRIP_VAULT_ETH;
   IDripVault public immutable DRIP_VAULT_DAI;
+  IChainlinkOracle public immutable CHAINLINK_DAI_ETH;
 
   IERC20 public immutable DAI;
   IWETH public immutable WETH;
   IERC20 public immutable APX_ETH;
   IPirexEth public immutable PIREX_ETH;
-
-  mapping(address => uint128) internal pendingRewards;
-  mapping(uint64 => Epoch) public epochs;
 
   constructor(
     address _owner,
@@ -46,6 +54,7 @@ contract InterestManager is IInterestManager, Ownable {
     address _dripVaultETH,
     address _dripVaultDAI,
     address _swapRouter,
+    address _chainlinkDaiETH,
     address _weth
   ) Ownable(_owner) {
     gaugeController = _gaugeController;
@@ -56,8 +65,11 @@ contract InterestManager is IInterestManager, Ownable {
     DAI = IERC20(IDripVault(_dripVaultDAI).getInputToken());
     APX_ETH = IERC20(IDripVault(_dripVaultETH).getOutputToken());
     PIREX_ETH = IPirexEth(IApxETH(address(APX_ETH)).pirexEth());
+    CHAINLINK_DAI_ETH = IChainlinkOracle(_chainlinkDaiETH);
 
     epochDuration = 7 days;
+
+    TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, type(uint256).max);
   }
 
   function applyGauges(address[] memory _megapools, uint128[] memory _weights) external override {
@@ -85,7 +97,7 @@ contract InterestManager is IInterestManager, Ownable {
     epoch.totalWeight = totalWeight;
     epoch.endOfEpoch = uint32(block.timestamp + epochDuration);
 
-    emit EpochIntialized(epochId, _megapools, _weights, totalWeight);
+    emit EpochInitialized(epochId, _megapools, _weights, totalWeight);
   }
 
   function _endEpoch() internal {
@@ -122,20 +134,11 @@ contract InterestManager is IInterestManager, Ownable {
     return rewards_;
   }
 
-  function getRealTimeRewards_Reverting(address _megapool) external {
-    Epoch storage epoch = epochs[epochId];
-    epoch.totalRewards += uint128(_claimFromServices());
-
-    _assignRewardToMegapool(epoch, _megapool);
-    uint256 rewards = pendingRewards[_megapool];
-
-    revert RealTimeRewards(rewards);
-  }
-
   function _claimFromServices() internal returns (uint256 rewards_) {
+    DRIP_VAULT_ETH.claim();
+    rewards_ += APX_ETH.balanceOf(address(this));
     rewards_ += address(streamingPool) != address(0) ? streamingPool.claim() : 0;
     rewards_ += _claimDaiAndConvertToApxETH();
-    rewards_ += DRIP_VAULT_ETH.claim();
 
     return rewards_;
   }
@@ -143,9 +146,10 @@ contract InterestManager is IInterestManager, Ownable {
   function _claimDaiAndConvertToApxETH() internal returns (uint256 apxOut_) {
     DRIP_VAULT_DAI.claim();
     uint256 daiBalance = DAI.balanceOf(address(this));
-    if (daiBalance == 0) return 0;
+    if (daiBalance < MINIMUM_SWAP_DAI) return 0;
 
-    TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, daiBalance);
+    uint256 minimumOut = daiBalance * uint256(CHAINLINK_DAI_ETH.latestAnswer()) / PRECISION;
+    minimumOut -= minimumOut * ALLOWED_SLIPPAGE / BPS;
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
       tokenIn: address(DAI),
@@ -154,7 +158,7 @@ contract InterestManager is IInterestManager, Ownable {
       recipient: address(this),
       deadline: block.timestamp,
       amountIn: daiBalance,
-      amountOutMinimum: 0,
+      amountOutMinimum: minimumOut,
       sqrtPriceLimitX96: 0
     });
 
@@ -178,7 +182,7 @@ contract InterestManager is IInterestManager, Ownable {
 
   function setGaugeController(address _gaugeController) external onlyOwner {
     gaugeController = _gaugeController;
-    emit GaugeControllerSet(gaugeController);
+    emit GaugeControllerSet(_gaugeController);
   }
 
   function setEpochDuration(uint32 _epochDuration) external onlyOwner {

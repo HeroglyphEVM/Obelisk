@@ -239,6 +239,16 @@ contract ObeliskHashmaskTest is BaseTest {
     assertEq(abi.encode(underTest.getLinkedTickers(HASH_MASK_ID)), abi.encode(expectedTickers));
   }
 
+  function test_claimRequirements_whenNotHashmaskHolder_thenReverts() external pranking {
+    changePrank(hashmaskUser);
+    underTest.link{ value: activationPrice }(HASH_MASK_ID);
+    _mockHashmaskName(string.concat("O", TICKERS[0]));
+
+    changePrank(user);
+    vm.expectRevert(abi.encodeWithSelector(IObeliskHashmask.NotHashmaskHolder.selector));
+    underTest.claim(HASH_MASK_ID);
+  }
+
   function test_claimRequirements_thenReturnsValidRequirements() external prankAs(hashmaskUser) {
     underTest.link{ value: activationPrice }(HASH_MASK_ID);
     _mockHashmaskName(string.concat("O", TICKERS[0]));
@@ -249,19 +259,12 @@ contract ObeliskHashmaskTest is BaseTest {
     _mockHashmaskName(string.concat("O", TICKERS[1]));
     assertFalse(underTest.exposed_claimRequirements(HASH_MASK_ID));
 
-    //Not same Owner
     _mockHashmaskName(string.concat("O", TICKERS[0]));
 
+    //Not same Identity
+    changePrank(user);
     vm.mockCall(mockHashmask, abi.encodeWithSelector(IERC721.ownerOf.selector, HASH_MASK_ID), abi.encode(user));
     assertFalse(underTest.exposed_claimRequirements(HASH_MASK_ID));
-
-    //Not same identity
-    changePrank(user);
-    assertFalse(underTest.exposed_claimRequirements(HASH_MASK_ID));
-
-    underTest.link{ value: activationPrice }(HASH_MASK_ID);
-
-    assertTrue(underTest.exposed_claimRequirements(HASH_MASK_ID));
   }
 
   function test_setActivationPrice_whenNotOwner_thenReverts() external prankAs(user) {

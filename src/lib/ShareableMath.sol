@@ -2,7 +2,6 @@
 pragma solidity >=0.8.0;
 
 library ShareableMath {
-  uint256 constant WAD = 10 ** 18;
   uint256 constant RAY = 10 ** 27;
 
   /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or

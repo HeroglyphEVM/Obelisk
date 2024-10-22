@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import { ERC721, IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+
 import { IHCT } from "src/interfaces/IHCT.sol";
 import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
 import { ObeliskNFT } from "./ObeliskNFT.sol";
@@ -31,9 +33,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
   uint256 public freeSlots;
 
-  mapping(uint256 => bool) public isMinted;
-  mapping(uint256 => bool) public firstRename;
-  mapping(uint256 => uint128) public assignedMultipler;
+  mapping(uint256 => NFTData) internal nftData;
 
   constructor(
     address _HCT,
@@ -48,19 +48,31 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     INPUT_COLLECTION = ERC721(_inputCollection);
 
     freeSlots = _currentSupply * FREE_SLOT_BPS / MAX_BPS;
-    FREE_SLOT_FOR_ODD = uint256(keccak256(abi.encode(tx.origin, _inputCollection))) % 2 == 1;
+    FREE_SLOT_FOR_ODD = uint256(keccak256(abi.encode(_inputCollection))) % 2 == 1;
     COLLECTION_STARTED_UNIX_TIME = _collectionStartedUnixTime;
     PREMIUM = _premium;
   }
 
   function wrap(uint256 _inputCollectionNFTId) external payable override {
-    uint256 catchedDepositNFTID = _inputCollectionNFTId;
-    bool isIdOdd = catchedDepositNFTID % 2 == 1;
+    bool isIdOdd = _inputCollectionNFTId % 2 == 1;
     bool canHaveFreeSlot = freeSlots != 0 && FREE_SLOT_FOR_ODD == isIdOdd;
 
-    if (isMinted[catchedDepositNFTID]) revert AlreadyMinted();
-    if (canHaveFreeSlot && msg.value != 0) revert FreeSlotAvailable();
-    if (!canHaveFreeSlot && msg.value != SLOT_PRICE) revert NoFreeSlots();
+    NFTData storage nftdata = nftData[_inputCollectionNFTId];
+    bool didWrapBefore = nftdata.wrappedOnce;
+
+    if (nftdata.isMinted) revert AlreadyMinted();
+
+    if ((canHaveFreeSlot || didWrapBefore) && msg.value != 0) revert FreeSlotAvailable();
+    if ((!canHaveFreeSlot && !didWrapBefore) && msg.value != SLOT_PRICE) revert NoFreeSlots();
+
+    nftdata.isMinted = true;
+    INPUT_COLLECTION.transferFrom(msg.sender, address(this), _inputCollectionNFTId);
+
+    _safeMint(msg.sender, _inputCollectionNFTId);
+    emit Wrapped(_inputCollectionNFTId);
+
+    if (didWrapBefore) return;
+    nftdata.wrappedOnce = true;
 
     if (!canHaveFreeSlot) {
       obeliskRegistry.onSlotBought{ value: msg.value }();
@@ -69,37 +81,35 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
       freeSlots--;
       emit FreeSlotUsed(freeSlots);
     }
-
-    isMinted[catchedDepositNFTID] = true;
-    INPUT_COLLECTION.transferFrom(msg.sender, address(this), catchedDepositNFTID);
-
-    _safeMint(msg.sender, catchedDepositNFTID);
-
-    emit Wrapped(_inputCollectionNFTId);
   }
 
   function unwrap(uint256 _tokenId) external override {
-    if (!isMinted[_tokenId]) revert NotMinted();
+    NFTData storage nftdata = nftData[_tokenId];
+
+    if (!nftdata.isMinted) revert NotMinted();
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
     _removeOldTickers(identityReceivers[_tokenId], _tokenId, false);
 
     _burn(_tokenId);
     delete names[_tokenId];
-    delete assignedMultipler[_tokenId];
 
-    isMinted[_tokenId] = false;
+    nftdata.assignedMultiplier = 0;
+    nftdata.isMinted = false;
+
     INPUT_COLLECTION.safeTransferFrom(address(this), msg.sender, _tokenId);
 
     emit Unwrapped(_tokenId);
   }
 
   function _renameRequirements(uint256 _tokenId) internal override {
-    if (!isMinted[_tokenId]) revert NotMinted();
+    NFTData storage nftdata = nftData[_tokenId];
+
+    if (!nftdata.isMinted) revert NotMinted();
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
-    if (PREMIUM && !firstRename[_tokenId]) {
-      firstRename[_tokenId] = true;
+    if (PREMIUM && !nftdata.firstRename) {
+      nftdata.firstRename = true;
       return;
     }
 
@@ -107,26 +117,42 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
   }
 
   function _claimRequirements(uint256 _tokenId) internal view override returns (bool) {
-    return _ownerOf(_tokenId) == msg.sender;
+    if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
+    return true;
   }
 
   function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
-    address from = _ownerOf(tokenId);
-    uint128 multiplier = assignedMultipler[tokenId];
+    NFTData storage nftdata = nftData[tokenId];
 
-    if (from != address(0)) {
+    address from = _ownerOf(tokenId);
+    uint128 multiplier = nftdata.assignedMultiplier;
+
+    if (to == address(0)) {
       HCT.removePower(from, multiplier);
       multiplier = 0;
-    }
-
-    if (to != address(0)) {
+    } else if (from == address(0)) {
       multiplier = getWrapperMultiplier();
       HCT.addPower(to, multiplier);
+    } else {
+      revert CannotTransferUnwrapFirst();
     }
 
-    assignedMultipler[tokenId] = multiplier;
-
+    nftdata.assignedMultiplier = multiplier;
     return super._update(to, tokenId, auth);
+  }
+
+  function updateMultiplier(uint256 _tokenId) external {
+    NFTData storage nftdata = nftData[_tokenId];
+    if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
+
+    uint128 newMultiplier = getWrapperMultiplier();
+    uint128 multiplier = nftdata.assignedMultiplier;
+
+    if (newMultiplier == multiplier) revert SameMultiplier();
+
+    HCT.removePower(msg.sender, multiplier);
+    HCT.addPower(msg.sender, newMultiplier);
+    nftData[_tokenId].assignedMultiplier = newMultiplier;
   }
 
   function getWrapperMultiplier() public view returns (uint128) {
@@ -134,6 +160,10 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
     uint256 currentYear = (block.timestamp - COLLECTION_STARTED_UNIX_TIME) / SECONDS_PER_YEAR;
     return uint128(Math.min(currentYear * RATE_PER_YEAR, MAX_RATE));
+  }
+
+  function getNFTData(uint256 _tokenId) external view returns (NFTData memory) {
+    return nftData[_tokenId];
   }
 
   function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {

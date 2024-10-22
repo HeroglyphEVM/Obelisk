@@ -36,21 +36,15 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
     activationPrice = 0.1 ether;
   }
 
-  modifier onlyHashmaskHolder(uint256 _hashmaskId) {
+  function link(uint256 _hashmaskId) external payable {
     if (hashmask.ownerOf(_hashmaskId) != msg.sender) revert NotHashmaskHolder();
-    _;
-  }
 
-  modifier onlyHashmaskLinker(uint256 _hashmaskId) {
-    if (identityReceivers[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
-    _;
-  }
-
-  function link(uint256 _hashmaskId) external payable onlyHashmaskHolder(_hashmaskId) {
     if (msg.value != activationPrice) revert InsufficientActivationPrice();
 
-    _removeOldTickers(identityReceivers[_hashmaskId], _hashmaskId, true);
+    address oldReceiver = identityReceivers[_hashmaskId];
     identityReceivers[_hashmaskId] = msg.sender;
+
+    _updateName(_hashmaskId, oldReceiver, msg.sender);
 
     (bool success,) = treasury.call{ value: msg.value }("");
     if (!success) revert TransferFailed();
@@ -59,7 +53,9 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
     emit HashmaskLinked(_hashmaskId, address(0), msg.sender);
   }
 
-  function transferLink(uint256 _hashmaskId) external onlyHashmaskLinker(_hashmaskId) {
+  function transferLink(uint256 _hashmaskId) external {
+    if (identityReceivers[_hashmaskId] != msg.sender) revert NotLinkedToHolder();
+
     address newOwner = hashmask.ownerOf(_hashmaskId);
     identityReceivers[_hashmaskId] = newOwner;
     _updateName(_hashmaskId, msg.sender, newOwner);
@@ -86,21 +82,22 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
 
   function _addNewTickers(address _receiver, uint256 _tokenId, string memory _name) internal override {
     strings.slice memory nameSlice = _name.toSlice();
-    strings.slice memory delim = string(" ").toSlice();
-    strings.slice[] memory potentialTickers = new strings.slice[](nameSlice.count(delim) + 1);
+    strings.slice memory delim = TICKER_SPLIT_HASHMASK.toSlice();
+    uint256 potentialTickers = nameSlice.count(delim) + 1;
 
     address[] storage poolTargets = linkedTickers[_tokenId];
     strings.slice memory potentialTicker;
     address poolTarget;
 
-    for (uint256 i = 0; i < potentialTickers.length; ++i) {
+    for (uint256 i = 0; i < potentialTickers; ++i) {
       potentialTicker = nameSlice.split(delim);
 
-      if (!potentialTicker.copy().startsWith(string("O").toSlice())) {
+      if (!potentialTicker.copy().startsWith(TICKER_HASHMASK_START_INCIDE.toSlice())) {
         continue;
       }
 
-      poolTarget = obeliskRegistry.getTickerLogic(potentialTicker.beyond(string("O").toSlice()).toString());
+      poolTarget =
+        obeliskRegistry.getTickerLogic(potentialTicker.beyond(TICKER_HASHMASK_START_INCIDE.toSlice()).toString());
       if (poolTarget == address(0)) continue;
 
       poolTargets.push(poolTarget);
@@ -119,9 +116,11 @@ contract ObeliskHashmask is IObeliskHashmask, ObeliskNFT, Ownable {
   }
 
   function _claimRequirements(uint256 _tokenId) internal view override returns (bool) {
-    bool sameName = keccak256(bytes(hashmask.tokenNameByIndex(_tokenId))) == keccak256(bytes(names[_tokenId]));
     address owner = hashmask.ownerOf(_tokenId);
-    return owner == msg.sender && owner == identityReceivers[_tokenId] && sameName;
+    if (owner != msg.sender) revert NotHashmaskHolder();
+
+    bool sameName = keccak256(bytes(hashmask.tokenNameByIndex(_tokenId))) == keccak256(bytes(names[_tokenId]));
+    return owner == identityReceivers[_tokenId] && sameName;
   }
 
   function setActivationPrice(uint256 _price) external onlyOwner {

@@ -30,7 +30,6 @@ contract WrappedGnosisToken is ERC20, OApp {
   error CannotWrapOnMainnet();
   error CannotUnwrapOnMainnet();
   error GasLimitCannotBeZero();
-  error SlippageExceeded(uint256 amountOrIdReceiving, uint256 minAmountOut);
 
   constructor(address _owner, address _lzEndpoint, address _genesisToken)
     ERC20("WrappedGenesisToken", "WGT")
@@ -46,17 +45,13 @@ contract WrappedGnosisToken is ERC20, OApp {
     emit NewPoolAttached(_pool);
   }
 
-  function send(uint32 _dstEid, address _to, uint256 _amountIn, uint256 _minAmountOut)
+  function send(uint32 _dstEid, address _to, uint256 _amountIn)
     external
     payable
     returns (MessagingReceipt memory msgReceipt)
   {
     bytes memory option = defaultLzOption;
-    uint256 amountReceiving = _debit(_amountIn, _minAmountOut);
-
-    if (amountReceiving < _minAmountOut) {
-      revert SlippageExceeded(amountReceiving, _minAmountOut);
-    }
+    uint256 amountReceiving = _debit(_amountIn);
 
     bytes memory payload = _generateMessage(_to, amountReceiving);
     MessagingFee memory fee = _estimateFee(_dstEid, payload, option);
@@ -87,8 +82,8 @@ contract WrappedGnosisToken is ERC20, OApp {
     emit OFTSent(msgReceipt.guid, MAINNET_LZ_ENDPOINT_ID, msg.sender, _amount);
   }
 
-  function estimateFee(uint32 _dstEid, address _to, uint256 _tokenId) external view returns (uint256) {
-    return _estimateFee(_dstEid, _generateMessage(_to, _tokenId), defaultLzOption).nativeFee;
+  function estimateFee(uint32 _dstEid, address _to, uint256 _amount) external view returns (uint256) {
+    return _estimateFee(_dstEid, _generateMessage(_to, _amount), defaultLzOption).nativeFee;
   }
 
   function _estimateFee(uint32 _dstEid, bytes memory _message, bytes memory _options)
@@ -126,9 +121,7 @@ contract WrappedGnosisToken is ERC20, OApp {
   function _credit(address _to, uint256 _value, bool) internal returns (uint256) {
     IGenesisTokenPool cachedPool = pool;
 
-    if (_to == address(0)) {
-      _to = owner();
-    } else if (_to == address(cachedPool)) {
+    if (_to == address(cachedPool)) {
       cachedPool.notifyRewardAmount(_value);
     }
 
@@ -136,7 +129,7 @@ contract WrappedGnosisToken is ERC20, OApp {
     return _value;
   }
 
-  function _debit(uint256 _amountIn, uint256) internal returns (uint256 amountReceiving_) {
+  function _debit(uint256 _amountIn) internal returns (uint256 amountReceiving_) {
     _burn(msg.sender, _amountIn);
     return _amountIn;
   }
@@ -157,6 +150,6 @@ contract WrappedGnosisToken is ERC20, OApp {
     if (_lzGasLimit == 0) revert GasLimitCannotBeZero();
 
     lzGasLimit = _lzGasLimit;
-    defaultLzOption = OptionsBuilder.newOptions().addExecutorLzReceiveOption(lzGasLimit, 0);
+    defaultLzOption = OptionsBuilder.newOptions().addExecutorLzReceiveOption(_lzGasLimit, 0);
   }
 }

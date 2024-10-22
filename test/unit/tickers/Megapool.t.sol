@@ -6,6 +6,7 @@ import "test/base/BaseTest.t.sol";
 import { Megapool } from "src/services/tickers/Megapool.sol";
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
+import { ShareableMath } from "src/lib/ShareableMath.sol";
 
 contract MegapoolTest is BaseTest {
   address private owner;
@@ -49,11 +50,6 @@ contract MegapoolTest is BaseTest {
     underTest.exposed_afterVirtualDeposit(user_02);
   }
 
-  function test_afterVirtualDeposit_whenFirstCaller_thenShareIsOne() external {
-    underTest.exposed_afterVirtualDeposit(user_01);
-    assertEq(underTest.getShareOf(user_01), 1e18);
-  }
-
   function test_afterVirtualDeposit_whenPendingClaim_thenClaims() external {
     uint256 expectedReward = 3.32e18;
 
@@ -67,37 +63,11 @@ contract MegapoolTest is BaseTest {
     assertEq(reward, expectedReward);
   }
 
-  function test_fizz_afterVirtualDeposit(address[13] calldata _randoms) external {
-    uint256 totalVirtualBalance = 0;
-    address random;
-    uint256 expectedShares;
-    uint256 randomBalance;
-
-    for (uint256 i = 0; i < _randoms.length; i++) {
-      random = _randoms[i];
-      vm.assume(random != VM_ADDRESS && random != address(0));
-
-      randomBalance = underTest.getVirtualBalanceOf(random) + 1e18;
-
-      expectedShares = (i == 0) ? 1e18 : (underTest.totalShares() * randomBalance) / totalVirtualBalance;
-      totalVirtualBalance += 1e18;
-
-      underTest.exposed_afterVirtualDeposit(random);
-
-      assertEq(underTest.getShareOf(random), expectedShares);
-    }
-
-    assertEq(underTest.totalShares(), 1e18 * _randoms.length);
-    assertEq(underTest.totalVirtualBalance(), 1e18 * _randoms.length);
-  }
-
   function test_afterVirtualWithdraw_whenOnlyActor_thenEmptySystem() external {
     underTest.exposed_afterVirtualDeposit(user_01);
     underTest.exposed_afterVirtualWithdraw(user_01, false);
 
-    assertEq(underTest.getShareOf(user_01), 0);
     assertEq(underTest.totalVirtualBalance(), 0);
-    assertEq(underTest.totalShares(), 0);
   }
 
   function test_afterVirtualWithdraw_whenStillHasBalance_thenUpdateShares() external {
@@ -105,9 +75,7 @@ contract MegapoolTest is BaseTest {
     underTest.exposed_afterVirtualDeposit(user_01);
     underTest.exposed_afterVirtualWithdraw(user_01, false);
 
-    assertEq(underTest.getShareOf(user_01), 1e18);
     assertEq(underTest.totalVirtualBalance(), 1e18);
-    assertEq(underTest.totalShares(), 1e18);
   }
 
   function test_afterVirtualWithdraw_whenPendingClaim_thenClaims() external {
@@ -153,6 +121,7 @@ contract MegapoolTest is BaseTest {
 
     assertEq(rewardToken.balanceOf(user_01), 0.5e18);
     assertEq(rewardToken.balanceOf(user_02), 0.5e18);
+    assertEq(underTest.getYieldSnapshotOf(user_01), 0.5e18);
   }
 
   function test_claim_03() external {
@@ -168,38 +137,6 @@ contract MegapoolTest is BaseTest {
 
     assertEq(rewardToken.balanceOf(user_01), 1_333_333_333_333_333_333);
     assertEq(rewardToken.balanceOf(user_02), 666_666_666_666_666_666);
-  }
-
-  function test_fizz_afterVirtualWithdraw(address[13] memory _randoms) external {
-    uint256 totalVirtualBalance = 0;
-    address random;
-    uint256 expectedShares;
-    uint256 randomBalance;
-
-    for (uint256 i = 0; i < _randoms.length; i++) {
-      random = _randoms[i];
-      vm.assume(random != VM_ADDRESS && random != address(0));
-      _randoms[i] = random;
-
-      randomBalance = underTest.getVirtualBalanceOf(random) + 1e18;
-
-      expectedShares = (i == 0) ? 1e18 : (underTest.totalShares() * randomBalance) / totalVirtualBalance;
-      totalVirtualBalance += 1e18;
-
-      underTest.exposed_afterVirtualDeposit(random);
-    }
-
-    for (uint256 i = 5; i < _randoms.length; i++) {
-      random = _randoms[i];
-
-      randomBalance = underTest.getVirtualBalanceOf(random) - 1e18;
-
-      expectedShares = (underTest.totalShares() * randomBalance) / totalVirtualBalance;
-      totalVirtualBalance -= 1e18;
-
-      underTest.exposed_afterVirtualWithdraw(random, false);
-      assertEq(underTest.getShareOf(random), expectedShares);
-    }
   }
 }
 

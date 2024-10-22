@@ -5,7 +5,6 @@ interface INFTPass {
   error NoNeedToPay();
   error InvalidBPS();
   error MsgValueTooLow();
-  error ExceededCostAllowance();
 
   event NFTPassCreated(uint256 indexed nftId, string indexed name, address indexed receiver, uint256 cost);
   event NFTPassUpdated(uint256 indexed nftId, string indexed name, address indexed receiver);

@@ -37,9 +37,9 @@ interface IObeliskRegistry {
   event DataAsserterSet(address indexed dataAsserter);
 
   struct Collection {
-    address wrappedVersion;
     uint256 totalSupply;
     uint256 contributionBalance;
+    address wrappedVersion;
     uint32 collectionStartedUnixTime;
     bool allowed;
     bool premium;

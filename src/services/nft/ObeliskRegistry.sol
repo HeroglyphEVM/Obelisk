@@ -24,6 +24,14 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint256 public constant BPS = 10_000;
   uint128 public constant REQUIRED_ETH_TO_ENABLE_COLLECTION = 100e18;
 
+  mapping(address => Collection) internal supportedCollections;
+  mapping(address wrappedCollection => CollectionRewards) internal wrappedCollectionRewards;
+  mapping(address wrappedNFT => bool isValid) public override isWrappedNFT;
+
+  mapping(string ticker => address logic) private tickersLogic;
+  mapping(address user => mapping(address collection => ContributionInfo)) internal userSupportedCollections;
+  mapping(uint32 => Supporter) private supporters;
+
   address public immutable HCT;
   address public immutable NFT_PASS;
   IERC20 public immutable DAI;
@@ -34,14 +42,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   address public dataAsserter;
   uint32 public supportId;
   uint256 public maxRewardPerCollection;
-
-  mapping(address => Collection) public supportedCollections;
-  mapping(address wrappedCollection => CollectionRewards) internal wrappedCollectionRewards;
-  mapping(address wrappedNFT => bool isValid) public override isWrappedNFT;
-
-  mapping(string ticker => address logic) private tickersLogic;
-  mapping(address user => mapping(address collection => ContributionInfo)) internal userSupportedCollections;
-  mapping(uint32 => Supporter) private supporters;
 
   constructor(
     address _owner,
@@ -140,11 +140,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     userSupportedCollections[msg.sender][_collection].deposit -= uint128(_amount);
     DRIP_VAULT_ETH.withdraw(msg.sender, _amount);
 
-    (bool success,) = msg.sender.call{ value: _amount }("");
-    if (!success) {
-      revert TransferFailed();
-    }
-
     emit CollectionContributionWithdrawn(_collection, msg.sender, _amount);
   }
 
@@ -153,15 +148,15 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (msg.value != 0 && _amount != 0) revert OnlyOneValue();
 
     address token = msg.value != 0 ? address(0) : address(DAI);
-    uint256 santizedAmount = msg.value != 0 ? msg.value : _amount;
+    uint256 sanitizedAmount = msg.value != 0 ? msg.value : _amount;
 
-    if (santizedAmount < MIN_SUPPORT_AMOUNT) revert AmountTooLow();
+    if (sanitizedAmount < MIN_SUPPORT_AMOUNT) revert AmountTooLow();
 
     supportId++;
     supporters[supportId] = Supporter({
       depositor: msg.sender,
       token: token,
-      amount: uint128(santizedAmount),
+      amount: uint128(sanitizedAmount),
       lockUntil: uint32(block.timestamp + SUPPORT_LOCK_DURATION),
       removed: false
     });
@@ -169,11 +164,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     if (token == address(0)) {
       DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
     } else {
-      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), santizedAmount);
-      DRIP_VAULT_DAI.deposit(santizedAmount);
+      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), sanitizedAmount);
+      DRIP_VAULT_DAI.deposit(sanitizedAmount);
     }
 
-    emit Supported(supportId, msg.sender, santizedAmount);
+    emit Supported(supportId, msg.sender, sanitizedAmount);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -243,7 +238,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     address wrappedNFT = collection.wrappedVersion;
     uint256 contributionBalance = collection.contributionBalance;
 
-    if (contributionBalance == 0 || !collection.allowed) revert NothingToClaim();
+    if (contributionBalance != REQUIRED_ETH_TO_ENABLE_COLLECTION) revert NothingToClaim();
 
     CollectionRewards storage collectionRewards = wrappedCollectionRewards[wrappedNFT];
     ContributionInfo storage userContribution = userSupportedCollections[msg.sender][_collection];
@@ -251,11 +246,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     uint128 totalCollectionReward = collectionRewards.totalRewards;
     uint256 totalUserReward = Math.mulDiv(userContribution.deposit, totalCollectionReward, contributionBalance);
     uint128 rewardsToClaim = uint128(totalUserReward - userContribution.claimed);
-    uint128 totalCollactionClaimedRewards = collectionRewards.claimedRewards;
+    uint128 totalCollectionClaimedRewards = collectionRewards.claimedRewards;
 
     if (rewardsToClaim == 0) revert NothingToClaim();
 
-    collectionRewards.claimedRewards = totalCollactionClaimedRewards + rewardsToClaim;
+    collectionRewards.claimedRewards = totalCollectionClaimedRewards + rewardsToClaim;
     userContribution.claimed = uint128(totalUserReward);
 
     (bool success,) = msg.sender.call{ value: rewardsToClaim }("");
@@ -307,6 +302,12 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     });
 
     emit CollectionAllowed(_collection, _totalSupply, _collectionStartedUnixTime, _premium);
+  }
+
+  function toggleIsWrappedNFTFor(address _collection, address _wrappedVersion, bool _allowed) external onlyOwner {
+    isWrappedNFT[_wrappedVersion] = _allowed;
+
+    emit WrappedNFTCreated(_collection, _wrappedVersion);
   }
 
   function setTreasury(address _treasury) external onlyOwner {

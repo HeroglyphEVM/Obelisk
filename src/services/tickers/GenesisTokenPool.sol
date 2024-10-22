@@ -18,7 +18,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   uint256 internal constant PRECISION = 1e18;
   uint256 internal constant REAL_VALUE_PRECISION = PRECISION * PRECISION;
-  uint256 internal constant RATIO_DENOMINATOR = 1000;
 
   uint64 public immutable DISTRIBUTION_DURATION;
   IERC721 public immutable GENESIS_KEY;
@@ -36,11 +35,6 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   mapping(address user => uint256) public userRewardPerTokenPaid;
   mapping(address user => uint256) public rewards;
 
-  modifier onlyCanRefillReward() {
-    if (msg.sender != address(REWARD_TOKEN) && msg.sender != owner()) revert NotAuthorized();
-    _;
-  }
-
   constructor(address _owner, address _registry, address _wrappedReward, address _genesisKey)
     LiteTicker(_registry)
     Ownable(_owner)
@@ -51,14 +45,20 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   }
 
   function _afterVirtualDeposit(address _holder) internal override {
+    uint256 cachedTotalSupply = totalSupply;
+    if (cachedTotalSupply == 0 && latestRewardPerTokenStored == 0 && rewardRatePerSecond > 0) {
+      unixPeriodFinish = uint64(block.timestamp + DISTRIBUTION_DURATION);
+    }
+
     _queueNewRewards(0);
 
     if (address(GENESIS_KEY) != address(0) && GENESIS_KEY.balanceOf(_holder) == 0) revert MissingKey();
+
     uint256 accountBalance = balanceOf[_holder];
 
     _updateReward(_holder, accountBalance);
 
-    totalSupply += DEPOSIT_AMOUNT;
+    totalSupply = cachedTotalSupply + DEPOSIT_AMOUNT;
     accountBalance += DEPOSIT_AMOUNT;
 
     balanceOf[_holder] = accountBalance;
@@ -88,7 +88,9 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     emit RewardPaid(_holder, reward);
   }
 
-  function notifyRewardAmount(uint256 reward) external override onlyCanRefillReward {
+  function notifyRewardAmount(uint256 reward) external override {
+    if (msg.sender != address(REWARD_TOKEN) && msg.sender != owner()) revert NotAuthorized();
+
     _queueNewRewards(reward);
   }
 
@@ -104,10 +106,8 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
 
     uint256 elapsedTime = unixPeriodFinish - block.timestamp;
     uint256 currentAtNow = _getTimeBasedValue(elapsedTime, rewardRatePerSecond);
-    uint256 queuedRatio = Math.mulDiv(currentAtNow, RATIO_DENOMINATOR, _rewards);
 
-    //If the rewardRatePerSecond is lower than the current one, we queue the rewards
-    if (queuedRatio < RATIO_DENOMINATOR) {
+    if (_rewards > currentAtNow) {
       _notifyRewardAmount(_rewards);
       queuedReward = 0;
     } else {

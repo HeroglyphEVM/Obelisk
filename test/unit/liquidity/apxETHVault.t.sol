@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import "test/base/BaseTest.t.sol";
 
-import { apxETHVault, IApxETH, IPirexEth } from "src/services/liquidity/apxETHVault.sol";
+import { ApxETHVault, IApxETH, IPirexEth } from "src/services/liquidity/ApxETHVault.sol";
 import { IERC4626 } from "@openzeppelin/contracts/interfaces/IERC4626.sol";
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 
@@ -15,14 +15,14 @@ contract apxETHVaultTest is BaseTest {
   address private rateReceiver;
   address private user;
 
-  apxETHVault private underTest;
+  ApxETHVault private underTest;
 
   function setUp() external {
     _setupVariables();
 
     vm.mockCall(apxETH, abi.encodeWithSelector(IApxETH.pirexEth.selector), abi.encode(pirexEth));
 
-    underTest = new apxETHVault(owner, obeliskRegistry, apxETH, rateReceiver);
+    underTest = new ApxETHVault(owner, obeliskRegistry, apxETH, rateReceiver);
   }
 
   function _setupVariables() internal {
@@ -74,10 +74,7 @@ contract apxETHVaultTest is BaseTest {
     underTest.withdraw(user, withdrawAmount);
 
     assertEq(MockERC20(apxETH).balanceOf(user), withdrawAmountApx);
-    assertEq(MockERC20(apxETH).balanceOf(rateReceiver), interestInAPX);
-    assertEq(
-      MockERC20(apxETH).balanceOf(address(underTest)), (interestInAPX + apxAmount) - (withdrawAmountApx + interestInAPX)
-    );
+    assertEq(MockERC20(apxETH).balanceOf(address(underTest)), (interestInAPX + apxAmount) - withdrawAmountApx);
   }
 
   function test_beforeWithdrawal_whenWithdrawAmountIsEqualToTotalDeposit_thenTransfersInterestAndApxETH()
@@ -112,8 +109,7 @@ contract apxETHVaultTest is BaseTest {
     underTest.withdraw(user, withdrawAmount);
 
     assertEq(MockERC20(apxETH).balanceOf(user), withdrawAmountApx);
-    assertEq(MockERC20(apxETH).balanceOf(rateReceiver), interestInAPX);
-    assertEq(MockERC20(apxETH).balanceOf(address(underTest)), 0);
+    assertEq(MockERC20(apxETH).balanceOf(address(underTest)), interestInAPX);
   }
 }
 
