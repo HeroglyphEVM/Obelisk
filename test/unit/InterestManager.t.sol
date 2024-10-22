@@ -48,7 +48,13 @@ contract InterestManagerTest is BaseTest {
     _createMockCalls();
 
     underTest = new InterestManagerHarness(
-      owner, gaugeController, mockDripVaultETH, mockDripVaultDAI, mockSwapRouter, mockChainlink, address(weth)
+      owner,
+      gaugeController,
+      mockDripVaultETH,
+      mockDripVaultDAI,
+      mockSwapRouter,
+      mockChainlink,
+      address(weth)
     );
   }
 
@@ -71,27 +77,57 @@ contract InterestManagerTest is BaseTest {
   }
 
   function _createMockCalls() internal {
-    vm.mockCall(mockDripVaultDAI, abi.encodeWithSelector(IDripVault.getInputToken.selector), abi.encode(address(dai)));
     vm.mockCall(
-      mockDripVaultETH, abi.encodeWithSelector(IDripVault.getOutputToken.selector), abi.encode(address(axpETH))
+      mockDripVaultDAI,
+      abi.encodeWithSelector(IDripVault.getInputToken.selector),
+      abi.encode(address(dai))
     );
-    vm.mockCall(mockDripVaultDAI, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(0));
-    vm.mockCall(mockDripVaultETH, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(0));
-    vm.mockCall(address(axpETH), abi.encodeWithSelector(IApxETH.pirexEth.selector), abi.encode(mockPirexEth));
-
-    vm.mockCall(mockPirexEth, abi.encodeWithSelector(IPirexEth.deposit.selector), abi.encode(0, 0));
-    vm.mockCall(address(weth), abi.encodeWithSelector(IWETH.withdraw.selector), abi.encode(true));
-
-    vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(0));
+    vm.mockCall(
+      mockDripVaultETH,
+      abi.encodeWithSelector(IDripVault.getOutputToken.selector),
+      abi.encode(address(axpETH))
+    );
+    vm.mockCall(
+      mockDripVaultDAI, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(0)
+    );
+    vm.mockCall(
+      mockDripVaultETH, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(0)
+    );
+    vm.mockCall(
+      address(axpETH),
+      abi.encodeWithSelector(IApxETH.pirexEth.selector),
+      abi.encode(mockPirexEth)
+    );
 
     vm.mockCall(
-      mockChainlink, abi.encodeWithSelector(IChainlinkOracle.latestAnswer.selector), abi.encode(DAI_ETH_RATION)
+      mockPirexEth, abi.encodeWithSelector(IPirexEth.deposit.selector), abi.encode(0, 0)
+    );
+    vm.mockCall(
+      address(weth), abi.encodeWithSelector(IWETH.withdraw.selector), abi.encode(true)
+    );
+
+    vm.mockCall(
+      address(axpETH),
+      abi.encodeWithSelector(DefaultERC20.balanceOf.selector),
+      abi.encode(0)
+    );
+
+    vm.mockCall(
+      mockChainlink,
+      abi.encodeWithSelector(IChainlinkOracle.latestRoundData.selector),
+      abi.encode(0, int256(DAI_ETH_RATION), 0, 0, 0)
     );
   }
 
   function test_constructor_thenSetsVariables() external {
     underTest = new InterestManagerHarness(
-      owner, gaugeController, mockDripVaultETH, mockDripVaultDAI, mockSwapRouter, mockChainlink, address(weth)
+      owner,
+      gaugeController,
+      mockDripVaultETH,
+      mockDripVaultDAI,
+      mockSwapRouter,
+      mockChainlink,
+      address(weth)
     );
 
     assertEq(underTest.owner(), owner);
@@ -122,7 +158,10 @@ contract InterestManagerTest is BaseTest {
     underTest.applyGauges(new address[](1), new uint128[](1));
   }
 
-  function test_applyGauges_whenInvalidInputLength_thenReverts() external prankAs(gaugeController) {
+  function test_applyGauges_whenInvalidInputLength_thenReverts()
+    external
+    prankAs(gaugeController)
+  {
     vm.expectRevert(abi.encodeWithSelector(IInterestManager.InvalidInputLength.selector));
     underTest.applyGauges(new address[](1), new uint128[](0));
 
@@ -141,8 +180,12 @@ contract InterestManagerTest is BaseTest {
 
     underTest.applyGauges(ADDRESSES, WEIGHTS);
 
-    (uint128 totalRewards, uint128 totalWeight, uint32 endOfEpoch, address[] memory megapools) =
-      underTest.getEpochData(1);
+    (
+      uint128 totalRewards,
+      uint128 totalWeight,
+      uint32 endOfEpoch,
+      address[] memory megapools
+    ) = underTest.getEpochData(1);
 
     assertEq(totalRewards, 0);
     assertEq(totalWeight, WEIGHTS[0] + WEIGHTS[1]);
@@ -153,7 +196,10 @@ contract InterestManagerTest is BaseTest {
     assertEq(underTest.getMegapoolWeight(1, ADDRESSES[1]), WEIGHTS[1]);
   }
 
-  function test_endEpoch_thenAssignRewardsAndIncreasesEpochId() external prankAs(gaugeController) {
+  function test_endEpoch_thenAssignRewardsAndIncreasesEpochId()
+    external
+    prankAs(gaugeController)
+  {
     ADDRESSES.push(generateAddress("pool1"));
     ADDRESSES.push(generateAddress("pool2"));
     WEIGHTS.push(1e18);
@@ -166,12 +212,20 @@ contract InterestManagerTest is BaseTest {
     uint256 expectingForPool2 = reward - expectingForPool1;
 
     axpETH.mint(address(underTest), reward);
-    vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(reward));
+    vm.mockCall(
+      address(axpETH),
+      abi.encodeWithSelector(DefaultERC20.balanceOf.selector),
+      abi.encode(reward)
+    );
 
     vm.expectEmit(true, false, false, false);
-    emit IInterestManager.RewardAssigned(ADDRESSES[0], expectingForPool1, expectingForPool1);
+    emit IInterestManager.RewardAssigned(
+      ADDRESSES[0], expectingForPool1, expectingForPool1
+    );
     vm.expectEmit(true, false, false, false);
-    emit IInterestManager.RewardAssigned(ADDRESSES[1], expectingForPool2, expectingForPool2);
+    emit IInterestManager.RewardAssigned(
+      ADDRESSES[1], expectingForPool2, expectingForPool2
+    );
     expectExactEmit();
     emit IInterestManager.EpochEnded(1);
 
@@ -183,16 +237,30 @@ contract InterestManagerTest is BaseTest {
     (uint128 totalRewards,,,) = underTest.getEpochData(1);
     assertEq(totalRewards, reward);
 
-    assertEqDecimalEpsilonBelow(underTest.getRewards(ADDRESSES[0]), expectingForPool1, 18, 1e4);
-    assertEqDecimalEpsilonBelow(underTest.getRewards(ADDRESSES[1]), expectingForPool2, 18, 1e4);
+    assertEqDecimalEpsilonBelow(
+      underTest.getRewards(ADDRESSES[0]), expectingForPool1, 18, 1e4
+    );
+    assertEqDecimalEpsilonBelow(
+      underTest.getRewards(ADDRESSES[1]), expectingForPool2, 18, 1e4
+    );
   }
 
-  function test_claim_whenNoRewards_thenReturnsZero() external prankAs(generateAddress("Random")) {
-    vm.mockCallRevert(address(axpETH), abi.encodeWithSelector(MockERC20.transfer.selector), abi.encode(false));
+  function test_claim_whenNoRewards_thenReturnsZero()
+    external
+    prankAs(generateAddress("Random"))
+  {
+    vm.mockCallRevert(
+      address(axpETH),
+      abi.encodeWithSelector(MockERC20.transfer.selector),
+      abi.encode(false)
+    );
     assertEq(underTest.claim(), 0);
   }
 
-  function test_claim_whenOnlyPendingRewards_thenSendsPendingRewards() external prankAs(gaugeController) {
+  function test_claim_whenOnlyPendingRewards_thenSendsPendingRewards()
+    external
+    prankAs(gaugeController)
+  {
     ADDRESSES.push(generateAddress("pool1"));
     WEIGHTS.push(1e18);
     uint256 reward = 3e18;
@@ -216,7 +284,10 @@ contract InterestManagerTest is BaseTest {
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
   }
 
-  function test_claim_whenETHClaim_thenSendsClaimedETHFromVault() external prankAs(gaugeController) {
+  function test_claim_whenETHClaim_thenSendsClaimedETHFromVault()
+    external
+    prankAs(gaugeController)
+  {
     ADDRESSES.push(generateAddress("pool1"));
     WEIGHTS.push(1e18);
     uint256 reward = 3e18;
@@ -226,7 +297,11 @@ contract InterestManagerTest is BaseTest {
 
     axpETH.mint(address(underTest), reward);
 
-    vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(reward));
+    vm.mockCall(
+      address(axpETH),
+      abi.encodeWithSelector(DefaultERC20.balanceOf.selector),
+      abi.encode(reward)
+    );
 
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
 
@@ -239,7 +314,10 @@ contract InterestManagerTest is BaseTest {
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
   }
 
-  function test_claim_whenDaiClaim_thenSwapDaiToApxETHAndSends() external prankAs(gaugeController) {
+  function test_claim_whenDaiClaim_thenSwapDaiToApxETHAndSends()
+    external
+    prankAs(gaugeController)
+  {
     ADDRESSES.push(generateAddress("pool1"));
     WEIGHTS.push(1e18);
     uint256 daiReward = 12_000e18;
@@ -265,9 +343,15 @@ contract InterestManagerTest is BaseTest {
     axpETH.mint(address(underTest), reward);
 
     vm.mockCall(
-      mockSwapRouter, abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector, params), abi.encode(reward)
+      mockSwapRouter,
+      abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector, params),
+      abi.encode(reward)
     );
-    vm.mockCall(address(weth), abi.encodeWithSelector(IWETH.withdraw.selector, reward), abi.encode(true));
+    vm.mockCall(
+      address(weth),
+      abi.encodeWithSelector(IWETH.withdraw.selector, reward),
+      abi.encode(true)
+    );
     vm.mockCall(
       mockPirexEth,
       reward,
@@ -302,20 +386,36 @@ contract InterestManagerTest is BaseTest {
     uint256 convertedDaiReward = 2.1e18;
     uint256 reward = convertedDaiReward + ethReward + streamingPoolReward;
 
-    vm.mockCall(streamingPool, abi.encodeWithSelector(IStreamingPool.claim.selector), abi.encode(streamingPoolReward));
+    vm.mockCall(
+      streamingPool,
+      abi.encodeWithSelector(IStreamingPool.claim.selector),
+      abi.encode(streamingPoolReward)
+    );
 
     underTest.applyGauges(ADDRESSES, WEIGHTS);
 
     dai.mint(address(underTest), daiReward);
     axpETH.mint(address(underTest), reward);
 
-    vm.mockCall(address(axpETH), abi.encodeWithSelector(DefaultERC20.balanceOf.selector), abi.encode(ethReward));
+    vm.mockCall(
+      address(axpETH),
+      abi.encodeWithSelector(DefaultERC20.balanceOf.selector),
+      abi.encode(ethReward)
+    );
 
     vm.mockCall(
-      mockSwapRouter, abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector), abi.encode(convertedDaiReward)
+      mockSwapRouter,
+      abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector),
+      abi.encode(convertedDaiReward)
     );
-    vm.mockCall(address(weth), abi.encodeWithSelector(IWETH.withdraw.selector), abi.encode(true));
-    vm.mockCall(mockPirexEth, abi.encodeWithSelector(IPirexEth.deposit.selector), abi.encode(convertedDaiReward, 0));
+    vm.mockCall(
+      address(weth), abi.encodeWithSelector(IWETH.withdraw.selector), abi.encode(true)
+    );
+    vm.mockCall(
+      mockPirexEth,
+      abi.encodeWithSelector(IPirexEth.deposit.selector),
+      abi.encode(convertedDaiReward, 0)
+    );
 
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
 
@@ -331,7 +431,10 @@ contract InterestManagerTest is BaseTest {
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
   }
 
-  function test_assignRewardToMegapool_thenAssignsReward() external prankAs(gaugeController) {
+  function test_assignRewardToMegapool_thenAssignsReward()
+    external
+    prankAs(gaugeController)
+  {
     ADDRESSES.push(generateAddress("pool1"));
     WEIGHTS.push(1e18);
 
@@ -348,7 +451,10 @@ contract InterestManagerTest is BaseTest {
     assertEq(underTest.exposed_getClaimedRewards(ADDRESSES[0]), reward);
   }
 
-  function test_assignRewardToMegapool_whenNoRewardOnSecondCall_thenDoesNotIncrease() external prankAs(gaugeController) {
+  function test_assignRewardToMegapool_whenNoRewardOnSecondCall_thenDoesNotIncrease()
+    external
+    prankAs(gaugeController)
+  {
     ADDRESSES.push(generateAddress("pool1"));
     WEIGHTS.push(1e18);
 
@@ -367,7 +473,9 @@ contract InterestManagerTest is BaseTest {
   }
 
   function test_setGaugeController_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setGaugeController(generateAddress("NewGaugeController"));
   }
 
@@ -380,10 +488,10 @@ contract InterestManagerTest is BaseTest {
     assertEq(underTest.gaugeController(), newGaugeController);
   }
 
-  function test_fizz_DistributionFormula_thenSucceedUnderTolerence(uint64[13] memory _weights, uint128 _totalRewards)
-    external
-    prankAs(gaugeController)
-  {
+  function test_fizz_DistributionFormula_thenSucceedUnderTolerence(
+    uint64[13] memory _weights,
+    uint128 _totalRewards
+  ) external prankAs(gaugeController) {
     _totalRewards = uint128(bound(_totalRewards, 0.001e18, 10_000e18));
 
     uint128 weight;
@@ -419,7 +527,17 @@ contract InterestManagerHarness is InterestManager {
     address _swapRouter,
     address _chainlinkDaiEth,
     address _weth
-  ) InterestManager(_owner, _gaugeController, _dripVaultETH, _dripVaultDAI, _swapRouter, _chainlinkDaiEth, _weth) { }
+  )
+    InterestManager(
+      _owner,
+      _gaugeController,
+      _dripVaultETH,
+      _dripVaultDAI,
+      _swapRouter,
+      _chainlinkDaiEth,
+      _weth
+    )
+  { }
 
   function exposed_endEpoch() external {
     _endEpoch();
@@ -433,7 +551,11 @@ contract InterestManagerHarness is InterestManager {
     _assignRewardToMegapool(epochs[epochId], _megapool);
   }
 
-  function exposed_getClaimedRewards(address _megapool) external view returns (uint128 claimed_) {
+  function exposed_getClaimedRewards(address _megapool)
+    external
+    view
+    returns (uint128 claimed_)
+  {
     return epochs[epochId].megapoolClaims[_megapool];
   }
 }

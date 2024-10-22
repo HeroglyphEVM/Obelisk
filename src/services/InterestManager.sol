@@ -9,19 +9,30 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { IStreamingPool } from "src/interfaces/IStreamingPool.sol";
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
-import { TransferHelper } from "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import { TransferHelper } from
+  "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import { IWETH } from "src/interfaces/IWETH.sol";
 import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 
 interface IChainlinkOracle {
-  function latestAnswer() external view returns (int256);
+  function latestRoundData()
+    external
+    view
+    returns (
+      uint80 roundId,
+      int256 answer,
+      uint256 startedAt,
+      uint256 updatedAt,
+      uint80 answeredInRound
+    );
 }
 
 /**
  * @title InterestManager
- * @notice It manages the rewards distribution to the megapools based on people votes with their HCT.
+ * @notice It manages the rewards distribution to the megapools based on people votes with
+ * their HCT.
  */
 contract InterestManager is IInterestManager, Ownable {
   uint256 public constant PRECISION = 1e18;
@@ -72,7 +83,10 @@ contract InterestManager is IInterestManager, Ownable {
     TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, type(uint256).max);
   }
 
-  function applyGauges(address[] memory _megapools, uint128[] memory _weights) external override {
+  function applyGauges(address[] memory _megapools, uint128[] memory _weights)
+    external
+    override
+  {
     uint256 megapoolsLength = _megapools.length;
 
     if (msg.sender != gaugeController) revert NotGaugeController();
@@ -148,7 +162,17 @@ contract InterestManager is IInterestManager, Ownable {
     uint256 daiBalance = DAI.balanceOf(address(this));
     if (daiBalance < MINIMUM_SWAP_DAI) return 0;
 
-    uint256 minimumOut = daiBalance * uint256(CHAINLINK_DAI_ETH.latestAnswer()) / PRECISION;
+    ( /*uint80 roundId*/
+      ,
+      int256 answer,
+      /*uint256 startedAt*/
+      ,
+      /*uint256 updatedAt*/
+      ,
+      /*uint80 answeredInRound*/
+    ) = CHAINLINK_DAI_ETH.latestRoundData();
+
+    uint256 minimumOut = daiBalance * uint256(answer) / PRECISION;
     minimumOut -= minimumOut * ALLOWED_SLIPPAGE / BPS;
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
@@ -195,7 +219,12 @@ contract InterestManager is IInterestManager, Ownable {
     emit StreamingPoolSet(_streamingPool);
   }
 
-  function getRewards(address _megapool) external view override returns (uint256 totalRewards_) {
+  function getRewards(address _megapool)
+    external
+    view
+    override
+    returns (uint256 totalRewards_)
+  {
     (totalRewards_,) = _getRewards(epochs[epochId], _megapool);
     return totalRewards_;
   }
@@ -213,7 +242,8 @@ contract InterestManager is IInterestManager, Ownable {
     if (weight == 0 || epoch.totalWeight == 0) return (totalRewards_, 0);
 
     uint256 weightRatioOfPool = Math.mulDiv(weight, PRECISION, epoch.totalWeight);
-    uint256 totalRewardsToPool = uint128(Math.mulDiv(totalServiceRewards, weightRatioOfPool, PRECISION));
+    uint256 totalRewardsToPool =
+      uint128(Math.mulDiv(totalServiceRewards, weightRatioOfPool, PRECISION));
 
     addedRewards_ = uint128(totalRewardsToPool - totalClaimedByPool);
     totalRewards_ += addedRewards_;
@@ -223,7 +253,12 @@ contract InterestManager is IInterestManager, Ownable {
   function getEpochData(uint64 _epochId)
     external
     view
-    returns (uint128 totalRewards_, uint128 totalWeight_, uint32 endOfEpoch_, address[] memory megapools_)
+    returns (
+      uint128 totalRewards_,
+      uint128 totalWeight_,
+      uint32 endOfEpoch_,
+      address[] memory megapools_
+    )
   {
     Epoch storage epoch = epochs[_epochId];
 
@@ -235,7 +270,11 @@ contract InterestManager is IInterestManager, Ownable {
     return (totalRewards_, totalWeight_, endOfEpoch_, megapools_);
   }
 
-  function getMegapoolWeight(uint64 _epochId, address _megapool) external view returns (uint128 weight_) {
+  function getMegapoolWeight(uint64 _epochId, address _megapool)
+    external
+    view
+    returns (uint128 weight_)
+  {
     return epochs[_epochId].megapoolToWeight[_megapool];
   }
 
