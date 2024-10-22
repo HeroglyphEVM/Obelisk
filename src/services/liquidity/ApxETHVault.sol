@@ -6,7 +6,7 @@ import { BaseDripVault } from "./BaseDripVault.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 
-contract apxETHVault is BaseDripVault {
+contract ApxETHVault is BaseDripVault {
   IApxETH public immutable APXETH;
   IPirexEth public immutable PIREX_ETH;
 
