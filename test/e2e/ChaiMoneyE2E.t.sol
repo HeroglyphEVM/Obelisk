@@ -31,7 +31,8 @@ contract ChaiMoneyE2E is BaseTest {
     rateReceiver = generateAddress("RATE_RECEIVER");
     mockUser = generateAddress("MOCK_USER");
 
-    vault = new ChaiMoneyVault(owner, obeliskRegistry, address(chaiMoney), dai, rateReceiver);
+    vault =
+      new ChaiMoneyVault(owner, obeliskRegistry, address(chaiMoney), dai, rateReceiver);
 
     vm.prank(obeliskRegistry);
     IERC20(dai).approve(address(vault), type(uint256).max);

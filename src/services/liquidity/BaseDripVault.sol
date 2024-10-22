@@ -3,7 +3,9 @@ pragma solidity ^0.8.24;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
-import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+  SafeERC20, IERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 abstract contract BaseDripVault is IDripVault, Ownable {
   address public immutable INPUT_TOKEN;
@@ -17,9 +19,14 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     _;
   }
 
-  constructor(address _inputToken, address _owner, address _obeliskRegistry, address _rateReceiver) Ownable(_owner) {
-    obeliskRegistry = _obeliskRegistry;
+  constructor(
+    address _inputToken,
+    address _owner,
+    address _obeliskRegistry,
+    address _rateReceiver
+  ) Ownable(_owner) {
     interestRateReceiver = _rateReceiver;
+    obeliskRegistry = _obeliskRegistry;
     INPUT_TOKEN = _inputToken;
   }
 

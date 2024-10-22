@@ -11,9 +11,13 @@ contract ChaiMoneyVault is BaseDripVault {
   IChaiMoney public immutable CHAI_MONEY;
   IPot public immutable POT;
 
-  constructor(address _owner, address _obeliskRegistry, address _chaiMoney, address _dai, address _rateReceiver)
-    BaseDripVault(_dai, _owner, _obeliskRegistry, _rateReceiver)
-  {
+  constructor(
+    address _owner,
+    address _obeliskRegistry,
+    address _chaiMoney,
+    address _dai,
+    address _rateReceiver
+  ) BaseDripVault(_dai, _owner, _obeliskRegistry, _rateReceiver) {
     CHAI_MONEY = IChaiMoney(_chaiMoney);
     POT = IPot(IChaiMoney(_chaiMoney).pot());
 
