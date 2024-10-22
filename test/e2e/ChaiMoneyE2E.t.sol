@@ -3,12 +3,12 @@ pragma solidity ^0.8.4;
 
 import "../base/BaseTest.t.sol";
 
-import { ChaiMoneyVault } from "src/services/liquidity/ChainMoney.sol";
+import { ChaiMoneyVault } from "src/services/liquidity/ChaiMoney.sol";
 import { IPot } from "src/vendor/chai/IPot.sol";
 import { IChaiMoney } from "src/vendor/chai/IChaiMoney.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract ChainMoneyE2E is BaseTest {
+contract ChaiMoneyE2E is BaseTest {
   address private owner;
   address private obeliskRegistry;
   address private dai = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
