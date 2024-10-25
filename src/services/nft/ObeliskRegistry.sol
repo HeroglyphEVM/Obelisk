@@ -12,6 +12,8 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { Create } from "src/lib/Create.sol";
 
+import { HCT } from "src/services/HCT.sol";
+
 /**
  * @title ObeliskRegistry
  * @notice It can creates / allow / modify Tickers, have supporting option to boost yield
@@ -36,7 +38,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     userSupportedCollections;
   mapping(uint32 => Supporter) private supporters;
 
-  address public immutable HCT;
+  address public immutable HCT_ADDRESS;
   address public immutable NFT_PASS;
   IERC20 public immutable DAI;
   IDripVault public immutable DRIP_VAULT_ETH;
@@ -50,7 +52,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   constructor(
     address _owner,
     address _treasury,
-    address _hct,
     address _nftPass,
     address _dripVaultETH,
     address _dripVaultDAI,
@@ -59,7 +60,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     maxRewardPerCollection = 250e18;
 
     treasury = _treasury;
-    HCT = _hct;
+    HCT_ADDRESS = address(new HCT());
     DRIP_VAULT_ETH = IDripVault(_dripVaultETH);
     DRIP_VAULT_DAI = IDripVault(_dripVaultDAI);
     NFT_PASS = _nftPass;
@@ -126,7 +127,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
       abi.encodePacked(
         type(WrappedNFTHero).creationCode,
         abi.encode(
-          HCT,
+          HCT_ADDRESS,
           NFT_PASS,
           _collection,
           address(this),

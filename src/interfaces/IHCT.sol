@@ -2,15 +2,23 @@
 pragma solidity >=0.8.0;
 
 interface IHCT {
-  error AlreadyInitialized();
   error NotWrappedNFT();
   error NothingToClaim();
 
   event PowerAdded(address indexed wrappedNFT, address indexed user, uint128 multiplier);
-  event PowerRemoved(address indexed wrappedNFT, address indexed user, uint128 multiplier);
-  event Transferred(address indexed wrappedNFT, address indexed from, address indexed to, uint128 multiplier);
+  event PowerRemoved(
+    address indexed wrappedNFT, address indexed user, uint128 multiplier
+  );
+  event Transferred(
+    address indexed wrappedNFT,
+    address indexed from,
+    address indexed to,
+    uint128 multiplier
+  );
   event Claimed(address indexed user, uint256 amount);
-  event BurnedForRenaming(address indexed wrappedNFT, address indexed user, uint256 amount);
+  event BurnedForRenaming(
+    address indexed wrappedNFT, address indexed user, uint256 amount
+  );
 
   struct UserInfo {
     uint128 multiplier;

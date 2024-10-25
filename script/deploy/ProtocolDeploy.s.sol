@@ -52,7 +52,6 @@ contract ProtocolDeploy is BaseScript {
     string memory file = _getConfig(CONFIG_NAME);
     config = abi.decode(vm.parseJson(file, string.concat(".", _getNetwork())), (Config));
 
-    (address hct,) = _tryDeployContract("HCT", 0, type(HCT).creationCode, "");
     (address nftPass,) = _tryDeployContract(
       "NFT Pass",
       0,
@@ -77,10 +76,12 @@ contract ProtocolDeploy is BaseScript {
       "Obelisk Registry",
       0,
       type(ObeliskRegistry).creationCode,
-      abi.encode(
-        deployerWallet, config.treasury, hct, nftPass, apxVault, daiVault, config.dai
-      )
+      abi.encode(deployerWallet, config.treasury, nftPass, apxVault, daiVault, config.dai)
     );
+
+    if (contracts["HCT"] == address(0)) {
+      _saveDeployment("HCT", ObeliskRegistry(payable(obeliskRegistry)).HCT_ADDRESS());
+    }
 
     (obeliskHashmask, obeliskHashmaskExists) = _tryDeployContract(
       "Obelisk Hashmask",

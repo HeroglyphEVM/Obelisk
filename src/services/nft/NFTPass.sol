@@ -8,12 +8,15 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * @title NFTPass
- * @notice A contract that allows users to buy NFT passes to create their own identity. Without a pass, the user can't
+ * @notice A contract that allows users to buy NFT passes to create their own identity.
+ * Without a pass, the user can't
  * use Obelisk.
  */
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
   uint256 internal constant SEND_ETH_GAS_MINIMUM = 20_000 * 2;
+
+  bytes internal markleRoot;
 
   uint32 public maxIdentityPerDayAtInitialPrice;
   uint32 public priceIncreaseThreshold;
@@ -62,7 +65,9 @@ contract NFTPass is INFTPass, IdentityERC721 {
     if (!success) revert TransferFailed();
   }
 
-  function updateReceiverAddress(uint256 _nftId, string calldata _name, address _receiver) external {
+  function updateReceiverAddress(uint256 _nftId, string calldata _name, address _receiver)
+    external
+  {
     if (_nftId == 0) {
       _nftId = identityIds[_name];
     }
@@ -102,13 +107,16 @@ contract NFTPass is INFTPass, IdentityERC721 {
     uint256 cachedCost = cost;
 
     if (block.timestamp >= resetCounterTimestampReturn_) {
-      uint256 totalDayPassed = (block.timestamp - resetCounterTimestampReturn_) / 1 days + 1;
+      uint256 totalDayPassed =
+        (block.timestamp - resetCounterTimestampReturn_) / 1 days + 1;
       resetCounterTimestampReturn_ += uint32(1 days * totalDayPassed);
       boughtTodayReturn_ = 0;
 
       for (uint256 i = 0; i < totalDayPassed; ++i) {
-        currentCostReturn_ =
-          Math.max(cachedCost, currentCostReturn_ - Math.mulDiv(currentCostReturn_, priceDecayBPS, MAX_BPS));
+        currentCostReturn_ = Math.max(
+          cachedCost,
+          currentCostReturn_ - Math.mulDiv(currentCostReturn_, priceDecayBPS, MAX_BPS)
+        );
 
         if (currentCostReturn_ <= cachedCost) break;
       }
@@ -116,17 +124,25 @@ contract NFTPass is INFTPass, IdentityERC721 {
 
     bool boughtExceedsMaxPerDay = boughtTodayReturn_ > maxPerDayCached;
 
-    if (boughtExceedsMaxPerDay && (boughtTodayReturn_ - maxPerDayCached) % priceIncreaseThreshold == 0) {
+    if (
+      boughtExceedsMaxPerDay
+        && (boughtTodayReturn_ - maxPerDayCached) % priceIncreaseThreshold == 0
+    ) {
       currentCostReturn_ += cachedCost / 2;
     }
 
     userCost_ = !boughtExceedsMaxPerDay ? cachedCost : currentCostReturn_;
     boughtTodayReturn_++;
 
-    return (resetCounterTimestampReturn_, boughtTodayReturn_, currentCostReturn_, userCost_);
+    return
+      (resetCounterTimestampReturn_, boughtTodayReturn_, currentCostReturn_, userCost_);
   }
 
-  function getMetadata(uint256 _nftId, string calldata _name) external view returns (Metadata memory) {
+  function getMetadata(uint256 _nftId, string calldata _name)
+    external
+    view
+    returns (Metadata memory)
+  {
     if (_nftId == 0) {
       _nftId = identityIds[_name];
     }
@@ -134,12 +150,18 @@ contract NFTPass is INFTPass, IdentityERC721 {
     return metadataPasses[_nftId];
   }
 
-  function updateMaxIdentityPerDayAtInitialPrice(uint32 _maxIdentityPerDayAtInitialPrice) external onlyOwner {
+  function updateMaxIdentityPerDayAtInitialPrice(uint32 _maxIdentityPerDayAtInitialPrice)
+    external
+    onlyOwner
+  {
     maxIdentityPerDayAtInitialPrice = _maxIdentityPerDayAtInitialPrice;
     emit MaxIdentityPerDayAtInitialPriceUpdated(_maxIdentityPerDayAtInitialPrice);
   }
 
-  function updatePriceIncreaseThreshold(uint32 _priceIncreaseThreshold) external onlyOwner {
+  function updatePriceIncreaseThreshold(uint32 _priceIncreaseThreshold)
+    external
+    onlyOwner
+  {
     priceIncreaseThreshold = _priceIncreaseThreshold;
     emit PriceIncreaseThresholdUpdated(_priceIncreaseThreshold);
   }

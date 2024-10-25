@@ -28,7 +28,7 @@ contract ObeliskRegistryTest is BaseTest {
   address private user;
 
   address private collectionMock;
-  address private hctMock;
+  address private hct;
   address private dripVaultETHMock;
   address private dripVaultDAIMock;
   address private dataAsserterMock;
@@ -44,13 +44,7 @@ contract ObeliskRegistryTest is BaseTest {
     _setupMockCalls();
 
     underTest = new ObeliskRegistryHarness(
-      owner,
-      treasury,
-      hctMock,
-      nftPassMock,
-      dripVaultETHMock,
-      dripVaultDAIMock,
-      address(DAI)
+      owner, treasury, nftPassMock, dripVaultETHMock, dripVaultDAIMock, address(DAI)
     );
 
     vm.prank(owner);
@@ -60,6 +54,8 @@ contract ObeliskRegistryTest is BaseTest {
 
     vm.prank(owner);
     underTest.setDataAsserter(dataAsserterMock);
+
+    hct = underTest.HCT_ADDRESS();
   }
 
   function _setupMockVariables() internal {
@@ -67,7 +63,6 @@ contract ObeliskRegistryTest is BaseTest {
     treasury = generateAddress("Treasury");
     user = generateAddress("User", 10_000e18);
     collectionMock = generateAddress("CollectionMock");
-    hctMock = generateAddress("HCTMock");
     dripVaultETHMock = generateAddress("DripVaultETHMock");
     dripVaultDAIMock = generateAddress("DripVaultDAIMock");
     dataAsserterMock = generateAddress("DataAsserterMock");
@@ -104,17 +99,11 @@ contract ObeliskRegistryTest is BaseTest {
 
   function test_constructor() external {
     underTest = new ObeliskRegistryHarness(
-      owner,
-      treasury,
-      hctMock,
-      nftPassMock,
-      dripVaultETHMock,
-      dripVaultDAIMock,
-      address(DAI)
+      owner, treasury, nftPassMock, dripVaultETHMock, dripVaultDAIMock, address(DAI)
     );
 
     assertEq(underTest.owner(), owner);
-    assertEq(underTest.HCT(), hctMock);
+    assertTrue(underTest.HCT_ADDRESS() != address(0));
     assertEq(underTest.NFT_PASS(), nftPassMock);
     assertEq(
       underTest.REQUIRED_ETH_TO_ENABLE_COLLECTION(), REQUIRED_ETH_TO_ENABLE_COLLECTION
@@ -241,7 +230,7 @@ contract ObeliskRegistryTest is BaseTest {
 
     assertTrue(underTest.isWrappedNFT(address(wrappedNFT_nonPremium)));
 
-    assertEq(address(wrappedNFT_nonPremium.HCT()), hctMock);
+    assertEq(address(wrappedNFT_nonPremium.HCT()), hct);
     assertEq(address(wrappedNFT_nonPremium.INPUT_COLLECTION()), collection_nonPremium);
     assertEq(address(wrappedNFT_nonPremium.obeliskRegistry()), address(underTest));
     assertEq(
@@ -257,7 +246,7 @@ contract ObeliskRegistryTest is BaseTest {
 
     assertTrue(underTest.isWrappedNFT(address(wrappedNFT_premium)));
 
-    assertEq(address(wrappedNFT_premium.HCT()), hctMock);
+    assertEq(address(wrappedNFT_premium.HCT()), hct);
     assertEq(address(wrappedNFT_premium.INPUT_COLLECTION()), collection_premium);
     assertEq(address(wrappedNFT_premium.obeliskRegistry()), address(underTest));
     assertEq(wrappedNFT_premium.COLLECTION_STARTED_UNIX_TIME(), collectionStartedUnixTime);
@@ -795,14 +784,11 @@ contract ObeliskRegistryHarness is ObeliskRegistry {
   constructor(
     address _owner,
     address _treasury,
-    address _hct,
     address _nftPass,
     address _dripVaultETH,
     address _dripVaultDAI,
     address _dai
-  )
-    ObeliskRegistry(_owner, _treasury, _hct, _nftPass, _dripVaultETH, _dripVaultDAI, _dai)
-  { }
+  ) ObeliskRegistry(_owner, _treasury, _nftPass, _dripVaultETH, _dripVaultDAI, _dai) { }
 
   function exposed_createWrappedNFT(
     address _collection,

@@ -11,17 +11,11 @@ contract HCT is ERC20, IHCT {
   uint256 private constant PRECISION = 1e18;
   uint128 public constant NAME_COST = 90e18;
 
-  bool private isInitialized;
-  IObeliskRegistry public obeliskRegistry;
+  IObeliskRegistry public immutable obeliskRegistry;
   mapping(address => UserInfo) internal usersInfo;
 
-  constructor() ERC20("Heroglyph Name Change Token", "HCT") { }
-
-  function initHCT(address _obeliskRegistry) external {
-    if (isInitialized) revert AlreadyInitialized();
-
-    isInitialized = true;
-    obeliskRegistry = IObeliskRegistry(_obeliskRegistry);
+  constructor() ERC20("Heroglyph Name Change Token", "HCT") {
+    obeliskRegistry = IObeliskRegistry(msg.sender);
   }
 
   modifier onlyHeroglyphWrappedNFT() {
@@ -29,7 +23,11 @@ contract HCT is ERC20, IHCT {
     _;
   }
 
-  function addPower(address _user, uint128 _addMultiplier) external override onlyHeroglyphWrappedNFT {
+  function addPower(address _user, uint128 _addMultiplier)
+    external
+    override
+    onlyHeroglyphWrappedNFT
+  {
     UserInfo storage userInfo = usersInfo[_user];
     _claim(_user, userInfo);
     userInfo.multiplier += _addMultiplier;
@@ -37,7 +35,11 @@ contract HCT is ERC20, IHCT {
     emit PowerAdded(msg.sender, _user, _addMultiplier);
   }
 
-  function removePower(address _user, uint128 _removeMultiplier) external override onlyHeroglyphWrappedNFT {
+  function removePower(address _user, uint128 _removeMultiplier)
+    external
+    override
+    onlyHeroglyphWrappedNFT
+  {
     UserInfo storage userInfo = usersInfo[_user];
     _claim(_user, userInfo);
     userInfo.multiplier -= uint128(_removeMultiplier);
@@ -57,7 +59,10 @@ contract HCT is ERC20, IHCT {
     if (amount_ == 0) revert NothingToClaim();
   }
 
-  function _claim(address _user, UserInfo storage _userInfo) internal returns (uint128 amount_) {
+  function _claim(address _user, UserInfo storage _userInfo)
+    internal
+    returns (uint128 amount_)
+  {
     amount_ = _getPendingToBeClaimed(uint32(block.timestamp), _userInfo);
     _userInfo.lastUnixTimeClaim = uint32(block.timestamp);
 
@@ -70,14 +75,19 @@ contract HCT is ERC20, IHCT {
   }
 
   function balanceOf(address _user) public view override returns (uint256) {
-    return super.balanceOf(_user) + _getPendingToBeClaimed(uint32(block.timestamp), usersInfo[_user]);
+    return super.balanceOf(_user)
+      + _getPendingToBeClaimed(uint32(block.timestamp), usersInfo[_user]);
   }
 
   function getPendingToBeClaimed(address _user) external view returns (uint256) {
     return _getPendingToBeClaimed(uint32(block.timestamp), usersInfo[_user]);
   }
 
-  function _getPendingToBeClaimed(uint32 _currentTime, UserInfo memory _userInfo) internal pure returns (uint128) {
+  function _getPendingToBeClaimed(uint32 _currentTime, UserInfo memory _userInfo)
+    internal
+    pure
+    returns (uint128)
+  {
     uint32 timePassed = _currentTime - _userInfo.lastUnixTimeClaim;
     if (timePassed == 0) return 0;
 
