@@ -11,7 +11,9 @@ interface IObeliskHashmask {
   error ZeroAddress();
 
   event ActivationPriceSet(uint256 price);
-  event HashmaskLinked(uint256 indexed hashmaskId, address indexed from, address indexed to);
+  event HashmaskLinked(
+    uint256 indexed hashmaskId, address indexed from, address indexed to
+  );
   event NameUpdated(uint256 indexed hashmaskId, string name);
   event TreasurySet(address treasury);
 
@@ -22,7 +24,8 @@ interface IObeliskHashmask {
   function link(uint256 _hashmaskId) external payable;
 
   /**
-   * @notice Transfers the link of a hashmask to another user without requiring an additional linking fee if the
+   * @notice Transfers the link of a hashmask to another user without requiring an
+   * additional linking fee if the
    * transfer is to another wallet owned by the same user.
    * @param _hashmaskId The ID of the hashmask to transfer.
    * @dev The hashmask.ownerOf() will be set as linker.

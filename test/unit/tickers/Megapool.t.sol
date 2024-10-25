@@ -27,13 +27,19 @@ contract MegapoolTest is BaseTest {
     rewardToken = new MockERC20("Reward Token", "RT", 18);
     vm.label(address(rewardToken), "rewardToken");
 
-    vm.mockCall(interestManager, abi.encodeWithSelector(IInterestManager.claim.selector), abi.encode(0));
+    vm.mockCall(
+      interestManager,
+      abi.encodeWithSelector(IInterestManager.claim.selector),
+      abi.encode(0)
+    );
 
-    underTest = new MegapoolHarness(owner, registry, address(rewardToken), interestManager);
+    underTest =
+      new MegapoolHarness(owner, registry, address(rewardToken), interestManager);
   }
 
   function test_constructor_thenContractIsInitialized() external {
-    underTest = new MegapoolHarness(owner, registry, address(rewardToken), interestManager);
+    underTest =
+      new MegapoolHarness(owner, registry, address(rewardToken), interestManager);
 
     assertEq(underTest.owner(), owner);
     assertEq(address(underTest.registry()), registry);
@@ -95,7 +101,9 @@ contract MegapoolTest is BaseTest {
     rewardToken.mint(address(underTest), 1e18);
     underTest.exposed_afterVirtualDeposit(user_01);
 
-    vm.expectCall(interestManager, abi.encodeWithSelector(IInterestManager.claim.selector));
+    vm.expectCall(
+      interestManager, abi.encodeWithSelector(IInterestManager.claim.selector)
+    );
     underTest.exposed_claim(user_01);
 
     assertEq(rewardToken.balanceOf(user_01), 0);
@@ -141,9 +149,12 @@ contract MegapoolTest is BaseTest {
 }
 
 contract MegapoolHarness is Megapool {
-  constructor(address _owner, address _registry, address _tokenReward, address _interestManager)
-    Megapool(_owner, _registry, _tokenReward, _interestManager)
-  { }
+  constructor(
+    address _owner,
+    address _registry,
+    address _tokenReward,
+    address _interestManager
+  ) Megapool(_owner, _registry, _tokenReward, _interestManager) { }
 
   function exposed_afterVirtualDeposit(address _holder) external {
     _afterVirtualDeposit(_holder);

@@ -25,8 +25,11 @@ contract WrappedNFTHeroTest is BaseTest {
   address private user;
 
   string[] private tickers = ["#Pool", "HenZ", "MyWorld"];
-  address[] private poolTargets =
-    [generateAddress("PoolTarget1"), generateAddress("PoolTarget2"), generateAddress("PoolTarget3")];
+  address[] private poolTargets = [
+    generateAddress("PoolTarget1"),
+    generateAddress("PoolTarget2"),
+    generateAddress("PoolTarget3")
+  ];
 
   WrappedNFTHeroHarness private underTest;
 
@@ -59,8 +62,16 @@ contract WrappedNFTHeroTest is BaseTest {
 
   function _mockCalls() internal {
     for (uint256 i = 0; i < poolTargets.length; i++) {
-      vm.mockCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector), abi.encode(true));
-      vm.mockCall(poolTargets[i], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector), abi.encode(true));
+      vm.mockCall(
+        poolTargets[i],
+        abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector),
+        abi.encode(true)
+      );
+      vm.mockCall(
+        poolTargets[i],
+        abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector),
+        abi.encode(true)
+      );
       vm.mockCall(
         mockObeliskRegistry,
         abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i]),
@@ -69,7 +80,9 @@ contract WrappedNFTHeroTest is BaseTest {
     }
 
     vm.mockCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector), abi.encode(true));
-    vm.mockCall(mockHCT, abi.encodeWithSelector(IHCT.usesForRenaming.selector), abi.encode(true));
+    vm.mockCall(
+      mockHCT, abi.encodeWithSelector(IHCT.usesForRenaming.selector), abi.encode(true)
+    );
   }
 
   function test_constructor_thenSetsValues() external {
@@ -89,9 +102,12 @@ contract WrappedNFTHeroTest is BaseTest {
     assertEq(address(underTest.obeliskRegistry()), mockObeliskRegistry);
     assertEq(underTest.freeSlots(), ACTIVE_SUPPLY * UNLOCK_SLOT_BPS / BPS);
     assertEq(
-      underTest.FREE_SLOT_FOR_ODD(), uint256(keccak256(abi.encode(tx.origin, address(mockInputCollection)))) % 2 == 1
+      underTest.FREE_SLOT_FOR_ODD(),
+      uint256(keccak256(abi.encode(tx.origin, address(mockInputCollection)))) % 2 == 1
     );
-    assertEq(underTest.COLLECTION_STARTED_UNIX_TIME(), uint32(block.timestamp) - YEAR_IN_SECONDS);
+    assertEq(
+      underTest.COLLECTION_STARTED_UNIX_TIME(), uint32(block.timestamp) - YEAR_IN_SECONDS
+    );
     assertFalse(underTest.PREMIUM());
 
     underTest = new WrappedNFTHeroHarness(
@@ -129,12 +145,21 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.wrap(tokenId);
   }
 
-  function test_wrap_whenBuyingSlot_thenCallsObeliskRegistryAndWraps() external prankAs(user) {
+  function test_wrap_whenBuyingSlot_thenCallsObeliskRegistryAndWraps()
+    external
+    prankAs(user)
+  {
     uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 2 : 1;
     uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
 
-    vm.expectCall(mockObeliskRegistry, SLOT_PRICE, abi.encodeWithSelector(IObeliskRegistry.onSlotBought.selector));
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier));
+    vm.expectCall(
+      mockObeliskRegistry,
+      SLOT_PRICE,
+      abi.encodeWithSelector(IObeliskRegistry.onSlotBought.selector)
+    );
+    vm.expectCall(
+      mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier)
+    );
 
     expectExactEmit();
     emit IWrappedNFTHero.Wrapped(tokenId);
@@ -152,7 +177,9 @@ contract WrappedNFTHeroTest is BaseTest {
     uint256 freeSlotsBefore = underTest.freeSlots();
     uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
 
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier));
+    vm.expectCall(
+      mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier)
+    );
 
     expectExactEmit();
     emit IWrappedNFTHero.Wrapped(tokenId);
@@ -224,7 +251,10 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.exposed_renameRequirements(1);
   }
 
-  function test_renameRequirements_whenFirstRenameAndPremium_thenDoesNotHTC() external prankAs(user) {
+  function test_renameRequirements_whenFirstRenameAndPremium_thenDoesNotHTC()
+    external
+    prankAs(user)
+  {
     underTest = new WrappedNFTHeroHarness(
       mockHCT,
       mockNFTPass,
@@ -239,7 +269,11 @@ contract WrappedNFTHeroTest is BaseTest {
 
     underTest.wrap(tokenId);
 
-    vm.mockCallRevert(mockHCT, abi.encodeWithSelector(IHCT.usesForRenaming.selector, user), "Should not be called");
+    vm.mockCallRevert(
+      mockHCT,
+      abi.encodeWithSelector(IHCT.usesForRenaming.selector, user),
+      "Should not be called"
+    );
     underTest.exposed_renameRequirements(1);
 
     vm.clearMockedCalls();
@@ -287,7 +321,9 @@ contract WrappedNFTHeroTest is BaseTest {
     uint256 tokenId = 33;
     uint256 expectingMultiplier = 1 * underTest.RATE_PER_YEAR();
 
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier));
+    vm.expectCall(
+      mockHCT, abi.encodeWithSelector(IHCT.addPower.selector, user, expectingMultiplier)
+    );
     underTest.exposed_mint(user, tokenId);
   }
 
@@ -297,7 +333,10 @@ contract WrappedNFTHeroTest is BaseTest {
 
     underTest.exposed_mint(user, tokenId);
 
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, user, expectingMultiplier));
+    vm.expectCall(
+      mockHCT,
+      abi.encodeWithSelector(IHCT.removePower.selector, user, expectingMultiplier)
+    );
     underTest.exposed_burn(tokenId);
 
     assertEq(underTest.getNFTData(tokenId).assignedMultiplier, 0);
@@ -311,24 +350,34 @@ contract WrappedNFTHeroTest is BaseTest {
 
     skip(YEAR_IN_SECONDS);
 
-    vm.expectCall(mockHCT, abi.encodeWithSelector(IHCT.removePower.selector, user, expectingMultiplier));
+    vm.expectCall(
+      mockHCT,
+      abi.encodeWithSelector(IHCT.removePower.selector, user, expectingMultiplier)
+    );
     underTest.exposed_burn(tokenId);
 
     assertGt(underTest.getWrapperMultiplier(), expectingMultiplier);
   }
 
-  function test_transfer_whenCannotTransferUnwrapFirst_thenReverts() external prankAs(user) {
+  function test_transfer_whenCannotTransferUnwrapFirst_thenReverts()
+    external
+    prankAs(user)
+  {
     uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
 
     underTest.wrap(tokenId);
 
-    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.CannotTransferUnwrapFirst.selector));
+    vm.expectRevert(
+      abi.encodeWithSelector(IWrappedNFTHero.CannotTransferUnwrapFirst.selector)
+    );
     underTest.transferFrom(user, generateAddress("To"), tokenId);
   }
 
   function test_onERC721Received_whenCalled_thenReturnsSelector() external view {
     bytes4 expectedSelector = underTest.onERC721Received.selector;
-    assertEq(underTest.onERC721Received(address(0), address(0), 0, bytes("")), expectedSelector);
+    assertEq(
+      underTest.onERC721Received(address(0), address(0), 0, bytes("")), expectedSelector
+    );
   }
 }
 

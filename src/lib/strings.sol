@@ -254,7 +254,11 @@ library strings {
      * @param rune The slice that will contain the first rune.
      * @return `rune`.
      */
-  function nextRune(slice memory self, slice memory rune) internal pure returns (slice memory) {
+  function nextRune(slice memory self, slice memory rune)
+    internal
+    pure
+    returns (slice memory)
+  {
     rune._ptr = self._ptr;
 
     if (self._len == 0) {
@@ -370,7 +374,11 @@ library strings {
      * @param needle The slice to search for.
      * @return True if the slice starts with the provided text, false otherwise.
      */
-  function startsWith(slice memory self, slice memory needle) internal pure returns (bool) {
+  function startsWith(slice memory self, slice memory needle)
+    internal
+    pure
+    returns (bool)
+  {
     if (self._len < needle._len) {
       return false;
     }
@@ -396,7 +404,11 @@ library strings {
      * @param needle The slice to search for.
      * @return `self`
      */
-  function beyond(slice memory self, slice memory needle) internal pure returns (slice memory) {
+  function beyond(slice memory self, slice memory needle)
+    internal
+    pure
+    returns (slice memory)
+  {
     if (self._len < needle._len) {
       return self;
     }
@@ -453,7 +465,11 @@ library strings {
      * @param needle The slice to search for.
      * @return `self`
      */
-  function until(slice memory self, slice memory needle) internal pure returns (slice memory) {
+  function until(slice memory self, slice memory needle)
+    internal
+    pure
+    returns (slice memory)
+  {
     if (self._len < needle._len) {
       return self;
     }
@@ -537,11 +553,12 @@ library strings {
 
   // Returns the memory address of the first byte after the last occurrence of
   // `needle` in `self`, or the address of `self` if not found.
-  function rfindPtr(uint256 selflen, uint256 selfptr, uint256 needlelen, uint256 needleptr)
-    private
-    pure
-    returns (uint256)
-  {
+  function rfindPtr(
+    uint256 selflen,
+    uint256 selfptr,
+    uint256 needlelen,
+    uint256 needleptr
+  ) private pure returns (uint256) {
     uint256 ptr;
 
     if (needlelen <= selflen) {
@@ -602,7 +619,11 @@ library strings {
      * @param needle The text to search for.
      * @return `self`.
      */
-  function find(slice memory self, slice memory needle) internal pure returns (slice memory) {
+  function find(slice memory self, slice memory needle)
+    internal
+    pure
+    returns (slice memory)
+  {
     uint256 ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr);
     self._len -= ptr - self._ptr;
     self._ptr = ptr;
@@ -617,7 +638,11 @@ library strings {
      * @param needle The text to search for.
      * @return `self`.
      */
-  function rfind(slice memory self, slice memory needle) internal pure returns (slice memory) {
+  function rfind(slice memory self, slice memory needle)
+    internal
+    pure
+    returns (slice memory)
+  {
     uint256 ptr = rfindPtr(self._len, self._ptr, needle._len, needle._ptr);
     self._len = ptr - self._ptr;
     return self;
@@ -633,7 +658,11 @@ library strings {
      * @param token An output parameter to which the first token is written.
      * @return `token`.
      */
-  function split(slice memory self, slice memory needle, slice memory token) internal pure returns (slice memory) {
+  function split(slice memory self, slice memory needle, slice memory token)
+    internal
+    pure
+    returns (slice memory)
+  {
     uint256 ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr);
     token._ptr = self._ptr;
     token._len = ptr - self._ptr;
@@ -656,7 +685,11 @@ library strings {
      * @param needle The text to search for in `self`.
      * @return The part of `self` up to the first occurrence of `delim`.
      */
-  function split(slice memory self, slice memory needle) internal pure returns (slice memory token) {
+  function split(slice memory self, slice memory needle)
+    internal
+    pure
+    returns (slice memory token)
+  {
     split(self, needle, token);
   }
 
@@ -670,7 +703,11 @@ library strings {
      * @param token An output parameter to which the first token is written.
      * @return `token`.
      */
-  function rsplit(slice memory self, slice memory needle, slice memory token) internal pure returns (slice memory) {
+  function rsplit(slice memory self, slice memory needle, slice memory token)
+    internal
+    pure
+    returns (slice memory)
+  {
     uint256 ptr = rfindPtr(self._len, self._ptr, needle._len, needle._ptr);
     token._ptr = ptr;
     token._len = self._len - (ptr - self._ptr);
@@ -692,7 +729,11 @@ library strings {
      * @param needle The text to search for in `self`.
      * @return The part of `self` after the last occurrence of `delim`.
      */
-  function rsplit(slice memory self, slice memory needle) internal pure returns (slice memory token) {
+  function rsplit(slice memory self, slice memory needle)
+    internal
+    pure
+    returns (slice memory token)
+  {
     rsplit(self, needle, token);
   }
 
@@ -702,11 +743,16 @@ library strings {
      * @param needle The text to search for in `self`.
      * @return The number of occurrences of `needle` found in `self`.
      */
-  function count(slice memory self, slice memory needle) internal pure returns (uint256 cnt) {
+  function count(slice memory self, slice memory needle)
+    internal
+    pure
+    returns (uint256 cnt)
+  {
     uint256 ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr) + needle._len;
     while (ptr <= self._ptr + self._len) {
       cnt++;
-      ptr = findPtr(self._len - (ptr - self._ptr), ptr, needle._len, needle._ptr) + needle._len;
+      ptr = findPtr(self._len - (ptr - self._ptr), ptr, needle._len, needle._ptr)
+        + needle._len;
     }
   }
 
@@ -727,7 +773,11 @@ library strings {
      * @param other The second slice to concatenate.
      * @return The concatenation of the two strings.
      */
-  function concat(slice memory self, slice memory other) internal pure returns (string memory) {
+  function concat(slice memory self, slice memory other)
+    internal
+    pure
+    returns (string memory)
+  {
     string memory ret = new string(self._len + other._len);
     uint256 retptr;
     assembly {
@@ -746,7 +796,11 @@ library strings {
      * @return A newly allocated string containing all the slices in `parts`,
      *         joined with `self`.
      */
-  function join(slice memory self, slice[] memory parts) internal pure returns (string memory) {
+  function join(slice memory self, slice[] memory parts)
+    internal
+    pure
+    returns (string memory)
+  {
     if (parts.length == 0) {
       return "";
     }

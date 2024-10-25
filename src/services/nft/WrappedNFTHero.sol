@@ -63,7 +63,9 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     if (nftdata.isMinted) revert AlreadyMinted();
 
     if ((canHaveFreeSlot || didWrapBefore) && msg.value != 0) revert FreeSlotAvailable();
-    if ((!canHaveFreeSlot && !didWrapBefore) && msg.value != SLOT_PRICE) revert NoFreeSlots();
+    if ((!canHaveFreeSlot && !didWrapBefore) && msg.value != SLOT_PRICE) {
+      revert NoFreeSlots();
+    }
 
     nftdata.isMinted = true;
     INPUT_COLLECTION.transferFrom(msg.sender, address(this), _inputCollectionNFTId);
@@ -121,7 +123,11 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     return true;
   }
 
-  function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+  function _update(address to, uint256 tokenId, address auth)
+    internal
+    override
+    returns (address)
+  {
     NFTData storage nftdata = nftData[tokenId];
 
     address from = _ownerOf(tokenId);
@@ -158,7 +164,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
   function getWrapperMultiplier() public view returns (uint128) {
     if (PREMIUM) return uint128(MAX_RATE);
 
-    uint256 currentYear = (block.timestamp - COLLECTION_STARTED_UNIX_TIME) / SECONDS_PER_YEAR;
+    uint256 currentYear =
+      (block.timestamp - COLLECTION_STARTED_UNIX_TIME) / SECONDS_PER_YEAR;
     return uint128(Math.min(currentYear * RATE_PER_YEAR, MAX_RATE));
   }
 
@@ -166,7 +173,12 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     return nftData[_tokenId];
   }
 
-  function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
+  function onERC721Received(address, address, uint256, bytes calldata)
+    external
+    pure
+    override
+    returns (bytes4)
+  {
     return this.onERC721Received.selector;
   }
 

@@ -2,7 +2,9 @@
 pragma solidity ^0.8.20;
 
 import "test/base/BaseTest.t.sol";
-import { LiteTicker, ILiteTicker, IObeliskRegistry } from "src/services/tickers/LiteTicker.sol";
+import {
+  LiteTicker, ILiteTicker, IObeliskRegistry
+} from "src/services/tickers/LiteTicker.sol";
 
 contract LiteTickerTest is BaseTest {
   address private registry;
@@ -25,9 +27,15 @@ contract LiteTickerTest is BaseTest {
   }
 
   function _setUpMockCalls() internal {
-    vm.mockCall(registry, abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector), abi.encode(false));
     vm.mockCall(
-      registry, abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector, mockWrappedNFT), abi.encode(true)
+      registry,
+      abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector),
+      abi.encode(false)
+    );
+    vm.mockCall(
+      registry,
+      abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector, mockWrappedNFT),
+      abi.encode(true)
     );
   }
 
@@ -42,13 +50,19 @@ contract LiteTickerTest is BaseTest {
     underTest.virtualDeposit(0, user);
   }
 
-  function test_virtualDeposit_whenAlreadyDeposited_reverts() external prankAs(mockWrappedNFT) {
+  function test_virtualDeposit_whenAlreadyDeposited_reverts()
+    external
+    prankAs(mockWrappedNFT)
+  {
     underTest.virtualDeposit(0, user);
     vm.expectRevert(ILiteTicker.AlreadyDeposited.selector);
     underTest.virtualDeposit(0, user);
   }
 
-  function test_virtualDeposit_whenNotDeposited_thenSucceeds() external prankAs(mockWrappedNFT) {
+  function test_virtualDeposit_whenNotDeposited_thenSucceeds()
+    external
+    prankAs(mockWrappedNFT)
+  {
     uint256 tokenId = 923;
 
     expectExactEmit();
@@ -65,12 +79,18 @@ contract LiteTickerTest is BaseTest {
     underTest.virtualWithdraw(0, user, false);
   }
 
-  function test_virtualWithdraw_whenNotDeposited_reverts() external prankAs(mockWrappedNFT) {
+  function test_virtualWithdraw_whenNotDeposited_reverts()
+    external
+    prankAs(mockWrappedNFT)
+  {
     vm.expectRevert(ILiteTicker.NotDeposited.selector);
     underTest.virtualWithdraw(0, user, false);
   }
 
-  function test_virtualWithdraw_whenDeposited_thenSucceeds() external prankAs(mockWrappedNFT) {
+  function test_virtualWithdraw_whenDeposited_thenSucceeds()
+    external
+    prankAs(mockWrappedNFT)
+  {
     uint256 tokenId = 923;
 
     underTest.virtualDeposit(tokenId, user);
@@ -88,7 +108,10 @@ contract LiteTickerTest is BaseTest {
     underTest.claim(0, user, false);
   }
 
-  function test_claim_whenDeposited_thenCallsOnClaimTriggered() external prankAs(mockWrappedNFT) {
+  function test_claim_whenDeposited_thenCallsOnClaimTriggered()
+    external
+    prankAs(mockWrappedNFT)
+  {
     uint256 tokenId = 923;
 
     underTest.virtualDeposit(tokenId, user);

@@ -10,7 +10,8 @@ import { INFTPass } from "src/interfaces/INFTPass.sol";
 
 contract ObeliskNFTTest is BaseTest {
   string[] private TICKERS = ["Hello", "megaPool", "Bobby"];
-  address[] private POOL_TARGETS = [generateAddress("Pool A"), generateAddress("Pool B"), generateAddress("Pool C")];
+  address[] private POOL_TARGETS =
+    [generateAddress("Pool A"), generateAddress("Pool B"), generateAddress("Pool C")];
   string private constant IDENTITY_NAME = "M";
   string private constant START_NAME = "@M #";
 
@@ -18,8 +19,10 @@ contract ObeliskNFTTest is BaseTest {
   address private mockObeliskRegistry;
 
   INFTPass.Metadata private EMPTY_NFT_METADATA;
-  INFTPass.Metadata private mockNftPassMetadata =
-    INFTPass.Metadata({ name: IDENTITY_NAME, walletReceiver: generateAddress("Identity Receiver") });
+  INFTPass.Metadata private mockNftPassMetadata = INFTPass.Metadata({
+    name: IDENTITY_NAME,
+    walletReceiver: generateAddress("Identity Receiver")
+  });
 
   ObeliskNFTHarness private underTest;
 
@@ -43,12 +46,22 @@ contract ObeliskNFTTest is BaseTest {
         abi.encode(POOL_TARGETS[i])
       );
 
-      vm.mockCall(POOL_TARGETS[i], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector), abi.encode(true));
-      vm.mockCall(POOL_TARGETS[i], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector), abi.encode(true));
+      vm.mockCall(
+        POOL_TARGETS[i],
+        abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector),
+        abi.encode(true)
+      );
+      vm.mockCall(
+        POOL_TARGETS[i],
+        abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector),
+        abi.encode(true)
+      );
     }
 
     vm.mockCall(
-      mockObeliskRegistry, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector), abi.encode(address(0))
+      mockObeliskRegistry,
+      abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector),
+      abi.encode(address(0))
     );
 
     vm.mockCall(
@@ -57,7 +70,11 @@ contract ObeliskNFTTest is BaseTest {
       abi.encode(mockNftPassMetadata)
     );
 
-    vm.mockCall(mockNftPass, abi.encodeWithSelector(INFTPass.getMetadata.selector), abi.encode(EMPTY_NFT_METADATA));
+    vm.mockCall(
+      mockNftPass,
+      abi.encodeWithSelector(INFTPass.getMetadata.selector),
+      abi.encode(EMPTY_NFT_METADATA)
+    );
   }
 
   function test_construction_thenSetups() external {
@@ -105,10 +122,15 @@ contract ObeliskNFTTest is BaseTest {
     string memory newName = string.concat(START_NAME, TICKERS[0]);
     uint256 tokenId = 23;
 
-    vm.expectCall(mockObeliskRegistry, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[0]));
+    vm.expectCall(
+      mockObeliskRegistry,
+      abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[0])
+    );
     vm.expectCall(
       POOL_TARGETS[0],
-      abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, tokenId, mockNftPassMetadata.walletReceiver)
+      abi.encodeWithSelector(
+        ILiteTicker.virtualDeposit.selector, tokenId, mockNftPassMetadata.walletReceiver
+      )
     );
 
     underTest.rename(tokenId, newName);
@@ -128,19 +150,31 @@ contract ObeliskNFTTest is BaseTest {
 
     vm.expectCall(
       POOL_TARGETS[0],
-      abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector, tokenId, mockNftPassMetadata.walletReceiver, false)
+      abi.encodeWithSelector(
+        ILiteTicker.virtualWithdraw.selector,
+        tokenId,
+        mockNftPassMetadata.walletReceiver,
+        false
+      )
     );
 
-    vm.expectCall(mockObeliskRegistry, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[1]));
+    vm.expectCall(
+      mockObeliskRegistry,
+      abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[1])
+    );
     vm.expectCall(
       POOL_TARGETS[1],
-      abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, tokenId, mockNftPassMetadata.walletReceiver)
+      abi.encodeWithSelector(
+        ILiteTicker.virtualDeposit.selector, tokenId, mockNftPassMetadata.walletReceiver
+      )
     );
 
     underTest.rename(tokenId, newName);
   }
 
-  function test_rename_whenChangeIdentityReceiver_thenRemoveFromOldAndUpdatesToNew() external {
+  function test_rename_whenChangeIdentityReceiver_thenRemoveFromOldAndUpdatesToNew()
+    external
+  {
     string memory newName = string.concat(START_NAME, TICKERS[0]);
     uint256 tokenId = 23;
 
@@ -158,11 +192,20 @@ contract ObeliskNFTTest is BaseTest {
     );
 
     vm.expectCall(
-      POOL_TARGETS[0], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector, tokenId, oldReceiver, false)
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualWithdraw.selector, tokenId, oldReceiver, false
+      )
     );
 
-    vm.expectCall(mockObeliskRegistry, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[1]));
-    vm.expectCall(POOL_TARGETS[1], abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, tokenId, newReceiver));
+    vm.expectCall(
+      mockObeliskRegistry,
+      abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[1])
+    );
+    vm.expectCall(
+      POOL_TARGETS[1],
+      abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, tokenId, newReceiver)
+    );
 
     underTest.rename(tokenId, newName);
     assertEq(underTest.getIdentityReceiver(tokenId), newReceiver);
@@ -216,13 +259,21 @@ contract ObeliskNFTTest is BaseTest {
     );
 
     vm.expectCall(
-      POOL_TARGETS[0], abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector, tokenId, oldReceiver, false)
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualWithdraw.selector, tokenId, oldReceiver, false
+      )
     );
 
-    vm.expectCall(mockObeliskRegistry, abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[0]));
+    vm.expectCall(
+      mockObeliskRegistry,
+      abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[0])
+    );
     vm.expectCall(
       POOL_TARGETS[0],
-      abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector, tokenId, mockNftPassMetadata.walletReceiver)
+      abi.encodeWithSelector(
+        ILiteTicker.virtualDeposit.selector, tokenId, mockNftPassMetadata.walletReceiver
+      )
     );
 
     underTest.updateIdentityReceiver(tokenId);
@@ -239,7 +290,9 @@ contract ObeliskNFTTest is BaseTest {
 
     vm.expectCall(
       POOL_TARGETS[0],
-      abi.encodeWithSelector(ILiteTicker.claim.selector, tokenId, mockNftPassMetadata.walletReceiver, false)
+      abi.encodeWithSelector(
+        ILiteTicker.claim.selector, tokenId, mockNftPassMetadata.walletReceiver, false
+      )
     );
 
     underTest.claim(tokenId);
@@ -254,7 +307,9 @@ contract ObeliskNFTTest is BaseTest {
 
     vm.expectCall(
       POOL_TARGETS[0],
-      abi.encodeWithSelector(ILiteTicker.claim.selector, tokenId, mockNftPassMetadata.walletReceiver, true)
+      abi.encodeWithSelector(
+        ILiteTicker.claim.selector, tokenId, mockNftPassMetadata.walletReceiver, true
+      )
     );
 
     underTest.claim(tokenId);
@@ -267,7 +322,9 @@ contract ObeliskNFTHarness is ObeliskNFT {
 
   error RequirementsReverted();
 
-  constructor(address _obeliskRegistry, address _nftPass) ObeliskNFT(_obeliskRegistry, _nftPass) { }
+  constructor(address _obeliskRegistry, address _nftPass)
+    ObeliskNFT(_obeliskRegistry, _nftPass)
+  { }
 
   function exposed_setTriggerRevert(bool _triggerRevert) external {
     triggerRevert = _triggerRevert;

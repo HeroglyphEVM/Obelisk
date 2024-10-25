@@ -31,10 +31,12 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   mapping(address => uint256) internal userYieldSnapshot;
   mapping(address => uint256) private virtualBalances;
 
-  constructor(address _owner, address _registry, address _tokenReward, address _interestManager)
-    LiteTicker(_registry)
-    Ownable(_owner)
-  {
+  constructor(
+    address _owner,
+    address _registry,
+    address _tokenReward,
+    address _interestManager
+  ) LiteTicker(_registry) Ownable(_owner) {
     REWARD_TOKEN = ERC20(_tokenReward);
     INTEREST_MANAGER = IInterestManager(_interestManager);
     maxEntry = 1000e18;
@@ -53,7 +55,8 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
       revert MaxEntryExceeded();
     }
 
-    userYieldSnapshot[_holder] = ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
+    userYieldSnapshot[_holder] =
+      ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
   }
 
   function _afterVirtualWithdraw(address _holder, bool _ignoreRewards) internal override {
@@ -63,7 +66,8 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     virtualBalances[_holder] = userVirtualBalance;
 
     totalVirtualBalance -= DEPOSIT_AMOUNT;
-    userYieldSnapshot[_holder] = ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
+    userYieldSnapshot[_holder] =
+      ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
   }
 
   function _getNewYield() internal view returns (uint256) {
@@ -82,7 +86,8 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     uint256 totalVirtualBalanceCached = totalVirtualBalance;
 
     if (totalVirtualBalanceCached > 0) {
-      yieldPerTokenInRayCached += ShareableMath.rdiv(_getNewYield(), totalVirtualBalanceCached);
+      yieldPerTokenInRayCached +=
+        ShareableMath.rdiv(_getNewYield(), totalVirtualBalanceCached);
     } else if (currentYieldBalance != 0) {
       REWARD_TOKEN.transfer(owner(), currentYieldBalance);
     }
@@ -96,7 +101,8 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     }
 
     yieldBalance = REWARD_TOKEN.balanceOf(address(this));
-    userYieldSnapshot[_holder] = ShareableMath.rmulup(holderVirtualBalance, yieldPerTokenInRayCached);
+    userYieldSnapshot[_holder] =
+      ShareableMath.rmulup(holderVirtualBalance, yieldPerTokenInRayCached);
     yieldPerTokenInRay = yieldPerTokenInRayCached;
   }
 

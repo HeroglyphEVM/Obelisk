@@ -23,7 +23,11 @@ abstract contract LiteTicker is ILiteTicker {
     _;
   }
 
-  function virtualDeposit(uint256 _tokenId, address _holder) external override onlyWrappedNFT {
+  function virtualDeposit(uint256 _tokenId, address _holder)
+    external
+    override
+    onlyWrappedNFT
+  {
     if (isTokenDeposited[msg.sender][_tokenId]) revert AlreadyDeposited();
     isTokenDeposited[msg.sender][_tokenId] = true;
     _afterVirtualDeposit(_holder);
@@ -31,7 +35,11 @@ abstract contract LiteTicker is ILiteTicker {
     emit Deposited(_holder, msg.sender, _tokenId);
   }
 
-  function virtualWithdraw(uint256 _tokenId, address _holder, bool _ignoreRewards) external override onlyWrappedNFT {
+  function virtualWithdraw(uint256 _tokenId, address _holder, bool _ignoreRewards)
+    external
+    override
+    onlyWrappedNFT
+  {
     if (!isTokenDeposited[msg.sender][_tokenId]) revert NotDeposited();
     isTokenDeposited[msg.sender][_tokenId] = false;
     _afterVirtualWithdraw(_holder, _ignoreRewards);
@@ -39,7 +47,11 @@ abstract contract LiteTicker is ILiteTicker {
     emit Withdrawn(_holder, msg.sender, _tokenId);
   }
 
-  function claim(uint256 _tokenId, address _holder, bool _ignoreRewards) external override onlyWrappedNFT {
+  function claim(uint256 _tokenId, address _holder, bool _ignoreRewards)
+    external
+    override
+    onlyWrappedNFT
+  {
     if (!isTokenDeposited[msg.sender][_tokenId]) revert NotDeposited();
     _onClaimTriggered(_holder, _ignoreRewards);
   }

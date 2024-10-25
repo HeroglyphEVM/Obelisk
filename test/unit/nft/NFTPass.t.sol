@@ -30,11 +30,21 @@ contract NFTPassTest is BaseTest {
     underTest = new NFTPassHarness(owner, treasury, mockNameFilter, COST);
 
     vm.mockCall(
-      mockNameFilter, abi.encodeWithSelector(INameFilter.isNameValidWithIndexError.selector), abi.encode(true, 0)
+      mockNameFilter,
+      abi.encodeWithSelector(INameFilter.isNameValidWithIndexError.selector),
+      abi.encode(true, 0)
     );
-    vm.mockCall(mockNameFilter, abi.encodeWithSelector(INameFilter.isNameValid.selector), abi.encode(true));
+    vm.mockCall(
+      mockNameFilter,
+      abi.encodeWithSelector(INameFilter.isNameValid.selector),
+      abi.encode(true)
+    );
 
-    vm.mockCall(oldIdentity, abi.encodeWithSelector(IIdentityERC721.getIdentityNFTId.selector), abi.encode(0));
+    vm.mockCall(
+      oldIdentity,
+      abi.encodeWithSelector(IIdentityERC721.getIdentityNFTId.selector),
+      abi.encode(0)
+    );
 
     skip(1 weeks);
   }
@@ -84,7 +94,10 @@ contract NFTPassTest is BaseTest {
     assertEq(address(treasury).balance, COST);
   }
 
-  function test_create_givenWalletReceiver_thenCreatesAndAssignWalletReceiver() external pranking {
+  function test_create_givenWalletReceiver_thenCreatesAndAssignWalletReceiver()
+    external
+    pranking
+  {
     string memory name = "!";
     address receiver = generateAddress();
 
@@ -184,7 +197,9 @@ contract NFTPassTest is BaseTest {
     assertEq(underTest.exposed_updateCost(), expectedCost);
 
     underTest.exposed_addBoughtToday(priceIncreaseThreshold - 2);
-    console.log("Next: (MaxPerDay + threshold * 2 - 1) | Current:", underTest.boughtToday());
+    console.log(
+      "Next: (MaxPerDay + threshold * 2 - 1) | Current:", underTest.boughtToday()
+    );
     assertEq(underTest.exposed_updateCost(), expectedCost);
 
     expectedCost += COST / 2;
@@ -192,7 +207,8 @@ contract NFTPassTest is BaseTest {
     assertEq(underTest.exposed_updateCost(), expectedCost);
 
     skip(1 days);
-    uint256 actualPrice = Math.max(COST, expectedCost - (expectedCost * underTest.priceDecayBPS() / MAX_BPS));
+    uint256 actualPrice =
+      Math.max(COST, expectedCost - (expectedCost * underTest.priceDecayBPS() / MAX_BPS));
 
     expectedCost = COST;
     assertEq(underTest.getCost(), expectedCost);
@@ -249,7 +265,9 @@ contract NFTPassTest is BaseTest {
       underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
     }
 
-    expectedCost = Math.max(COST, expectedCost - Math.mulDiv(expectedCost, underTest.priceDecayBPS(), MAX_BPS));
+    expectedCost = Math.max(
+      COST, expectedCost - Math.mulDiv(expectedCost, underTest.priceDecayBPS(), MAX_BPS)
+    );
     assertEq(underTest.getCost(), expectedCost);
 
     id++;
@@ -280,12 +298,20 @@ contract NFTPassTest is BaseTest {
     assertEq(underTest.currentPrice(), COST);
   }
 
-  function test_updateMaxIdentityPerDayAtInitialPrice_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+  function test_updateMaxIdentityPerDayAtInitialPrice_asNonOwner_thenReverts()
+    external
+    prankAs(user)
+  {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.updateMaxIdentityPerDayAtInitialPrice(30);
   }
 
-  function test_updateMaxIdentityPerDayAtInitialPrice_thenUpdates() external prankAs(owner) {
+  function test_updateMaxIdentityPerDayAtInitialPrice_thenUpdates()
+    external
+    prankAs(owner)
+  {
     uint32 newMaxIdentityPerDay = 30;
 
     expectExactEmit();
@@ -295,8 +321,13 @@ contract NFTPassTest is BaseTest {
     assertEq(underTest.maxIdentityPerDayAtInitialPrice(), newMaxIdentityPerDay);
   }
 
-  function test_updatePriceIncreaseThreshold_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+  function test_updatePriceIncreaseThreshold_asNonOwner_thenReverts()
+    external
+    prankAs(user)
+  {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.updatePriceIncreaseThreshold(30);
   }
 
@@ -311,7 +342,9 @@ contract NFTPassTest is BaseTest {
   }
 
   function test_updatePriceDecayBPS_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.updatePriceDecayBPS(30);
   }
 

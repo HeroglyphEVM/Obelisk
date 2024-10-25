@@ -12,7 +12,8 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title GenesisTokenPool
- * @notice Time-based rewards distribution for Heroglyph's Genesis tokens. It uses wrapped version to simplify LayerZero
+ * @notice Time-based rewards distribution for Heroglyph's Genesis tokens. It uses wrapped
+ * version to simplify LayerZero
  * issue in the genesis tokens.
  */
 contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
@@ -35,10 +36,12 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   mapping(address user => uint256) public userRewardPerTokenPaid;
   mapping(address user => uint256) public rewards;
 
-  constructor(address _owner, address _registry, address _wrappedReward, address _genesisKey)
-    LiteTicker(_registry)
-    Ownable(_owner)
-  {
+  constructor(
+    address _owner,
+    address _registry,
+    address _wrappedReward,
+    address _genesisKey
+  ) LiteTicker(_registry) Ownable(_owner) {
     GENESIS_KEY = IERC721(_genesisKey);
     REWARD_TOKEN = ERC20(_wrappedReward);
     DISTRIBUTION_DURATION = 30 days;
@@ -46,13 +49,17 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
 
   function _afterVirtualDeposit(address _holder) internal override {
     uint256 cachedTotalSupply = totalSupply;
-    if (cachedTotalSupply == 0 && latestRewardPerTokenStored == 0 && rewardRatePerSecond > 0) {
+    if (
+      cachedTotalSupply == 0 && latestRewardPerTokenStored == 0 && rewardRatePerSecond > 0
+    ) {
       unixPeriodFinish = uint64(block.timestamp + DISTRIBUTION_DURATION);
     }
 
     _queueNewRewards(0);
 
-    if (address(GENESIS_KEY) != address(0) && GENESIS_KEY.balanceOf(_holder) == 0) revert MissingKey();
+    if (address(GENESIS_KEY) != address(0) && GENESIS_KEY.balanceOf(_holder) == 0) {
+      revert MissingKey();
+    }
 
     uint256 accountBalance = balanceOf[_holder];
 
@@ -89,7 +96,9 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   }
 
   function notifyRewardAmount(uint256 reward) external override {
-    if (msg.sender != address(REWARD_TOKEN) && msg.sender != owner()) revert NotAuthorized();
+    if (msg.sender != address(REWARD_TOKEN) && msg.sender != owner()) {
+      revert NotAuthorized();
+    }
 
     _queueNewRewards(reward);
   }
@@ -122,7 +131,9 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     uint256 cachedRewardRatePerSecond = rewardRatePerSecond;
 
     if (block.timestamp < unixPeriodFinishCached) {
-      reward += _getTimeBasedValue(unixPeriodFinishCached - block.timestamp, cachedRewardRatePerSecond);
+      reward += _getTimeBasedValue(
+        unixPeriodFinishCached - block.timestamp, cachedRewardRatePerSecond
+      );
     }
 
     rewardRatePerSecond = Math.mulDiv(reward, PRECISION, DISTRIBUTION_DURATION);
@@ -133,13 +144,21 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     emit RewardAdded(reward);
   }
 
-  function _getTimeBasedValue(uint256 _timePassed, uint256 _scaledRatePerSecond) private pure returns (uint256) {
+  function _getTimeBasedValue(uint256 _timePassed, uint256 _scaledRatePerSecond)
+    private
+    pure
+    returns (uint256)
+  {
     return Math.mulDiv(_timePassed, _scaledRatePerSecond, PRECISION);
   }
 
-  function _updateReward(address _holder, uint256 _accountBalance) internal returns (uint256 reward_) {
+  function _updateReward(address _holder, uint256 _accountBalance)
+    internal
+    returns (uint256 reward_)
+  {
     uint64 lastTimeRewardApplicable_ = lastTimeRewardApplicable();
-    uint256 rewardPerToken_ = _rewardPerToken(totalSupply, lastTimeRewardApplicable_, rewardRatePerSecond);
+    uint256 rewardPerToken_ =
+      _rewardPerToken(totalSupply, lastTimeRewardApplicable_, rewardRatePerSecond);
 
     latestRewardPerTokenStored = rewardPerToken_;
     lastUpdateUnixTime = lastTimeRewardApplicable_;
@@ -166,26 +185,34 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     );
   }
 
-  function _earned(address account, uint256 accountBalance, uint256 rewardPerToken_, uint256 accountRewards)
-    internal
-    view
-    returns (uint256)
-  {
-    return Math.mulDiv(accountBalance, rewardPerToken_ - userRewardPerTokenPaid[account], REAL_VALUE_PRECISION)
-      + accountRewards;
+  function _earned(
+    address account,
+    uint256 accountBalance,
+    uint256 rewardPerToken_,
+    uint256 accountRewards
+  ) internal view returns (uint256) {
+    return Math.mulDiv(
+      accountBalance,
+      rewardPerToken_ - userRewardPerTokenPaid[account],
+      REAL_VALUE_PRECISION
+    ) + accountRewards;
   }
 
-  function _rewardPerToken(uint256 totalSupply_, uint256 lastTimeRewardApplicable_, uint256 rewardRate_)
-    internal
-    view
-    returns (uint256)
-  {
+  function _rewardPerToken(
+    uint256 totalSupply_,
+    uint256 lastTimeRewardApplicable_,
+    uint256 rewardRate_
+  ) internal view returns (uint256) {
     if (totalSupply_ == 0) {
       return latestRewardPerTokenStored;
     }
 
     return latestRewardPerTokenStored
-      + Math.mulDiv((lastTimeRewardApplicable_ - lastUpdateUnixTime) * rewardRate_, PRECISION, totalSupply_);
+      + Math.mulDiv(
+        (lastTimeRewardApplicable_ - lastUpdateUnixTime) * rewardRate_,
+        PRECISION,
+        totalSupply_
+      );
   }
 
   function lastTimeRewardApplicable() public view returns (uint64) {

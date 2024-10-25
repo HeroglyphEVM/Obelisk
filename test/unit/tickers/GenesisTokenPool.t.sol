@@ -2,7 +2,9 @@
 pragma solidity ^0.8.20;
 
 import "test/base/BaseTest.t.sol";
-import { GenesisTokenPool, IGenesisTokenPool } from "src/services/tickers/GenesisTokenPool.sol";
+import {
+  GenesisTokenPool, IGenesisTokenPool
+} from "src/services/tickers/GenesisTokenPool.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { MockERC721 } from "test/mock/contract/MockERC721.t.sol";
@@ -24,7 +26,9 @@ contract GenesisTokenPoolTest is BaseTest {
 
   function setUp() external {
     _setUpVariables();
-    underTest = new GenesisTokenPoolHarness(owner, registry, address(wrappedReward), address(genesisKey));
+    underTest = new GenesisTokenPoolHarness(
+      owner, registry, address(wrappedReward), address(genesisKey)
+    );
 
     wrappedReward.mint(address(underTest), REWARD_AMOUNT);
     vm.prank(owner);
@@ -47,7 +51,9 @@ contract GenesisTokenPoolTest is BaseTest {
   }
 
   function test_constructor_thenSetsVariables() external {
-    underTest = new GenesisTokenPoolHarness(owner, registry, address(wrappedReward), address(genesisKey));
+    underTest = new GenesisTokenPoolHarness(
+      owner, registry, address(wrappedReward), address(genesisKey)
+    );
 
     assertEq(underTest.owner(), owner);
     assertEq(address(underTest.registry()), registry);
@@ -71,18 +77,29 @@ contract GenesisTokenPoolTest is BaseTest {
     assertEq(underTest.balanceOf(user_A), 1e18);
   }
 
-  function test_afterVirtualDeposit_whenFirstDepositAndTimePassed_thenResetUnixEndTime() external prankAs(owner) {
+  function test_afterVirtualDeposit_whenFirstDepositAndTimePassed_thenResetUnixEndTime()
+    external
+    prankAs(owner)
+  {
     skip(underTest.DISTRIBUTION_DURATION());
     underTest.exposed_afterVirtualDeposit(user_A);
 
-    assertEq(underTest.rewardRatePerSecond(), Math.mulDiv(REWARD_AMOUNT, PRECISION, underTest.DISTRIBUTION_DURATION()));
+    assertEq(
+      underTest.rewardRatePerSecond(),
+      Math.mulDiv(REWARD_AMOUNT, PRECISION, underTest.DISTRIBUTION_DURATION())
+    );
     assertEq(underTest.lastUpdateUnixTime(), block.timestamp);
-    assertEq(underTest.unixPeriodFinish(), block.timestamp + underTest.DISTRIBUTION_DURATION());
+    assertEq(
+      underTest.unixPeriodFinish(), block.timestamp + underTest.DISTRIBUTION_DURATION()
+    );
     assertEq(underTest.totalSupply(), 1e18);
     assertEq(underTest.balanceOf(user_A), 1e18);
   }
 
-  function test_afterVirtualDeposit_whenRefillCanHappen_thenRefillsAndDeposits() external prankAs(owner) {
+  function test_afterVirtualDeposit_whenRefillCanHappen_thenRefillsAndDeposits()
+    external
+    prankAs(owner)
+  {
     uint256 queuedReward = REWARD_AMOUNT / 2;
 
     wrappedReward.mint(address(underTest), queuedReward);
@@ -93,7 +110,10 @@ contract GenesisTokenPoolTest is BaseTest {
     underTest.exposed_afterVirtualWithdraw(user_A, false);
     underTest.exposed_afterVirtualDeposit(user_A);
 
-    assertEq(underTest.rewardRatePerSecond(), Math.mulDiv(queuedReward, PRECISION, underTest.DISTRIBUTION_DURATION()));
+    assertEq(
+      underTest.rewardRatePerSecond(),
+      Math.mulDiv(queuedReward, PRECISION, underTest.DISTRIBUTION_DURATION())
+    );
     assertEq(underTest.lastUpdateUnixTime(), block.timestamp);
     assertEq(underTest.totalSupply(), 1e18);
     assertEq(underTest.balanceOf(user_A), 1e18);
@@ -112,7 +132,10 @@ contract GenesisTokenPoolTest is BaseTest {
     assertEq(underTest.balanceOf(user_A), 0);
   }
 
-  function test_afterVritualWithdraw_whenRefillCanHappen_thenRefillsAndWithdraw() external pranking {
+  function test_afterVritualWithdraw_whenRefillCanHappen_thenRefillsAndWithdraw()
+    external
+    pranking
+  {
     uint256 queuedReward = 25.3e18;
 
     changePrank(owner);
@@ -127,8 +150,12 @@ contract GenesisTokenPoolTest is BaseTest {
 
     underTest.exposed_afterVirtualWithdraw(user_A, false);
 
-    assertEqTolerance(wrappedReward.balanceOf(address(underTest)), queuedReward, 1); //0.001% difference
-    assertEq(underTest.rewardRatePerSecond(), Math.mulDiv(queuedReward, PRECISION, underTest.DISTRIBUTION_DURATION()));
+    assertEqTolerance(wrappedReward.balanceOf(address(underTest)), queuedReward, 1); //0.001%
+      // difference
+    assertEq(
+      underTest.rewardRatePerSecond(),
+      Math.mulDiv(queuedReward, PRECISION, underTest.DISTRIBUTION_DURATION())
+    );
     assertEqTolerance(wrappedReward.balanceOf(user_A), REWARD_AMOUNT, 1);
   }
 
@@ -143,12 +170,19 @@ contract GenesisTokenPoolTest is BaseTest {
 
     assertEq(underTest.lastUpdateUnixTime(), block.timestamp);
     assertEq(underTest.rewards(user_A), 0);
-    assertEqTolerance(underTest.latestRewardPerTokenStored(), REWARD_AMOUNT * PRECISION, 1);
-    assertEqTolerance(underTest.userRewardPerTokenPaid(user_A), REWARD_AMOUNT * PRECISION, 1);
+    assertEqTolerance(
+      underTest.latestRewardPerTokenStored(), REWARD_AMOUNT * PRECISION, 1
+    );
+    assertEqTolerance(
+      underTest.userRewardPerTokenPaid(user_A), REWARD_AMOUNT * PRECISION, 1
+    );
     assertEqTolerance(wrappedReward.balanceOf(user_A), REWARD_AMOUNT, 1);
   }
 
-  function test_onClaimTriggered_whenIgnoreRewardsAndNewPeriodCanStart_thenQueuesRewards() external prankAs(owner) {
+  function test_onClaimTriggered_whenIgnoreRewardsAndNewPeriodCanStart_thenQueuesRewards()
+    external
+    prankAs(owner)
+  {
     underTest.exposed_afterVirtualDeposit(user_A);
     uint256 rate = underTest.rewardRatePerSecond();
 
@@ -160,10 +194,13 @@ contract GenesisTokenPoolTest is BaseTest {
 
     assertEq(wrappedReward.balanceOf(user_A), 0);
     assertEqTolerance(underTest.rewardRatePerSecond(), rate, 1);
-    assertEq(underTest.unixPeriodFinish(), block.timestamp + underTest.DISTRIBUTION_DURATION());
+    assertEq(
+      underTest.unixPeriodFinish(), block.timestamp + underTest.DISTRIBUTION_DURATION()
+    );
   }
 
-  function test_onClaimTriggered_whenIgnoreRewardsAndCantStartNewPeriod_thenQueuesRewards() external prankAs(owner) {
+  function test_onClaimTriggered_whenIgnoreRewardsAndCantStartNewPeriod_thenQueuesRewards(
+  ) external prankAs(owner) {
     underTest.exposed_afterVirtualDeposit(user_A);
 
     skip(underTest.DISTRIBUTION_DURATION());
@@ -182,7 +219,10 @@ contract GenesisTokenPoolTest is BaseTest {
     underTest.notifyRewardAmount(REWARD_AMOUNT);
   }
 
-  function test_notifyRewardAmount_whenLastFinished_thenStartsNewPeriod() external prankAs(address(wrappedReward)) {
+  function test_notifyRewardAmount_whenLastFinished_thenStartsNewPeriod()
+    external
+    prankAs(address(wrappedReward))
+  {
     uint256 duration = underTest.DISTRIBUTION_DURATION();
 
     skip(duration);
@@ -195,7 +235,10 @@ contract GenesisTokenPoolTest is BaseTest {
     assertEq(underTest.rewardRatePerSecond(), Math.mulDiv(reward, PRECISION, duration));
   }
 
-  function test_notifyRewardAmount_whenNotFinishedEpoch_thenAddsToQueuedReward() external prankAs(owner) {
+  function test_notifyRewardAmount_whenNotFinishedEpoch_thenAddsToQueuedReward()
+    external
+    prankAs(owner)
+  {
     uint256 reward = 993.1e18;
     uint256 lastUpdateUnixTime = underTest.lastUpdateUnixTime();
 
@@ -204,7 +247,10 @@ contract GenesisTokenPoolTest is BaseTest {
     underTest.notifyRewardAmount(reward);
 
     assertEq(underTest.queuedReward(), reward);
-    assertEq(underTest.rewardRatePerSecond(), Math.mulDiv(REWARD_AMOUNT, PRECISION, underTest.DISTRIBUTION_DURATION()));
+    assertEq(
+      underTest.rewardRatePerSecond(),
+      Math.mulDiv(REWARD_AMOUNT, PRECISION, underTest.DISTRIBUTION_DURATION())
+    );
     assertEq(underTest.lastUpdateUnixTime(), lastUpdateUnixTime);
   }
 
@@ -232,16 +278,19 @@ contract GenesisTokenPoolTest is BaseTest {
     if (stakeTime >= duration) {
       expectedRewardAmount = (REWARD_AMOUNT * amount1) / (amount0 + amount1);
     } else {
-      expectedRewardAmount = (((REWARD_AMOUNT * stakeTimeAsDurationPercentage) / 100) * amount1) / (amount0 + amount1);
+      expectedRewardAmount = (
+        ((REWARD_AMOUNT * stakeTimeAsDurationPercentage) / 100) * amount1
+      ) / (amount0 + amount1);
     }
 
     assertEqTolerance(rewardAmount, expectedRewardAmount, 1);
   }
 
-  function test_fizz_notifyRewardAmount(uint56 warpTime, uint8 stakeTimeAsDurationPercentage, uint256 extraReward)
-    public
-    prankAs(owner)
-  {
+  function test_fizz_notifyRewardAmount(
+    uint56 warpTime,
+    uint8 stakeTimeAsDurationPercentage,
+    uint256 extraReward
+  ) public prankAs(owner) {
     uint64 duration = underTest.DISTRIBUTION_DURATION();
     address fizzUser = generateAddress("Fizz User");
 
@@ -290,9 +339,12 @@ contract GenesisTokenPoolTest is BaseTest {
 }
 
 contract GenesisTokenPoolHarness is GenesisTokenPool {
-  constructor(address _owner, address _registry, address _wrappedReward, address _genesisKey)
-    GenesisTokenPool(_owner, _registry, _wrappedReward, _genesisKey)
-  { }
+  constructor(
+    address _owner,
+    address _registry,
+    address _wrappedReward,
+    address _genesisKey
+  ) GenesisTokenPool(_owner, _registry, _wrappedReward, _genesisKey) { }
 
   function exposed_afterVirtualDeposit(address _holder) external {
     _afterVirtualDeposit(_holder);

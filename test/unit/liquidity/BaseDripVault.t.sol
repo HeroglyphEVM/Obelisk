@@ -63,7 +63,9 @@ contract BaseDripVaultTest is BaseTest {
   }
 
   function test_setObeliskRegistry_whenNotOwner_reverts() public prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setObeliskRegistry(generateAddress("newRegistry"));
   }
 
@@ -78,7 +80,9 @@ contract BaseDripVaultTest is BaseTest {
   }
 
   function test_setInterestRateReceiver_whenNotOwner_reverts() public prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setInterestRateReceiver(generateAddress("newRateReceiver"));
   }
 
@@ -97,9 +101,12 @@ contract BaseDripVaultHarness is BaseDripVault {
   event AfterDeposit(uint256 amount);
   event BeforeWithdrawal(address to, uint256 amount);
 
-  constructor(address _inputToken, address _owner, address _registry, address _rateReceiver)
-    BaseDripVault(_inputToken, _owner, _registry, _rateReceiver)
-  { }
+  constructor(
+    address _inputToken,
+    address _owner,
+    address _registry,
+    address _rateReceiver
+  ) BaseDripVault(_inputToken, _owner, _registry, _rateReceiver) { }
 
   function _afterDeposit(uint256 _amount) internal override {
     emit AfterDeposit(_amount);

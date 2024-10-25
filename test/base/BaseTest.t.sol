@@ -47,11 +47,17 @@ contract BaseTest is Test, MockERC20ABI {
     return generateAddress(_name, false, 0);
   }
 
-  function generateAddress(string memory _name, uint256 _balance) internal returns (address) {
+  function generateAddress(string memory _name, uint256 _balance)
+    internal
+    returns (address)
+  {
     return generateAddress(_name, false, _balance);
   }
 
-  function generateAddress(string memory _name, bool _isContract) internal returns (address) {
+  function generateAddress(string memory _name, bool _isContract)
+    internal
+    returns (address)
+  {
     return generateAddress(_name, _isContract, 0);
   }
 
@@ -60,8 +66,10 @@ contract BaseTest is Test, MockERC20ABI {
    * @param _name Name that you will see in your terminal
    * @param _isContract Adds bytes code to
    * @param _ethBalance Set the initial balance
-   * @dev The generateAddress in the contract parameters is elegant, but be warned. If you have too many of these,
-   *  you will run into a stack too deep on build, even with `via_ir` on. So it's better to generate them in setUp().
+   * @dev The generateAddress in the contract parameters is elegant, but be warned. If you
+   * have too many of these,
+   *  you will run into a stack too deep on build, even with `via_ir` on. So it's better
+   * to generate them in setUp().
    */
   function generateAddress(string memory _name, bool _isContract, uint256 _ethBalance)
     internal
@@ -114,12 +122,22 @@ contract BaseTest is Test, MockERC20ABI {
     assertGe(a, b - b / epsilonInv);
   }
 
-  function assertEqDecimalEpsilonBelow(uint256 a, uint256 b, uint256 decimals, uint256 epsilonInv) internal pure {
+  function assertEqDecimalEpsilonBelow(
+    uint256 a,
+    uint256 b,
+    uint256 decimals,
+    uint256 epsilonInv
+  ) internal pure {
     assertLeDecimal(a, b, decimals);
     assertGeDecimal(a, b - b / epsilonInv, decimals);
   }
 
-  function assertEqDecimalEpsilonAround(uint256 a, uint256 b, uint256 decimals, uint256 epsilonInv) internal pure {
+  function assertEqDecimalEpsilonAround(
+    uint256 a,
+    uint256 b,
+    uint256 decimals,
+    uint256 epsilonInv
+  ) internal pure {
     if (a == 0) a = 1;
     if (b == 0) b = 1;
     assertLeDecimal(a, b + b / epsilonInv, decimals);
