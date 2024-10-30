@@ -2,12 +2,9 @@
 pragma solidity ^0.8.24;
 
 import { BaseDripVault, IERC20 } from "../services/liquidity/BaseDripVault.sol";
-import { DaiMock } from "./DaiMock.sol";
 
 contract MockDripVault is BaseDripVault {
   uint256 constant RAY = 10 ** 27;
-
-  uint256 private generatedInterest;
 
   constructor(
     address _owner,
@@ -27,21 +24,8 @@ contract MockDripVault is BaseDripVault {
     }
   }
 
-  function claim() external override returns (uint256 interest_) {
-    if (INPUT_TOKEN == address(0)) return 0;
-
-    interest_ = generatedInterest;
-    generatedInterest = 0;
-
-    DaiMock(INPUT_TOKEN).mint(address(this), interest_);
-    return interest_;
-  }
-
-  function generateInterest(uint256 _amount) external {
-    if (INPUT_TOKEN == address(0)) revert("Cannot generate interest for ETH");
-
-    generatedInterest += _amount;
-    DaiMock(INPUT_TOKEN).mint(address(this), _amount);
+  function claim() external pure override returns (uint256 interest_) {
+    return 0;
   }
 
   function getOutputToken() external view returns (address) {

@@ -327,11 +327,14 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_supportYieldPool_whenAmountIsTooLow_thenReverts() external prankAs(user) {
-    vm.expectRevert(IObeliskRegistry.AmountTooLow.selector);
-    underTest.supportYieldPool{ value: 0.9e18 }(0);
+    uint256 ethAmount = underTest.MINIMUM_ETH_SUPPORT_AMOUNT();
+    uint256 daiAmount = underTest.MINIMUM_DAI_SUPPORT_AMOUNT();
 
     vm.expectRevert(IObeliskRegistry.AmountTooLow.selector);
-    underTest.supportYieldPool{ value: 0 }(0.9e18);
+    underTest.supportYieldPool{ value: ethAmount - 1 }(0);
+
+    vm.expectRevert(IObeliskRegistry.AmountTooLow.selector);
+    underTest.supportYieldPool{ value: 0 }(daiAmount - 1);
   }
 
   function test_supportYieldPool_whenETH_thenUpdatesSupportersAndDepositInDripVault()
@@ -364,7 +367,7 @@ contract ObeliskRegistryTest is BaseTest {
     external
     prankAs(user)
   {
-    uint256 supportAmount = 13.32e18;
+    uint256 supportAmount = 1300.32e18;
 
     IObeliskRegistry.Supporter memory expectedSupporter = IObeliskRegistry.Supporter({
       depositor: user,
@@ -442,7 +445,7 @@ contract ObeliskRegistryTest is BaseTest {
     external
     prankAs(user)
   {
-    uint256 supportAmount = 13.32e18;
+    uint256 supportAmount = 1300.32e18;
     underTest.supportYieldPool(supportAmount);
 
     skip(underTest.SUPPORT_LOCK_DURATION());

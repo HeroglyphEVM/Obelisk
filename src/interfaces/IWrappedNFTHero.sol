@@ -17,7 +17,7 @@ interface IWrappedNFTHero {
 
   struct NFTData {
     bool isMinted;
-    bool firstRename;
+    bool hasBeenRenamed;
     bool wrappedOnce;
     uint128 assignedMultiplier;
   }

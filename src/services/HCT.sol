@@ -10,12 +10,14 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 contract HCT is ERC20, IHCT {
   uint256 private constant PRECISION = 1e18;
   uint128 public constant NAME_COST = 90e18;
+  uint256 public constant PRE_MINT_AMOUNT = 10_000e18;
 
   IObeliskRegistry public immutable obeliskRegistry;
   mapping(address => UserInfo) internal usersInfo;
 
-  constructor() ERC20("Heroglyph Name Change Token", "HCT") {
+  constructor(address _treasury) ERC20("Heroglyph Name Change Token", "HCT") {
     obeliskRegistry = IObeliskRegistry(msg.sender);
+    _mint(_treasury, PRE_MINT_AMOUNT);
   }
 
   modifier onlyHeroglyphWrappedNFT() {

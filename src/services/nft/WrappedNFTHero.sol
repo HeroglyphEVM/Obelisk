@@ -110,8 +110,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     if (!nftdata.isMinted) revert NotMinted();
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
-    if (PREMIUM && !nftdata.firstRename) {
-      nftdata.firstRename = true;
+    if (PREMIUM && !nftdata.hasBeenRenamed) {
+      nftdata.hasBeenRenamed = true;
       return;
     }
 

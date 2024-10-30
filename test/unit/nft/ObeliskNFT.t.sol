@@ -21,7 +21,8 @@ contract ObeliskNFTTest is BaseTest {
   INFTPass.Metadata private EMPTY_NFT_METADATA;
   INFTPass.Metadata private mockNftPassMetadata = INFTPass.Metadata({
     name: IDENTITY_NAME,
-    walletReceiver: generateAddress("Identity Receiver")
+    walletReceiver: generateAddress("Identity Receiver"),
+    imageIndex: 1
   });
 
   ObeliskNFTHarness private underTest;

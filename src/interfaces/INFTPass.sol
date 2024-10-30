@@ -5,6 +5,9 @@ interface INFTPass {
   error NoNeedToPay();
   error InvalidBPS();
   error MsgValueTooLow();
+  error AlreadyClaimed();
+  error InvalidProof();
+  error NameTooLong();
 
   event NFTPassCreated(
     uint256 indexed nftId, string indexed name, address indexed receiver, uint256 cost
@@ -19,6 +22,7 @@ interface INFTPass {
   struct Metadata {
     string name;
     address walletReceiver;
+    uint8 imageIndex;
   }
 
   function getMetadata(uint256 _nftId, string calldata _name)

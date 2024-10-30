@@ -5,18 +5,26 @@ import { IdentityERC721 } from "src/vendor/heroglyph/IdentityERC721.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-
+import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 /**
  * @title NFTPass
  * @notice A contract that allows users to buy NFT passes to create their own identity.
  * Without a pass, the user can't
  * use Obelisk.
  */
+
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
   uint256 internal constant SEND_ETH_GAS_MINIMUM = 20_000 * 2;
+  uint256 internal constant MAX_NAME_BYTES = 15;
 
-  bytes internal markleRoot;
+  string[] public IMAGES = [
+    "ipfs://QmWDi6zXedMwyy4rBgTb2KRJpEL7T4GJm94TFb64dgUP8W",
+    "ipfs://QmZidqfqBGS3NXBF72gHBCJurLce52FusvsQwQBmmBmPRw",
+    "ipfs://QmPXFdLJpJB8VSPFQF5W7syoij6noxvUU9DWTKKQHRVa5F",
+    "ipfs://QmcRoYHMzY54V2ZmCmg8dq195fMETF8nEAVQb3UDqQhknw",
+    "ipfs://QmSC4ETHbF1DDuhxaWhqUedsmuyMva3UazpPhrDzuvQgQ3"
+  ];
 
   uint32 public maxIdentityPerDayAtInitialPrice;
   uint32 public priceIncreaseThreshold;
@@ -25,19 +33,55 @@ contract NFTPass is INFTPass, IdentityERC721 {
   uint32 public boughtToday;
   uint256 public currentPrice;
 
+  bytes32 public immutable merkleRoot;
+  mapping(address => bool) public claimedPasses;
+
   mapping(uint256 => Metadata) internal metadataPasses;
 
-  constructor(address _owner, address _treasury, address _nameFilter, uint256 _cost)
-    IdentityERC721(_owner, _treasury, _nameFilter, _cost, "Obelisk NFT Pass", "OPASS")
-  {
+  constructor(
+    address _owner,
+    address _treasury,
+    address _nameFilter,
+    uint256 _cost,
+    bytes32 _merkleRoot
+  ) IdentityERC721(_owner, _treasury, _nameFilter, _cost, "Obelisk NFT Pass", "OPASS") {
     resetCounterTimestamp = uint32(block.timestamp + 1 days);
     currentPrice = cost;
     maxIdentityPerDayAtInitialPrice = 25;
     priceIncreaseThreshold = 10;
     priceDecayBPS = 2500;
+    merkleRoot = _merkleRoot;
+  }
+
+  function claimPass(
+    string calldata _name,
+    address _receiverWallet,
+    bytes32[] calldata merkleProof
+  ) external {
+    if (bytes(_name).length > MAX_NAME_BYTES) revert NameTooLong();
+    if (claimedPasses[msg.sender]) revert AlreadyClaimed();
+    if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
+
+    if (!MerkleProof.verify(merkleProof, merkleRoot, keccak256(abi.encode(msg.sender)))) {
+      revert InvalidProof();
+    }
+
+    claimedPasses[msg.sender] = true;
+
+    uint256 id = _create(_name, 0);
+    metadataPasses[id] = Metadata({
+      name: _name,
+      walletReceiver: _receiverWallet,
+      imageIndex: uint8(
+        uint256(keccak256(abi.encode(_name, block.timestamp))) % IMAGES.length
+      )
+    });
+
+    emit NFTPassCreated(id, _name, _receiverWallet, 0);
   }
 
   function create(string calldata _name, address _receiverWallet) external payable {
+    if (bytes(_name).length > MAX_NAME_BYTES) revert NameTooLong();
     if (cost == 0 && msg.value != 0) revert NoNeedToPay();
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
 
@@ -46,7 +90,13 @@ contract NFTPass is INFTPass, IdentityERC721 {
     if (msg.value < costAtDuringTx) revert MsgValueTooLow();
 
     uint256 id = _create(_name, 0);
-    metadataPasses[id] = Metadata({ name: _name, walletReceiver: _receiverWallet });
+    metadataPasses[id] = Metadata({
+      name: _name,
+      walletReceiver: _receiverWallet,
+      imageIndex: uint8(
+        uint256(keccak256(abi.encode(_name, block.timestamp))) % IMAGES.length
+      )
+    });
 
     emit NFTPassCreated(id, _name, _receiverWallet, costAtDuringTx);
 
@@ -176,7 +226,6 @@ contract NFTPass is INFTPass, IdentityERC721 {
     revert("Non-Transferrable");
   }
 
-  //TODO: Customize metadata -- This is a place holder
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     _requireOwned(tokenId);
 
@@ -187,7 +236,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
         '{"name":"NFT Pass: ',
         metadata.name,
         '","description":"Required to use Obelisk","image":"',
-        "ipfs://QmdTq1vZ6cZ6mcJBfkG49FocwqTPFQ8duq6j2tL2rpzEWF",
+        IMAGES[metadata.imageIndex],
         '"}'
       )
     );

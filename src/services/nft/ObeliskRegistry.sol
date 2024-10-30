@@ -22,7 +22,8 @@ import { HCT } from "src/services/HCT.sol";
  */
 contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint256 private constant MINIMUM_SENDING_ETH = 0.005 ether;
-  uint256 public constant MIN_SUPPORT_AMOUNT = 1e18;
+  uint256 public constant MINIMUM_ETH_SUPPORT_AMOUNT = 1e18;
+  uint256 public constant MINIMUM_DAI_SUPPORT_AMOUNT = 1000e18;
   uint128 public constant REQUIRED_ETH_TO_ENABLE_COLLECTION = 100e18;
   uint32 public constant SUPPORT_LOCK_DURATION = 30 days;
   uint32 public constant COLLECTION_REWARD_PERCENT = 4000;
@@ -60,7 +61,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     maxRewardPerCollection = 250e18;
 
     treasury = _treasury;
-    HCT_ADDRESS = address(new HCT());
+    HCT_ADDRESS = address(new HCT(_treasury));
     DRIP_VAULT_ETH = IDripVault(_dripVaultETH);
     DRIP_VAULT_DAI = IDripVault(_dripVaultDAI);
     NFT_PASS = _nftPass;
@@ -174,8 +175,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     address token = msg.value != 0 ? address(0) : address(DAI);
     uint256 sanitizedAmount = msg.value != 0 ? msg.value : _amount;
+    uint256 minimumAmount =
+      token == address(0) ? MINIMUM_ETH_SUPPORT_AMOUNT : MINIMUM_DAI_SUPPORT_AMOUNT;
 
-    if (sanitizedAmount < MIN_SUPPORT_AMOUNT) revert AmountTooLow();
+    if (sanitizedAmount < minimumAmount) revert AmountTooLow();
 
     supportId++;
     supporters[supportId] = Supporter({
@@ -271,18 +274,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   ) external {
     bool isOwner = msg.sender == owner();
     if (!isOwner && msg.sender != dataAsserter) revert NotAuthorized();
-
-    _allowNewCollection(
-      _collection, _totalSupply, _collectionStartedUnixTime, isOwner ? _premium : false
-    );
-  }
-
-  function _allowNewCollection(
-    address _collection,
-    uint256 _totalSupply,
-    uint32 _collectionStartedUnixTime,
-    bool _premium
-  ) internal {
     if (supportedCollections[_collection].allowed) revert CollectionAlreadyAllowed();
 
     supportedCollections[_collection] = Collection({
@@ -291,7 +282,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
       contributionBalance: 0,
       collectionStartedUnixTime: _collectionStartedUnixTime,
       allowed: true,
-      premium: _premium
+      premium: isOwner ? _premium : false
     });
 
     emit CollectionAllowed(

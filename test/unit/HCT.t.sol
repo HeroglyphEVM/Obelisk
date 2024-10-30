@@ -20,6 +20,7 @@ contract HCTTest is BaseTest {
   address private wrappedNFTMock_A;
   address private wrappedNFTMock_B;
   address private user;
+  address private treasury;
   HCTHarness public underTest;
 
   function setUp() public {
@@ -27,7 +28,7 @@ contract HCTTest is BaseTest {
     _setupMockCalls();
 
     vm.prank(obeliskRegistryMock);
-    underTest = new HCTHarness();
+    underTest = new HCTHarness(treasury);
   }
 
   function _setupMocks() internal {
@@ -35,6 +36,7 @@ contract HCTTest is BaseTest {
     wrappedNFTMock_A = generateAddress("WrappedNFT_A");
     wrappedNFTMock_B = generateAddress("WrappedNFT_B");
     user = generateAddress("User");
+    treasury = generateAddress("Treasury");
   }
 
   function _setupMockCalls() internal {
@@ -53,6 +55,13 @@ contract HCTTest is BaseTest {
       abi.encodeWithSelector(IObeliskRegistry.isWrappedNFT.selector, wrappedNFTMock_B),
       abi.encode(true)
     );
+  }
+
+  function test_constructor_thenPreMints() external prankAs(obeliskRegistryMock) {
+    underTest = new HCTHarness(treasury);
+
+    assertEq(underTest.balanceOf(treasury), underTest.PRE_MINT_AMOUNT());
+    assertEq(address(underTest.obeliskRegistry()), obeliskRegistryMock);
   }
 
   function test_addPower_asNonWrappedNFTSystem_thenReverts() external {
@@ -213,6 +222,8 @@ contract HCTTest is BaseTest {
 }
 
 contract HCTHarness is HCT {
+  constructor(address _treasury) HCT(_treasury) { }
+
   function exposed_mint(address _user, uint256 _amount) external {
     _mint(_user, _amount);
   }

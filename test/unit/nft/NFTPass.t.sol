@@ -8,6 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { INameFilter } from "src/vendor/heroglyph/INameFilter.sol";
 import { IIdentityERC721 } from "src/vendor/heroglyph/IIdentityERC721.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract NFTPassTest is BaseTest {
   uint256 public constant MAX_BPS = 10_000;
@@ -238,7 +239,7 @@ contract NFTPassTest is BaseTest {
       id++;
 
       assertEq(underTest.getCost(), expectedCost);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+      underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
     }
 
     expectedCost += COST / 2;
@@ -250,8 +251,8 @@ contract NFTPassTest is BaseTest {
       assertEq(underTest.getCost(), expectedCost);
 
       expectExactEmit();
-      emit INFTPass.NFTPassCreated(id, string(abi.encode(id)), user, expectedCost);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+      emit INFTPass.NFTPassCreated(id, Strings.toString(id), user, expectedCost);
+      underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
     }
 
     assertEq(underTest.getCost(), expectedCost + COST / 2);
@@ -262,7 +263,7 @@ contract NFTPassTest is BaseTest {
       id++;
 
       assertEq(underTest.getCost(), COST);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+      underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
     }
 
     expectedCost = Math.max(
@@ -272,15 +273,15 @@ contract NFTPassTest is BaseTest {
 
     id++;
     expectExactEmit();
-    emit INFTPass.NFTPassCreated(id, string(abi.encode(id)), user, expectedCost);
-    underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+    emit INFTPass.NFTPassCreated(id, Strings.toString(id), user, expectedCost);
+    underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
 
     expectedCost = COST;
 
     skip(10 days);
     for (uint32 i = 0; i <= maxIdentityPerDay + (priceIncreaseThreshold * 10); ++i) {
       id++;
-      underTest.create{ value: 2e18 }(string(abi.encode(id)), address(0));
+      underTest.create{ value: 2e18 }(Strings.toString(id), address(0));
     }
 
     expectedCost += (COST / 2) * 10;
@@ -289,11 +290,11 @@ contract NFTPassTest is BaseTest {
     skip(60 days);
     for (uint32 i = 0; i <= maxIdentityPerDay; ++i) {
       id++;
-      underTest.create{ value: 2e18 }(string(abi.encode(id)), address(0));
+      underTest.create{ value: 2e18 }(Strings.toString(id), address(0));
     }
 
     id++;
-    underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+    underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
 
     assertEq(underTest.currentPrice(), COST);
   }
@@ -366,7 +367,7 @@ contract NFTPassTest is BaseTest {
 
 contract NFTPassHarness is NFTPass {
   constructor(address _owner, address _treasury, address _nameFilter, uint256 _cost)
-    NFTPass(_owner, _treasury, _nameFilter, _cost)
+    NFTPass(_owner, _treasury, _nameFilter, _cost, "")
   { }
 
   function exposed_addBoughtToday(uint32 _amount) external {
