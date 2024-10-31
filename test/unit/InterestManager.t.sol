@@ -62,7 +62,6 @@ contract InterestManagerTest is BaseTest {
     user = generateAddress("user", 100e18);
     owner = generateAddress("owner");
     gaugeController = generateAddress("gaugeController");
-    mockDripVaultETH = generateAddress("mockDripVaultETH");
     mockDripVaultDAI = generateAddress("mockDripVaultDAI");
     mockSwapRouter = generateAddress("mockSwapRouter");
     mockPirexEth = generateAddress("mockPirexEth");
@@ -72,8 +71,11 @@ contract InterestManagerTest is BaseTest {
     axpETH = new MockERC20("ApxETH", "ApxETH", 18);
     dai = new MockERC20("DAI", "DAI", 18);
 
+    mockDripVaultETH = address(new ApxDripVaultMock(axpETH));
+
     vm.label(address(axpETH), "axpETH");
     vm.label(address(dai), "DAI");
+    vm.label(mockDripVaultETH, "mockDripVaultETH");
   }
 
   function _createMockCalls() internal {
@@ -90,9 +92,7 @@ contract InterestManagerTest is BaseTest {
     vm.mockCall(
       mockDripVaultDAI, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(0)
     );
-    vm.mockCall(
-      mockDripVaultETH, abi.encodeWithSelector(IDripVault.claim.selector), abi.encode(0)
-    );
+
     vm.mockCall(
       address(axpETH),
       abi.encodeWithSelector(IApxETH.pirexEth.selector),
@@ -104,12 +104,6 @@ contract InterestManagerTest is BaseTest {
     );
     vm.mockCall(
       address(weth), abi.encodeWithSelector(IWETH.withdraw.selector), abi.encode(true)
-    );
-
-    vm.mockCall(
-      address(axpETH),
-      abi.encodeWithSelector(DefaultERC20.balanceOf.selector),
-      abi.encode(0)
     );
 
     vm.mockCall(
@@ -211,12 +205,7 @@ contract InterestManagerTest is BaseTest {
     uint256 expectingForPool1 = (reward * WEIGHTS[0]) / (WEIGHTS[0] + WEIGHTS[1]);
     uint256 expectingForPool2 = reward - expectingForPool1;
 
-    axpETH.mint(address(underTest), reward);
-    vm.mockCall(
-      address(axpETH),
-      abi.encodeWithSelector(DefaultERC20.balanceOf.selector),
-      abi.encode(reward)
-    );
+    ApxDripVaultMock(mockDripVaultETH).mockNextReward(reward);
 
     vm.expectEmit(true, false, false, false);
     emit IInterestManager.RewardAssigned(
@@ -292,16 +281,8 @@ contract InterestManagerTest is BaseTest {
     WEIGHTS.push(1e18);
     uint256 reward = 3e18;
 
-    axpETH.mint(address(underTest), reward);
     underTest.applyGauges(ADDRESSES, WEIGHTS);
-
-    axpETH.mint(address(underTest), reward);
-
-    vm.mockCall(
-      address(axpETH),
-      abi.encodeWithSelector(DefaultERC20.balanceOf.selector),
-      abi.encode(reward)
-    );
+    ApxDripVaultMock(mockDripVaultETH).mockNextReward(reward);
 
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
 
@@ -372,6 +353,11 @@ contract InterestManagerTest is BaseTest {
 
   function test_claim_thenSendsRewards() external pranking {
     address streamingPool = generateAddress("streamingPool");
+    uint256 daiReward = 12_000e18;
+    uint256 ethReward = 3.3e18;
+    uint256 streamingPoolReward = 0.25e18;
+    uint256 convertedDaiReward = 2.1e18;
+    uint256 reward = convertedDaiReward + ethReward + streamingPoolReward;
 
     changePrank(owner);
     underTest.setStreamingPool(streamingPool);
@@ -379,12 +365,6 @@ contract InterestManagerTest is BaseTest {
     changePrank(gaugeController);
     ADDRESSES.push(generateAddress("pool1"));
     WEIGHTS.push(1e18);
-
-    uint256 daiReward = 12_000e18;
-    uint256 ethReward = 3.3e18;
-    uint256 streamingPoolReward = 0.25e18;
-    uint256 convertedDaiReward = 2.1e18;
-    uint256 reward = convertedDaiReward + ethReward + streamingPoolReward;
 
     vm.mockCall(
       streamingPool,
@@ -395,13 +375,7 @@ contract InterestManagerTest is BaseTest {
     underTest.applyGauges(ADDRESSES, WEIGHTS);
 
     dai.mint(address(underTest), daiReward);
-    axpETH.mint(address(underTest), reward);
-
-    vm.mockCall(
-      address(axpETH),
-      abi.encodeWithSelector(DefaultERC20.balanceOf.selector),
-      abi.encode(ethReward)
-    );
+    axpETH.mint(address(underTest), reward - ethReward);
 
     vm.mockCall(
       mockSwapRouter,
@@ -418,6 +392,8 @@ contract InterestManagerTest is BaseTest {
     );
 
     assertEq(underTest.getRewards(ADDRESSES[0]), 0);
+
+    ApxDripVaultMock(mockDripVaultETH).mockNextReward(ethReward);
 
     changePrank(ADDRESSES[0]);
     expectExactEmit();
@@ -557,5 +533,27 @@ contract InterestManagerHarness is InterestManager {
     returns (uint128 claimed_)
   {
     return epochs[epochId].megapoolClaims[_megapool];
+  }
+}
+
+contract ApxDripVaultMock {
+  MockERC20 public mockERC20;
+
+  uint256 private nextReward;
+
+  constructor(MockERC20 _mockERC20) {
+    mockERC20 = _mockERC20;
+  }
+
+  function mockNextReward(uint256 _reward) external {
+    nextReward = _reward;
+  }
+
+  function claim() external returns (uint256 reward_) {
+    reward_ = nextReward;
+    mockERC20.mint(msg.sender, reward_);
+    nextReward = 0;
+
+    return reward_;
   }
 }
