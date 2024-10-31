@@ -31,6 +31,7 @@ contract MegapoolTest is BaseTest {
 
     interestManager = generateAddress("interestManager");
     rewardToken = new MockERC20("Reward Token", "RT", 18);
+
     vm.label(address(rewardToken), "rewardToken");
 
     vm.mockCall(
@@ -103,42 +104,43 @@ contract MegapoolTest is BaseTest {
     assertEq(reward, expectedReward);
   }
 
-  function test_claim_01() external {
+  function test_claim_whenOneDepositor_thenGiveAllRewardToDepositorCorrectly() external {
     rewardToken.mint(address(underTest), 1e18);
     underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
 
     vm.expectCall(
       interestManager, abi.encodeWithSelector(IInterestManager.claim.selector)
     );
-    underTest.exposed_onClaimTriggered(user01_identity, user_01);
+    underTest.exposed_onClaimTriggered(user01_identity, user_01, false);
 
     assertEq(rewardToken.balanceOf(user_01), 0);
     assertEq(rewardToken.balanceOf(owner), 1e18);
     assertEq(rewardToken.balanceOf(address(underTest)), 0);
 
     rewardToken.mint(address(underTest), 1e18);
-    underTest.exposed_onClaimTriggered(user01_identity, user_01);
+    underTest.exposed_onClaimTriggered(user01_identity, user_01, false);
 
     assertEq(rewardToken.balanceOf(user_01), 1e18);
     assertEq(rewardToken.balanceOf(owner), 1e18);
     assertEq(rewardToken.balanceOf(address(underTest)), 0);
   }
 
-  function test_claim_02() external {
+  function test_claim_whenTwoDepositorsSameWeight_thenGiveHalfRewardToEach() external {
     underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
     underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
 
     rewardToken.mint(address(underTest), 1e18);
 
-    underTest.exposed_onClaimTriggered(user01_identity, user_01);
-    underTest.exposed_onClaimTriggered(user02_identity, user_02);
+    underTest.exposed_onClaimTriggered(user01_identity, user_01, false);
+    underTest.exposed_onClaimTriggered(user02_identity, user_02, false);
 
     assertEq(rewardToken.balanceOf(user_01), 0.5e18);
     assertEq(rewardToken.balanceOf(user_02), 0.5e18);
     assertEq(underTest.getYieldSnapshotOf(user01_identity), 0.5e18);
   }
 
-  function test_claim_03() external {
+  function test_claim_whenOneDepositorRewardedBeforeBiggerDepositor_thenGiveFullFirstRewardToDepositor01(
+  ) external {
     underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
     rewardToken.mint(address(underTest), 1e18);
 
@@ -146,11 +148,47 @@ contract MegapoolTest is BaseTest {
     underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
     rewardToken.mint(address(underTest), 1e18);
 
-    underTest.exposed_onClaimTriggered(user01_identity, user_01);
-    underTest.exposed_onClaimTriggered(user02_identity, user_02);
+    underTest.exposed_onClaimTriggered(user01_identity, user_01, false);
+    underTest.exposed_onClaimTriggered(user02_identity, user_02, false);
 
     assertEq(rewardToken.balanceOf(user_01), 1_333_333_333_333_333_333);
     assertEq(rewardToken.balanceOf(user_02), 666_666_666_666_666_666);
+  }
+
+  function test_claim_whenOneIgnoreRewards_thenReturnRewardToPool() external {
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
+    rewardToken.mint(address(underTest), 1e18);
+
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
+    rewardToken.mint(address(underTest), 1e18);
+
+    underTest.exposed_onClaimTriggered(user01_identity, user_01, true);
+    underTest.exposed_onClaimTriggered(user02_identity, user_02, false);
+
+    // Note this will never happen, ignoring rewards only happens on withdraw
+    // So the queued reward would be sent to user 2
+    underTest.exposed_onClaimTriggered(user01_identity, user_01, false);
+
+    assertEq(rewardToken.balanceOf(user_01), 444_444_444_444_444_443);
+    assertEq(rewardToken.balanceOf(user_02), 1_555_555_555_555_555_555);
+  }
+
+  function test_claim_whenOneIgnoreRewardsAndExit_thenGiveAllRewardToDepositor02()
+    external
+  {
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
+    rewardToken.mint(address(underTest), 1e18);
+
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
+    rewardToken.mint(address(underTest), 1e18);
+
+    underTest.exposed_afterVirtualWithdraw(user01_identity, user_01, true);
+    underTest.exposed_onClaimTriggered(user02_identity, user_02, false);
+
+    assertEq(rewardToken.balanceOf(user_01), 0);
+    assertEqTolerance(rewardToken.balanceOf(user_02), 2e18, 1);
   }
 }
 
@@ -174,8 +212,12 @@ contract MegapoolHarness is Megapool {
     _afterVirtualWithdraw(_identity, _holder, _ignoreRewards);
   }
 
-  function exposed_onClaimTriggered(bytes32 _identity, address _holder) external {
-    _onClaimTriggered(_identity, _holder, false);
+  function exposed_onClaimTriggered(
+    bytes32 _identity,
+    address _holder,
+    bool _ignoreRewards
+  ) external {
+    _onClaimTriggered(_identity, _holder, _ignoreRewards);
   }
 
   function exposed_setMaxEntry(uint256 _maxEntry) external {

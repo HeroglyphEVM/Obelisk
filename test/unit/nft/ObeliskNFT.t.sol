@@ -111,7 +111,7 @@ contract ObeliskNFTTest is BaseTest {
     underTest.claim(tokenId);
   }
 
-  function test_claim_whenCannotClaim_thenCallsTickersWithoutRewards() external {
+  function test_claim_whenCannotClaim_thenReverts() external {
     string memory newName = string.concat(START_NAME, TICKERS[0]);
     uint256 tokenId = 23;
 
@@ -123,17 +123,7 @@ contract ObeliskNFTTest is BaseTest {
 
     underTest.exposed_setCanClaim(false);
 
-    vm.expectCall(
-      POOL_TARGETS[0],
-      abi.encodeWithSelector(
-        ILiteTicker.claim.selector,
-        identity,
-        tokenId,
-        mockNftPassMetadata.walletReceiver,
-        true
-      )
-    );
-
+    vm.expectRevert();
     underTest.claim(tokenId);
   }
 }

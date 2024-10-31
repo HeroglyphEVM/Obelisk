@@ -32,6 +32,8 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   mapping(bytes32 => uint256) internal userYieldSnapshot;
   mapping(bytes32 => uint256) private virtualBalances;
 
+  uint256 private queued;
+
   constructor(
     address _owner,
     address _registry,
@@ -89,7 +91,10 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     nonReentrant
   {
     INTEREST_MANAGER.claim();
-    uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this));
+
+    uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this)) + queued;
+    queued = 0;
+
     uint256 holderVirtualBalance = virtualBalances[_identity];
     uint256 yieldPerTokenInRayCached = yieldPerTokenInRay;
     uint256 totalVirtualBalanceCached = totalVirtualBalance;
@@ -105,12 +110,17 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     uint256 last = userYieldSnapshot[_identity];
     uint256 curr = ShareableMath.rmul(holderVirtualBalance, yieldPerTokenInRayCached);
 
-    if (curr > last && !_ignoreRewards) {
+    if (curr > last) {
       uint256 sendingReward = curr - last;
-      REWARD_TOKEN.transfer(_receiver, sendingReward);
+
+      if (!_ignoreRewards) {
+        REWARD_TOKEN.transfer(_receiver, sendingReward);
+      } else {
+        queued += sendingReward;
+      }
     }
 
-    yieldBalance = REWARD_TOKEN.balanceOf(address(this));
+    yieldBalance = REWARD_TOKEN.balanceOf(address(this)) - queued;
     yieldPerTokenInRay = yieldPerTokenInRayCached;
   }
 
