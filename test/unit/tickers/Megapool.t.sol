@@ -6,7 +6,6 @@ import "test/base/BaseTest.t.sol";
 import { Megapool } from "src/services/tickers/Megapool.sol";
 import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
-import { ShareableMath } from "src/lib/ShareableMath.sol";
 
 contract MegapoolTest is BaseTest {
   address private owner;
@@ -16,6 +15,9 @@ contract MegapoolTest is BaseTest {
   address private user_02;
   address private interestManager;
 
+  bytes32 private user01_identity;
+  bytes32 private user02_identity;
+
   MegapoolHarness private underTest;
 
   function setUp() public {
@@ -23,6 +25,10 @@ contract MegapoolTest is BaseTest {
     registry = generateAddress("registry");
     user_01 = generateAddress("user_01");
     user_02 = generateAddress("user_02");
+
+    user01_identity = keccak256(abi.encode(user_01));
+    user02_identity = keccak256(abi.encode(user_02));
+
     interestManager = generateAddress("interestManager");
     rewardToken = new MockERC20("Reward Token", "RT", 18);
     vm.label(address(rewardToken), "rewardToken");
@@ -51,35 +57,35 @@ contract MegapoolTest is BaseTest {
     uint256 maxEntry = 1e18;
     underTest.exposed_setMaxEntry(maxEntry);
 
-    underTest.exposed_afterVirtualDeposit(user_01);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
     vm.expectRevert(Megapool.MaxEntryExceeded.selector);
-    underTest.exposed_afterVirtualDeposit(user_02);
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
   }
 
   function test_afterVirtualDeposit_whenPendingClaim_thenClaims() external {
     uint256 expectedReward = 3.32e18;
 
-    underTest.exposed_afterVirtualDeposit(user_01);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
     rewardToken.mint(address(underTest), expectedReward);
 
     uint256 rewardBalanceBefore = rewardToken.balanceOf(user_01);
-    underTest.exposed_afterVirtualDeposit(user_01);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
     uint256 reward = rewardToken.balanceOf(user_01) - rewardBalanceBefore;
 
     assertEq(reward, expectedReward);
   }
 
   function test_afterVirtualWithdraw_whenOnlyActor_thenEmptySystem() external {
-    underTest.exposed_afterVirtualDeposit(user_01);
-    underTest.exposed_afterVirtualWithdraw(user_01, false);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
+    underTest.exposed_afterVirtualWithdraw(user01_identity, user_01, false);
 
     assertEq(underTest.totalVirtualBalance(), 0);
   }
 
   function test_afterVirtualWithdraw_whenStillHasBalance_thenUpdateShares() external {
-    underTest.exposed_afterVirtualDeposit(user_01);
-    underTest.exposed_afterVirtualDeposit(user_01);
-    underTest.exposed_afterVirtualWithdraw(user_01, false);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
+    underTest.exposed_afterVirtualWithdraw(user01_identity, user_01, false);
 
     assertEq(underTest.totalVirtualBalance(), 1e18);
   }
@@ -87,11 +93,11 @@ contract MegapoolTest is BaseTest {
   function test_afterVirtualWithdraw_whenPendingClaim_thenClaims() external {
     uint256 expectedReward = 3.32e18;
 
-    underTest.exposed_afterVirtualDeposit(user_01);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
     rewardToken.mint(address(underTest), expectedReward);
 
     uint256 rewardBalanceBefore = rewardToken.balanceOf(user_01);
-    underTest.exposed_afterVirtualWithdraw(user_01, false);
+    underTest.exposed_afterVirtualWithdraw(user01_identity, user_01, false);
     uint256 reward = rewardToken.balanceOf(user_01) - rewardBalanceBefore;
 
     assertEq(reward, expectedReward);
@@ -99,19 +105,19 @@ contract MegapoolTest is BaseTest {
 
   function test_claim_01() external {
     rewardToken.mint(address(underTest), 1e18);
-    underTest.exposed_afterVirtualDeposit(user_01);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
 
     vm.expectCall(
       interestManager, abi.encodeWithSelector(IInterestManager.claim.selector)
     );
-    underTest.exposed_claim(user_01);
+    underTest.exposed_onClaimTriggered(user01_identity, user_01);
 
     assertEq(rewardToken.balanceOf(user_01), 0);
     assertEq(rewardToken.balanceOf(owner), 1e18);
     assertEq(rewardToken.balanceOf(address(underTest)), 0);
 
     rewardToken.mint(address(underTest), 1e18);
-    underTest.exposed_claim(user_01);
+    underTest.exposed_onClaimTriggered(user01_identity, user_01);
 
     assertEq(rewardToken.balanceOf(user_01), 1e18);
     assertEq(rewardToken.balanceOf(owner), 1e18);
@@ -119,29 +125,29 @@ contract MegapoolTest is BaseTest {
   }
 
   function test_claim_02() external {
-    underTest.exposed_afterVirtualDeposit(user_01);
-    underTest.exposed_afterVirtualDeposit(user_02);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
 
     rewardToken.mint(address(underTest), 1e18);
 
-    underTest.exposed_claim(user_01);
-    underTest.exposed_claim(user_02);
+    underTest.exposed_onClaimTriggered(user01_identity, user_01);
+    underTest.exposed_onClaimTriggered(user02_identity, user_02);
 
     assertEq(rewardToken.balanceOf(user_01), 0.5e18);
     assertEq(rewardToken.balanceOf(user_02), 0.5e18);
-    assertEq(underTest.getYieldSnapshotOf(user_01), 0.5e18);
+    assertEq(underTest.getYieldSnapshotOf(user01_identity), 0.5e18);
   }
 
   function test_claim_03() external {
-    underTest.exposed_afterVirtualDeposit(user_01);
+    underTest.exposed_afterVirtualDeposit(user01_identity, user_01);
     rewardToken.mint(address(underTest), 1e18);
 
-    underTest.exposed_afterVirtualDeposit(user_02);
-    underTest.exposed_afterVirtualDeposit(user_02);
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
+    underTest.exposed_afterVirtualDeposit(user02_identity, user_02);
     rewardToken.mint(address(underTest), 1e18);
 
-    underTest.exposed_claim(user_01);
-    underTest.exposed_claim(user_02);
+    underTest.exposed_onClaimTriggered(user01_identity, user_01);
+    underTest.exposed_onClaimTriggered(user02_identity, user_02);
 
     assertEq(rewardToken.balanceOf(user_01), 1_333_333_333_333_333_333);
     assertEq(rewardToken.balanceOf(user_02), 666_666_666_666_666_666);
@@ -156,16 +162,20 @@ contract MegapoolHarness is Megapool {
     address _interestManager
   ) Megapool(_owner, _registry, _tokenReward, _interestManager) { }
 
-  function exposed_afterVirtualDeposit(address _holder) external {
-    _afterVirtualDeposit(_holder);
+  function exposed_afterVirtualDeposit(bytes32 _identity, address _holder) external {
+    _afterVirtualDeposit(_identity, _holder);
   }
 
-  function exposed_afterVirtualWithdraw(address _holder, bool _ignoreRewards) external {
-    _afterVirtualWithdraw(_holder, _ignoreRewards);
+  function exposed_afterVirtualWithdraw(
+    bytes32 _identity,
+    address _holder,
+    bool _ignoreRewards
+  ) external {
+    _afterVirtualWithdraw(_identity, _holder, _ignoreRewards);
   }
 
-  function exposed_claim(address _holder) external {
-    _claim(_holder, false);
+  function exposed_onClaimTriggered(bytes32 _identity, address _holder) external {
+    _onClaimTriggered(_identity, _holder, false);
   }
 
   function exposed_setMaxEntry(uint256 _maxEntry) external {

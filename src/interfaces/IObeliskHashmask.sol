@@ -5,8 +5,6 @@ interface IObeliskHashmask {
   error NotLinkedToHolder();
   error NotHashmaskHolder();
   error InsufficientActivationPrice();
-  error UseUpdateNameInstead();
-  error UseLinkOrTransferLinkInstead();
   error TransferFailed();
   error ZeroAddress();
 

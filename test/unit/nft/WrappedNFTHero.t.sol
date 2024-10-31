@@ -9,14 +9,27 @@ import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
 
 import { MockERC721 } from "test/mock/contract/MockERC721.t.sol";
 import { WrappedNFTHero, IWrappedNFTHero } from "src/services/nft/WrappedNFTHero.sol";
+import { INFTPass } from "src/interfaces/INFTPass.sol";
 
 contract WrappedNFTHeroTest is BaseTest {
   uint128 private constant ACTIVE_SUPPLY = 10_000e18;
-  uint256 private UNLOCK_SLOT_BPS = 2000;
+  uint256 private UNLOCK_SLOT_BPS = 2500;
   uint256 private BPS = 10_000;
   uint32 private TEST_UNIX_TIME = 1_726_850_955;
   uint32 private YEAR_IN_SECONDS = 31_557_600;
   uint256 private SLOT_PRICE = 0.1e18;
+
+  string private constant IDENTITY_NAME = "M";
+  string private constant START_NAME = "@M #";
+  bytes32 private constant IDENTITY = keccak256(abi.encode(IDENTITY_NAME));
+
+  INFTPass.Metadata private mockNftPassMetadata = INFTPass.Metadata({
+    name: IDENTITY_NAME,
+    walletReceiver: generateAddress("Identity Receiver"),
+    imageIndex: 1
+  });
+
+  INFTPass.Metadata private EMPTY_NFT_METADATA;
 
   address private mockHCT;
   address private mockNFTPass;
@@ -24,8 +37,8 @@ contract WrappedNFTHeroTest is BaseTest {
   address private mockObeliskRegistry;
   address private user;
 
-  string[] private tickers = ["#Pool", "HenZ", "MyWorld"];
-  address[] private poolTargets = [
+  string[] private TICKERS = ["#Pool", "HenZ", "MyWorld"];
+  address[] private POOL_TARGETS = [
     generateAddress("PoolTarget1"),
     generateAddress("PoolTarget2"),
     generateAddress("PoolTarget3")
@@ -61,27 +74,39 @@ contract WrappedNFTHeroTest is BaseTest {
   }
 
   function _mockCalls() internal {
-    for (uint256 i = 0; i < poolTargets.length; i++) {
+    for (uint256 i = 0; i < POOL_TARGETS.length; i++) {
       vm.mockCall(
-        poolTargets[i],
+        POOL_TARGETS[i],
         abi.encodeWithSelector(ILiteTicker.virtualDeposit.selector),
         abi.encode(true)
       );
       vm.mockCall(
-        poolTargets[i],
+        POOL_TARGETS[i],
         abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector),
         abi.encode(true)
       );
       vm.mockCall(
         mockObeliskRegistry,
-        abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, tickers[i]),
-        abi.encode(poolTargets[i])
+        abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[i]),
+        abi.encode(POOL_TARGETS[i])
       );
     }
 
     vm.mockCall(mockHCT, abi.encodeWithSelector(IHCT.addPower.selector), abi.encode(true));
     vm.mockCall(
       mockHCT, abi.encodeWithSelector(IHCT.usesForRenaming.selector), abi.encode(true)
+    );
+
+    vm.mockCall(
+      mockNFTPass,
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
+      abi.encode(mockNftPassMetadata)
+    );
+
+    vm.mockCall(
+      mockNFTPass,
+      abi.encodeWithSelector(INFTPass.getMetadata.selector),
+      abi.encode(EMPTY_NFT_METADATA)
     );
   }
 
@@ -192,6 +217,194 @@ contract WrappedNFTHeroTest is BaseTest {
     assertEq(mockInputCollection.ownerOf(tokenId), address(underTest));
     assertEq(underTest.getNFTData(tokenId).assignedMultiplier, expectingMultiplier);
     assertEq(underTest.freeSlots(), freeSlotsBefore - 1);
+  }
+
+  function test_rename_whenNameIsTooLong_thenReverts() external {
+    string memory tooLongName = string(new bytes(30));
+
+    vm.expectRevert(IWrappedNFTHero.InvalidNameLength.selector);
+    underTest.rename(0, tooLongName);
+
+    vm.expectRevert(IWrappedNFTHero.InvalidNameLength.selector);
+    underTest.rename(0, "");
+  }
+
+  function test_rename_whenRenameRequirementsReverts_thenReverts() external {
+    vm.expectRevert(IWrappedNFTHero.NotMinted.selector);
+    underTest.rename(0, "Hello");
+  }
+
+  function test_rename_whenNoIdentityFound_thenReverts() external prankAs(user) {
+    uint256 tokenId = 1;
+    underTest.wrap(tokenId);
+
+    vm.expectRevert(IWrappedNFTHero.InvalidWalletReceiver.selector);
+    underTest.rename(tokenId, "Hello");
+
+    changePrank(generateAddress("NotHolder"));
+    vm.expectRevert(IWrappedNFTHero.NotNFTHolder.selector);
+    underTest.rename(tokenId, "Hello");
+  }
+
+  function test_rename_whenNoTickers_thenRenames() external prankAs(user) {
+    string memory newName = string.concat("NewName @", IDENTITY_NAME);
+    uint256 tokenId = 23;
+
+    mockInputCollection.mint(user, tokenId);
+    underTest.wrap(tokenId);
+
+    expectExactEmit();
+    emit IWrappedNFTHero.NameChanged(tokenId, newName);
+    underTest.rename(tokenId, newName);
+
+    assertEq(underTest.names(tokenId), newName);
+    assertEq(abi.encode(underTest.nftPassAttached(tokenId)), abi.encode(IDENTITY_NAME));
+  }
+
+  function test_rename_givenTickers_thenAddsNewTickers() external prankAs(user) {
+    string memory newName = string.concat(START_NAME, TICKERS[0]);
+    uint256 tokenId = 23;
+
+    mockInputCollection.mint(user, tokenId);
+    underTest.wrap(tokenId);
+
+    vm.expectCall(
+      mockObeliskRegistry,
+      abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[0])
+    );
+    vm.expectCall(
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualDeposit.selector,
+        IDENTITY,
+        tokenId,
+        mockNftPassMetadata.walletReceiver
+      )
+    );
+
+    underTest.rename(tokenId, newName);
+
+    assertEq(underTest.names(tokenId), newName);
+    assertEq(abi.encode(underTest.nftPassAttached(tokenId)), abi.encode(IDENTITY_NAME));
+    assertEq(underTest.getLinkedTickers(tokenId)[0], POOL_TARGETS[0]);
+    assertEq(underTest.getLinkedTickers(tokenId).length, 1);
+  }
+
+  function test_rename_whenHasTickers_thenRemovesOldTickers() external prankAs(user) {
+    string memory newName = string.concat(START_NAME, TICKERS[0]);
+    uint256 tokenId = 23;
+
+    mockInputCollection.mint(user, tokenId);
+    underTest.wrap(tokenId);
+
+    underTest.rename(tokenId, newName);
+    newName = string.concat(START_NAME, TICKERS[1]);
+
+    vm.expectCall(
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualWithdraw.selector,
+        IDENTITY,
+        tokenId,
+        mockNftPassMetadata.walletReceiver,
+        false
+      )
+    );
+
+    vm.expectCall(
+      mockObeliskRegistry,
+      abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[1])
+    );
+    vm.expectCall(
+      POOL_TARGETS[1],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualDeposit.selector,
+        IDENTITY,
+        tokenId,
+        mockNftPassMetadata.walletReceiver
+      )
+    );
+
+    underTest.rename(tokenId, newName);
+  }
+
+  function test_rename_whenChangeIdentityReceiver_thenRemoveFromOldAndUpdatesToNew()
+    external
+    prankAs(user)
+  {
+    string memory newName = string.concat(START_NAME, TICKERS[0]);
+    uint256 tokenId = 23;
+
+    mockInputCollection.mint(user, tokenId);
+    underTest.wrap(tokenId);
+    underTest.rename(tokenId, newName);
+
+    newName = string.concat(START_NAME, TICKERS[1]);
+
+    address newReceiver = generateAddress("New Identity Receiver");
+    mockNftPassMetadata.walletReceiver = newReceiver;
+
+    vm.mockCall(
+      mockNFTPass,
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
+      abi.encode(mockNftPassMetadata)
+    );
+
+    vm.expectCall(
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualWithdraw.selector, IDENTITY, tokenId, newReceiver, false
+      )
+    );
+
+    vm.expectCall(
+      mockObeliskRegistry,
+      abi.encodeWithSelector(IObeliskRegistry.getTickerLogic.selector, TICKERS[1])
+    );
+    vm.expectCall(
+      POOL_TARGETS[1],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualDeposit.selector, IDENTITY, tokenId, newReceiver
+      )
+    );
+
+    underTest.rename(tokenId, newName);
+    assertEq(abi.encode(underTest.nftPassAttached(tokenId)), abi.encode(IDENTITY_NAME));
+  }
+
+  function test_updateIdentity_whenNoIdentityFound_thenReverts() external {
+    mockNftPassMetadata.walletReceiver = address(0);
+
+    vm.mockCall(
+      mockNFTPass,
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
+      abi.encode(mockNftPassMetadata)
+    );
+
+    vm.expectRevert(IWrappedNFTHero.InvalidWalletReceiver.selector);
+    underTest.exposed_updateIdentity(0, "Hello");
+  }
+
+  function test_updateIdentity_thenUpdatesIdentity() external prankAs(user) {
+    string memory newName = string.concat(START_NAME, TICKERS[0]);
+    uint256 tokenId = 23;
+
+    mockInputCollection.mint(user, tokenId);
+    underTest.wrap(tokenId);
+
+    underTest.rename(tokenId, newName);
+
+    mockNftPassMetadata.walletReceiver = generateAddress("New Identity Receiver");
+
+    vm.mockCall(
+      mockNFTPass,
+      abi.encodeWithSelector(INFTPass.getMetadata.selector, 0, IDENTITY_NAME),
+      abi.encode(mockNftPassMetadata)
+    );
+
+    underTest.exposed_updateIdentity(tokenId, newName);
+
+    assertEq(abi.encode(underTest.nftPassAttached(tokenId)), abi.encode(IDENTITY_NAME));
   }
 
   function test_unwrap_whenNotMinted_thenReverts() external prankAs(user) {
@@ -412,6 +625,10 @@ contract WrappedNFTHeroHarness is WrappedNFTHero {
 
   function exposed_mint(address _to, uint256 _tokenId) external {
     _mint(_to, _tokenId);
+  }
+
+  function exposed_updateIdentity(uint256 _tokenId, string memory _name) external {
+    _updateIdentity(_tokenId, _name);
   }
 
   function exposed_burn(uint256 _tokenId) external {

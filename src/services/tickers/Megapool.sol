@@ -28,8 +28,8 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
 
   IInterestManager public immutable INTEREST_MANAGER;
 
-  mapping(address => uint256) internal userYieldSnapshot;
-  mapping(address => uint256) private virtualBalances;
+  mapping(bytes32 => uint256) internal userYieldSnapshot;
+  mapping(bytes32 => uint256) private virtualBalances;
 
   constructor(
     address _owner,
@@ -42,67 +42,74 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     maxEntry = 1000e18;
   }
 
-  function _afterVirtualDeposit(address _holder) internal override {
-    _claim(_holder, false);
+  function _afterVirtualDeposit(bytes32 _identity, address _receiver) internal override {
+    _claim(_identity, _receiver, false);
 
-    uint256 userVirtualBalance = virtualBalances[_holder] + DEPOSIT_AMOUNT;
+    uint256 userVirtualBalance = virtualBalances[_identity] + DEPOSIT_AMOUNT;
 
-    virtualBalances[_holder] = userVirtualBalance;
-
+    virtualBalances[_identity] = userVirtualBalance;
     totalVirtualBalance += DEPOSIT_AMOUNT;
 
     if (totalVirtualBalance > maxEntry) {
       revert MaxEntryExceeded();
     }
 
-    userYieldSnapshot[_holder] =
+    userYieldSnapshot[_identity] =
       ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
   }
 
-  function _afterVirtualWithdraw(address _holder, bool _ignoreRewards) internal override {
-    _claim(_holder, _ignoreRewards);
+  function _afterVirtualWithdraw(
+    bytes32 _identity,
+    address _receiver,
+    bool _ignoreRewards
+  ) internal override {
+    _claim(_identity, _receiver, _ignoreRewards);
 
-    uint256 userVirtualBalance = virtualBalances[_holder] - DEPOSIT_AMOUNT;
-    virtualBalances[_holder] = userVirtualBalance;
+    uint256 userVirtualBalance = virtualBalances[_identity] - DEPOSIT_AMOUNT;
+    virtualBalances[_identity] = userVirtualBalance;
 
     totalVirtualBalance -= DEPOSIT_AMOUNT;
-    userYieldSnapshot[_holder] =
+    userYieldSnapshot[_identity] =
       ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
   }
 
-  function _getNewYield() internal view returns (uint256) {
-    return REWARD_TOKEN.balanceOf(address(this)) - yieldBalance;
+  function _onClaimTriggered(bytes32 _identity, address _receiver, bool _ignoreRewards)
+    internal
+    override
+  {
+    _claim(_identity, _receiver, _ignoreRewards);
+
+    userYieldSnapshot[_identity] =
+      ShareableMath.rmulup(virtualBalances[_identity], yieldPerTokenInRay);
   }
 
-  function _onClaimTriggered(address _holder, bool _ignoreRewards) internal override {
-    _claim(_holder, _ignoreRewards);
-  }
-
-  function _claim(address _holder, bool _ignoreRewards) internal nonReentrant {
+  function _claim(bytes32 _identity, address _receiver, bool _ignoreRewards)
+    internal
+    nonReentrant
+  {
     INTEREST_MANAGER.claim();
     uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this));
-    uint256 holderVirtualBalance = virtualBalances[_holder];
+    uint256 holderVirtualBalance = virtualBalances[_identity];
     uint256 yieldPerTokenInRayCached = yieldPerTokenInRay;
     uint256 totalVirtualBalanceCached = totalVirtualBalance;
 
     if (totalVirtualBalanceCached > 0) {
-      yieldPerTokenInRayCached +=
-        ShareableMath.rdiv(_getNewYield(), totalVirtualBalanceCached);
+      yieldPerTokenInRayCached += ShareableMath.rdiv(
+        REWARD_TOKEN.balanceOf(address(this)) - yieldBalance, totalVirtualBalanceCached
+      );
     } else if (currentYieldBalance != 0) {
       REWARD_TOKEN.transfer(owner(), currentYieldBalance);
     }
 
-    uint256 last = userYieldSnapshot[_holder];
+    uint256 last = userYieldSnapshot[_identity];
     uint256 curr = ShareableMath.rmul(holderVirtualBalance, yieldPerTokenInRayCached);
 
     if (curr > last && !_ignoreRewards) {
       uint256 sendingReward = curr - last;
-      REWARD_TOKEN.transfer(_holder, sendingReward);
+      REWARD_TOKEN.transfer(_receiver, sendingReward);
     }
 
     yieldBalance = REWARD_TOKEN.balanceOf(address(this));
-    userYieldSnapshot[_holder] =
-      ShareableMath.rmulup(holderVirtualBalance, yieldPerTokenInRayCached);
     yieldPerTokenInRay = yieldPerTokenInRayCached;
   }
 
@@ -111,11 +118,11 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     emit MaxEntryUpdated(_newMaxEntry);
   }
 
-  function getVirtualBalanceOf(address _holder) external view returns (uint256) {
-    return virtualBalances[_holder];
+  function getVirtualBalanceOf(bytes32 _identity) external view returns (uint256) {
+    return virtualBalances[_identity];
   }
 
-  function getYieldSnapshotOf(address _target) external view returns (uint256) {
-    return userYieldSnapshot[_target];
+  function getYieldSnapshotOf(bytes32 _identity) external view returns (uint256) {
+    return userYieldSnapshot[_identity];
   }
 }

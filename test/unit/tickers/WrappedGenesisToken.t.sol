@@ -18,8 +18,9 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IGenesisTokenPool } from "src/interfaces/IGenesisTokenPool.sol";
 
-contract WrappedGnosisTokenTest is BaseTest {
+contract WrappedGenesisTokenTest is BaseTest {
   uint32 private constant MAINNET_LZ_ENDPOINT_ID = 30_101;
+  uint32 private constant ORIGIN_LZ_ENDPOITN = 48_271;
   bytes32 private constant PEER = bytes32("PEER");
   uint256 private constant LZ_FEE = 2_399_482;
   Origin private origin = Origin({ srcEid: 1, sender: bytes32("PEER"), nonce: 0 });
@@ -53,11 +54,14 @@ contract WrappedGnosisTokenTest is BaseTest {
     );
 
     genesisToken.mint(user, 100e18);
-    underTest = new WrappedGnosisTokenHarness(owner, lzEndpoint, address(genesisToken));
+    underTest = new WrappedGnosisTokenHarness(
+      owner, ORIGIN_LZ_ENDPOITN, lzEndpoint, address(genesisToken)
+    );
 
     vm.startPrank(owner);
     underTest.attachPool(pool);
     underTest.setPeer(MAINNET_LZ_ENDPOINT_ID, PEER);
+    underTest.setPeer(ORIGIN_LZ_ENDPOITN, PEER);
     vm.stopPrank();
 
     vm.mockCall(
@@ -78,10 +82,13 @@ contract WrappedGnosisTokenTest is BaseTest {
   }
 
   function test_constructor_thenContractIsInitialized() external {
-    underTest = new WrappedGnosisTokenHarness(owner, lzEndpoint, address(genesisToken));
+    underTest = new WrappedGnosisTokenHarness(
+      owner, ORIGIN_LZ_ENDPOITN, lzEndpoint, address(genesisToken)
+    );
 
     assertEq(underTest.owner(), owner);
     assertEq(underTest.genesisToken(), address(genesisToken));
+    assertEq(underTest.originLzEndpoint(), ORIGIN_LZ_ENDPOITN);
   }
 
   function test_addRewardOnMainnet_whenOnMainnet_thenReverts() external {
@@ -110,32 +117,37 @@ contract WrappedGnosisTokenTest is BaseTest {
     _expectLZSend(
       LZ_FEE,
       MAINNET_LZ_ENDPOINT_ID,
-      abi.encode(address(0), amount),
+      abi.encode(address(0), amount, false),
       defaultLzOption,
       user
     );
-    underTest.addRewardOnMainnet{ value: LZ_FEE }(amount);
-  }
 
-  function test_unwrap_onMainnet_thenReverts() external {
-    vm.chainId(1);
-    vm.expectRevert(
-      abi.encodeWithSelector(WrappedGenesisToken.CannotUnwrapOnMainnet.selector)
-    );
-    underTest.unwrap(100e18);
+    underTest.addRewardOnMainnet{ value: LZ_FEE }(amount);
   }
 
   function test_unwrap_thenUnwraps() external prankAs(user) {
     uint256 amount = 37.2e18;
 
-    uint256 amountBefore = genesisToken.balanceOf(user);
-
     underTest.exposed_mint(user, amount);
+
+    _expectLZSend(
+      LZ_FEE, ORIGIN_LZ_ENDPOITN, abi.encode(user, amount, true), defaultLzOption, user
+    );
+
+    underTest.unwrap{ value: LZ_FEE }(user, amount);
+
+    assertEq(underTest.balanceOf(user), 0);
+  }
+
+  function test_lzReceive_whenUnwrap_thenSendsUnwrappedVersion() external {
+    uint256 amount = 37.2e18;
+    address to = generateAddress("to");
+
     genesisToken.mint(address(underTest), amount);
 
-    underTest.unwrap(amount);
-    assertEq(genesisToken.balanceOf(user) - amountBefore, amount);
-    assertEq(underTest.balanceOf(user), 0);
+    underTest.exposed_lzReceive(origin, abi.encode(to, amount, true), defaultLzOption);
+
+    assertEq(genesisToken.balanceOf(to), amount);
   }
 
   function test_lzReceive_whenToIsZero_thenMintsToPool() external {
@@ -144,9 +156,26 @@ contract WrappedGnosisTokenTest is BaseTest {
     vm.expectCall(
       pool, abi.encodeWithSelector(IGenesisTokenPool.notifyRewardAmount.selector, amount)
     );
-    underTest.exposed_lzReceive(origin, abi.encode(address(0), amount), defaultLzOption);
+    underTest.exposed_lzReceive(
+      origin, abi.encode(address(0), amount, false), defaultLzOption
+    );
 
     assertEq(underTest.balanceOf(pool), amount);
+  }
+
+  function test_lzReceive_whenToIsZeroAndPoolZero_thenMintsToOwner() external {
+    uint256 amount = 37.2e18;
+
+    vm.prank(owner);
+    underTest.attachPool(address(0));
+
+    uint256 balanceBefore = underTest.balanceOf(owner);
+
+    underTest.exposed_lzReceive(
+      origin, abi.encode(address(0), amount, false), defaultLzOption
+    );
+
+    assertEq(underTest.balanceOf(owner) - balanceBefore, amount);
   }
 
   function test_lzReceive_whenToIsUser_thenMintsToUser() external {
@@ -157,7 +186,7 @@ contract WrappedGnosisTokenTest is BaseTest {
       abi.encodeWithSelector(IGenesisTokenPool.notifyRewardAmount.selector),
       abi.encode("Shouldn't be called")
     );
-    underTest.exposed_lzReceive(origin, abi.encode(user, amount), defaultLzOption);
+    underTest.exposed_lzReceive(origin, abi.encode(user, amount, false), defaultLzOption);
 
     assertEq(underTest.balanceOf(user), amount);
   }
@@ -232,9 +261,12 @@ contract WrappedGnosisTokenTest is BaseTest {
 }
 
 contract WrappedGnosisTokenHarness is WrappedGenesisToken {
-  constructor(address _owner, address _lzEndpoint, address _genesisToken)
-    WrappedGenesisToken(_owner, _lzEndpoint, _genesisToken)
-  { }
+  constructor(
+    address _owner,
+    uint32 _originLzEndpoint,
+    address _lzEndpoint,
+    address _genesisToken
+  ) WrappedGenesisToken(_owner, _originLzEndpoint, _lzEndpoint, _genesisToken) { }
 
   function exposed_mint(address _to, uint256 _amount) external {
     _mint(_to, _amount);

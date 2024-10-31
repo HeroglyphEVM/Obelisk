@@ -32,9 +32,9 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   uint256 public totalSupply;
   uint256 public queuedReward;
 
-  mapping(address user => uint256) public balanceOf;
-  mapping(address user => uint256) public userRewardPerTokenPaid;
-  mapping(address user => uint256) public rewards;
+  mapping(bytes32 identity => uint256) public balanceOf;
+  mapping(bytes32 identity => uint256) public userRewardPerTokenPaid;
+  mapping(bytes32 identity => uint256) public rewards;
 
   constructor(
     address _owner,
@@ -44,55 +44,65 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   ) LiteTicker(_registry) Ownable(_owner) {
     GENESIS_KEY = IERC721(_genesisKey);
     REWARD_TOKEN = ERC20(_wrappedReward);
-    DISTRIBUTION_DURATION = 30 days;
+    DISTRIBUTION_DURATION = 365 days;
   }
 
-  function _afterVirtualDeposit(address _holder) internal override {
+  function _afterVirtualDeposit(bytes32 _identity, address _receiver) internal override {
+    if (address(GENESIS_KEY) != address(0) && GENESIS_KEY.balanceOf(_receiver) == 0) {
+      revert MissingKey();
+    }
+
     uint256 cachedTotalSupply = totalSupply;
-    if (
-      cachedTotalSupply == 0 && latestRewardPerTokenStored == 0 && rewardRatePerSecond > 0
-    ) {
+    bool isFirstDeposit = latestRewardPerTokenStored == 0 && rewardRatePerSecond > 0;
+    if (cachedTotalSupply == 0 && isFirstDeposit) {
       unixPeriodFinish = uint64(block.timestamp + DISTRIBUTION_DURATION);
     }
 
     _queueNewRewards(0);
 
-    if (address(GENESIS_KEY) != address(0) && GENESIS_KEY.balanceOf(_holder) == 0) {
-      revert MissingKey();
-    }
+    uint256 accountBalance = balanceOf[_identity];
 
-    uint256 accountBalance = balanceOf[_holder];
-
-    _updateReward(_holder, accountBalance);
+    _updateReward(_identity, accountBalance);
 
     totalSupply = cachedTotalSupply + DEPOSIT_AMOUNT;
     accountBalance += DEPOSIT_AMOUNT;
 
-    balanceOf[_holder] = accountBalance;
+    balanceOf[_identity] = accountBalance;
   }
 
-  function _afterVirtualWithdraw(address _holder, bool _ignoreRewards) internal override {
+  function _afterVirtualWithdraw(
+    bytes32 _identity,
+    address _receiver,
+    bool _ignoreRewards
+  ) internal override {
     _queueNewRewards(0);
-    _onClaimTriggered(_holder, _ignoreRewards);
+    _onClaimTriggered(_identity, _receiver, _ignoreRewards);
 
     totalSupply -= DEPOSIT_AMOUNT;
-    balanceOf[_holder] -= DEPOSIT_AMOUNT;
+    balanceOf[_identity] -= DEPOSIT_AMOUNT;
   }
 
-  function _onClaimTriggered(address _holder, bool _ignoreRewards) internal override {
-    uint256 reward = _updateReward(_holder, balanceOf[_holder]);
+  function _onClaimTriggered(bytes32 _identity, address _receiver, bool _ignoreRewards)
+    internal
+    override
+  {
+    if (address(GENESIS_KEY) != address(0) && GENESIS_KEY.balanceOf(_receiver) == 0) {
+      revert MissingKey();
+    }
+
+    uint256 reward = _updateReward(_identity, balanceOf[_identity]);
 
     if (reward == 0) return;
-    rewards[_holder] = 0;
+    rewards[_identity] = 0;
 
     if (_ignoreRewards) {
       _queueNewRewards(reward);
-      emit RewardIgnored(_holder, reward);
+      emit RewardIgnored(_identity, _receiver, reward);
       return;
     }
 
-    REWARD_TOKEN.transfer(_holder, reward);
-    emit RewardPaid(_holder, reward);
+    REWARD_TOKEN.transfer(_receiver, reward);
+    emit RewardPaid(_identity, _receiver, reward);
   }
 
   function notifyRewardAmount(uint256 reward) external override {
@@ -125,7 +135,7 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   }
 
   function _notifyRewardAmount(uint256 reward) internal {
-    _updateReward(address(0), 0);
+    _updateReward("", 0);
 
     uint64 unixPeriodFinishCached = unixPeriodFinish;
     uint256 cachedRewardRatePerSecond = rewardRatePerSecond;
@@ -152,7 +162,7 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     return Math.mulDiv(_timePassed, _scaledRatePerSecond, PRECISION);
   }
 
-  function _updateReward(address _holder, uint256 _accountBalance)
+  function _updateReward(bytes32 _identity, uint256 _accountBalance)
     internal
     returns (uint256 reward_)
   {
@@ -163,11 +173,11 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     latestRewardPerTokenStored = rewardPerToken_;
     lastUpdateUnixTime = lastTimeRewardApplicable_;
 
-    if (_holder == address(0)) return 0;
+    if (_identity == bytes32(0)) return 0;
 
-    reward_ = _earned(_holder, _accountBalance, rewardPerToken_, rewards[_holder]);
-    rewards[_holder] = reward_;
-    userRewardPerTokenPaid[_holder] = rewardPerToken_;
+    reward_ = _earned(_identity, _accountBalance, rewardPerToken_, rewards[_identity]);
+    rewards[_identity] = reward_;
+    userRewardPerTokenPaid[_identity] = rewardPerToken_;
 
     return reward_;
   }
@@ -176,24 +186,24 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     return _rewardPerToken(totalSupply, lastTimeRewardApplicable(), rewardRatePerSecond);
   }
 
-  function earned(address account) external view override returns (uint256) {
+  function earned(bytes32 _identity) external view override returns (uint256) {
     return _earned(
-      account,
-      balanceOf[account],
+      _identity,
+      balanceOf[_identity],
       _rewardPerToken(totalSupply, lastTimeRewardApplicable(), rewardRatePerSecond),
-      rewards[account]
+      rewards[_identity]
     );
   }
 
   function _earned(
-    address account,
+    bytes32 _identity,
     uint256 accountBalance,
     uint256 rewardPerToken_,
     uint256 accountRewards
   ) internal view returns (uint256) {
     return Math.mulDiv(
       accountBalance,
-      rewardPerToken_ - userRewardPerTokenPaid[account],
+      rewardPerToken_ - userRewardPerTokenPaid[_identity],
       REAL_VALUE_PRECISION
     ) + accountRewards;
   }

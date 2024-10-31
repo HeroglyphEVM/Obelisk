@@ -9,17 +9,23 @@ import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
 import { ObeliskNFT } from "./ObeliskNFT.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { strings } from "src/lib/strings.sol";
 
 /**
  * @title WrappedNFTHero
  * @notice It allows users to wrap their NFT to get a WrappedNFTHero NFT.
+ * @custom:export abi
+ * @dev The NFT ID of this contract is reflecting the NFT ID from the input collection.
  */
 contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT {
+  using strings for string;
+  using strings for strings.slice;
+
   uint256 private constant MAX_BPS = 10_000;
   uint256 private constant SECONDS_PER_YEAR = 31_557_600;
 
   uint256 public constant SLOT_PRICE = 0.1e18;
-  uint256 public constant FREE_SLOT_BPS = 2000; // 20 %
+  uint256 public constant FREE_SLOT_BPS = 2500; // 25 %
 
   uint256 public constant RATE_PER_YEAR = 0.43e18;
   uint256 public constant MAX_RATE = 3e18;
@@ -53,6 +59,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     PREMIUM = _premium;
   }
 
+  /// @inheritdoc IWrappedNFTHero
   function wrap(uint256 _inputCollectionNFTId) external payable override {
     bool isIdOdd = _inputCollectionNFTId % 2 == 1;
     bool canHaveFreeSlot = freeSlots != 0 && FREE_SLOT_FOR_ODD == isIdOdd;
@@ -85,26 +92,30 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     }
   }
 
-  function unwrap(uint256 _tokenId) external override {
-    NFTData storage nftdata = nftData[_tokenId];
+  /// @inheritdoc IWrappedNFTHero
+  function rename(uint256 _tokenId, string memory _newName) external override {
+    uint256 nameBytesLength = bytes(_newName).length;
+    if (nameBytesLength == 0 || nameBytesLength > MAX_NAME_BYTES_LENGTH) {
+      revert InvalidNameLength();
+    }
+    _renameRequirements(_tokenId);
+    bytes32 identity;
+    address receiver;
 
-    if (!nftdata.isMinted) revert NotMinted();
-    if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
-    _removeOldTickers(identityReceivers[_tokenId], _tokenId, false);
+    if (bytes(names[_tokenId]).length != 0) {
+      (identity, receiver) = _getIdentityInformation(_tokenId);
+      _removeOldTickers(identity, receiver, _tokenId, false);
+    }
 
-    _burn(_tokenId);
-    delete names[_tokenId];
+    (identity, receiver) = _updateIdentity(_tokenId, _newName);
+    _addNewTickers(identity, receiver, _tokenId, _newName);
 
-    nftdata.assignedMultiplier = 0;
-    nftdata.isMinted = false;
-
-    INPUT_COLLECTION.safeTransferFrom(address(this), msg.sender, _tokenId);
-
-    emit Unwrapped(_tokenId);
+    emit NameChanged(_tokenId, _newName);
+    names[_tokenId] = _newName;
   }
 
-  function _renameRequirements(uint256 _tokenId) internal override {
+  function _renameRequirements(uint256 _tokenId) internal {
     NFTData storage nftdata = nftData[_tokenId];
 
     if (!nftdata.isMinted) revert NotMinted();
@@ -116,6 +127,47 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     }
 
     HCT.usesForRenaming(msg.sender);
+  }
+
+  function _updateIdentity(uint256 _tokenId, string memory _name)
+    internal
+    virtual
+    returns (bytes32 _identity, address receiver_)
+  {
+    strings.slice memory nameSlice = _name.toSlice();
+    strings.slice memory needle = TICKER_START_IDENTITY.toSlice();
+    string memory substring =
+      nameSlice.find(needle).beyond(needle).split(string(" ").toSlice()).toString();
+
+    receiver_ = NFT_PASS.getMetadata(0, substring).walletReceiver;
+
+    if (receiver_ == address(0)) revert InvalidWalletReceiver();
+
+    nftPassAttached[_tokenId] = substring;
+
+    return (keccak256(abi.encode(substring)), receiver_);
+  }
+
+  /// @inheritdoc IWrappedNFTHero
+  function unwrap(uint256 _tokenId) external override {
+    NFTData storage nftdata = nftData[_tokenId];
+
+    if (!nftdata.isMinted) revert NotMinted();
+    if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
+
+    (bytes32 identity, address receiver) = _getIdentityInformation(_tokenId);
+    _removeOldTickers(identity, receiver, _tokenId, false);
+
+    _burn(_tokenId);
+    delete names[_tokenId];
+    delete nftPassAttached[_tokenId];
+
+    nftdata.assignedMultiplier = 0;
+    nftdata.isMinted = false;
+
+    INPUT_COLLECTION.safeTransferFrom(address(this), msg.sender, _tokenId);
+
+    emit Unwrapped(_tokenId);
   }
 
   function _claimRequirements(uint256 _tokenId) internal view override returns (bool) {
@@ -147,7 +199,20 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     return super._update(to, tokenId, auth);
   }
 
-  function updateMultiplier(uint256 _tokenId) external {
+  function _getIdentityInformation(uint256 _tokenId)
+    internal
+    view
+    override
+    returns (bytes32, address)
+  {
+    string memory nftPass = nftPassAttached[_tokenId];
+
+    return
+      (keccak256(abi.encode(nftPass)), NFT_PASS.getMetadata(0, nftPass).walletReceiver);
+  }
+
+  /// @inheritdoc IWrappedNFTHero
+  function updateMultiplier(uint256 _tokenId) external override {
     NFTData storage nftdata = nftData[_tokenId];
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
@@ -161,7 +226,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     nftData[_tokenId].assignedMultiplier = newMultiplier;
   }
 
-  function getWrapperMultiplier() public view returns (uint128) {
+  /// @inheritdoc IWrappedNFTHero
+  function getWrapperMultiplier() public view override returns (uint128) {
     if (PREMIUM) return uint128(MAX_RATE);
 
     uint256 currentYear =
@@ -169,7 +235,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     return uint128(Math.min(currentYear * RATE_PER_YEAR, MAX_RATE));
   }
 
-  function getNFTData(uint256 _tokenId) external view returns (NFTData memory) {
+  /// @inheritdoc IWrappedNFTHero
+  function getNFTData(uint256 _tokenId) external view override returns (NFTData memory) {
     return nftData[_tokenId];
   }
 

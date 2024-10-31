@@ -26,6 +26,7 @@ contract WrappedGenesisToken is ERC20, OApp {
   address public immutable genesisToken;
 
   uint32 public lzGasLimit;
+  uint32 public originLzEndpoint;
   bytes public defaultLzOption;
 
   IGenesisTokenPool public pool;
@@ -37,17 +38,20 @@ contract WrappedGenesisToken is ERC20, OApp {
     bytes32 indexed guid, uint32 indexed srcEid, address indexed to, uint256 amountOrId
   );
   event NewPoolAttached(address pool);
+  event OriginLzEndpointUpdated(uint32 originLzEndpoint);
 
   error CannotWrapOnMainnet();
   error CannotUnwrapOnMainnet();
   error GasLimitCannotBeZero();
 
-  constructor(address _owner, address _lzEndpoint, address _genesisToken)
-    ERC20("WrappedGenesisToken", "WGT")
-    OApp(_lzEndpoint, _owner)
-    Ownable(_owner)
-  {
+  constructor(
+    address _owner,
+    uint32 _originLzEndpoint,
+    address _lzEndpoint,
+    address _genesisToken
+  ) ERC20("WrappedGenesisToken", "WGT") OApp(_lzEndpoint, _owner) Ownable(_owner) {
     genesisToken = _genesisToken;
+    originLzEndpoint = _originLzEndpoint;
     _updateLayerZeroGasLimit(200_000);
   }
 
@@ -56,7 +60,7 @@ contract WrappedGenesisToken is ERC20, OApp {
     emit NewPoolAttached(_pool);
   }
 
-  function send(uint32 _dstEid, address _to, uint256 _amountIn)
+  function unwrap(address _to, uint256 _amountIn)
     external
     payable
     returns (MessagingReceipt memory msgReceipt)
@@ -64,12 +68,12 @@ contract WrappedGenesisToken is ERC20, OApp {
     bytes memory option = defaultLzOption;
     uint256 amountReceiving = _debit(_amountIn);
 
-    bytes memory payload = _generateMessage(_to, amountReceiving);
-    MessagingFee memory fee = _estimateFee(_dstEid, payload, option);
+    bytes memory payload = _generateMessage(_to, amountReceiving, true);
+    MessagingFee memory fee = _estimateFee(originLzEndpoint, payload, option);
 
-    msgReceipt = _lzSend(_dstEid, payload, option, fee, payable(msg.sender));
+    msgReceipt = _lzSend(originLzEndpoint, payload, option, fee, payable(msg.sender));
 
-    emit OFTSent(msgReceipt.guid, _dstEid, msg.sender, amountReceiving);
+    emit OFTSent(msgReceipt.guid, originLzEndpoint, msg.sender, amountReceiving);
 
     return msgReceipt;
   }
@@ -85,7 +89,7 @@ contract WrappedGenesisToken is ERC20, OApp {
     ERC20(genesisToken).transferFrom(msg.sender, address(this), _amount);
 
     bytes memory cachedLzOption = defaultLzOption;
-    bytes memory payload = _generateMessage(address(0), _amount);
+    bytes memory payload = _generateMessage(address(0), _amount, false);
     MessagingFee memory fee =
       _estimateFee(MAINNET_LZ_ENDPOINT_ID, payload, cachedLzOption);
 
@@ -100,8 +104,8 @@ contract WrappedGenesisToken is ERC20, OApp {
     view
     returns (uint256)
   {
-    return
-      _estimateFee(_dstEid, _generateMessage(_to, _amount), defaultLzOption).nativeFee;
+    return _estimateFee(_dstEid, _generateMessage(_to, _amount, true), defaultLzOption)
+      .nativeFee;
   }
 
   function _estimateFee(uint32 _dstEid, bytes memory _message, bytes memory _options)
@@ -112,19 +116,12 @@ contract WrappedGenesisToken is ERC20, OApp {
     return _quote(_dstEid, _message, _options, false);
   }
 
-  function _generateMessage(address _to, uint256 _amount)
+  function _generateMessage(address _to, uint256 _amount, bool _unwrap)
     internal
     pure
     returns (bytes memory)
   {
-    return abi.encode(_to, _amount);
-  }
-
-  function unwrap(uint256 _amount) external {
-    if (block.chainid == 1) revert CannotUnwrapOnMainnet();
-
-    _burn(msg.sender, _amount);
-    ERC20(genesisToken).transfer(msg.sender, _amount);
+    return abi.encode(_to, _amount, _unwrap);
   }
 
   function _lzReceive(
@@ -134,17 +131,24 @@ contract WrappedGenesisToken is ERC20, OApp {
     address, /*_executor*/
     bytes calldata /*_extraData*/
   ) internal virtual override {
-    (address to, uint256 amount) = abi.decode(_message, (address, uint256));
+    (address to, uint256 amount, bool isUnwrapping) =
+      abi.decode(_message, (address, uint256, bool));
 
-    uint256 amountReceivedLD =
-      _credit(to == address(0) ? address(pool) : to, amount, false);
-    emit OFTReceived(_guid, _origin.srcEid, to, amountReceivedLD);
+    if (isUnwrapping) {
+      ERC20(genesisToken).transfer(to, amount);
+    } else {
+      uint256 amountReceivedLD = _credit(to == address(0) ? address(pool) : to, amount);
+      emit OFTReceived(_guid, _origin.srcEid, to, amountReceivedLD);
+    }
   }
 
-  function _credit(address _to, uint256 _value, bool) internal returns (uint256) {
+  function _credit(address _to, uint256 _value) internal returns (uint256) {
     IGenesisTokenPool cachedPool = pool;
 
-    if (_to == address(cachedPool)) {
+    // In the scenario where Pool is address(0), we mint to the owner
+    if (_to == address(0)) {
+      _to = owner();
+    } else if (_to == address(cachedPool)) {
       cachedPool.notifyRewardAmount(_value);
     }
 
@@ -159,6 +163,11 @@ contract WrappedGenesisToken is ERC20, OApp {
 
   function retrieveToken(address _token) external onlyOwner {
     ERC20(_token).transfer(msg.sender, ERC20(_token).balanceOf(address(this)));
+  }
+
+  function updateOriginLzEndpoint(uint32 _originLzEndpoint) external onlyOwner {
+    originLzEndpoint = _originLzEndpoint;
+    emit OriginLzEndpointUpdated(_originLzEndpoint);
   }
 
   /**

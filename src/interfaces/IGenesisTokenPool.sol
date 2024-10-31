@@ -8,8 +8,8 @@ interface IGenesisTokenPool is ILiteTicker {
   error NotAuthorized();
 
   event RewardAdded(uint256 reward);
-  event RewardPaid(address indexed user, uint256 reward);
-  event RewardIgnored(address indexed user, uint256 reward);
+  event RewardPaid(bytes32 indexed identity, address indexed receiver, uint256 reward);
+  event RewardIgnored(bytes32 indexed identity, address indexed receiver, uint256 reward);
 
   error MissingKey();
 
@@ -27,10 +27,10 @@ interface IGenesisTokenPool is ILiteTicker {
 
   /**
    * @dev Get the earned reward for the user.
-   * @param account The address of the user.
+   * @param _identity The identity of the user.
    * @return The earned reward.
    */
-  function earned(address account) external view returns (uint256);
+  function earned(bytes32 _identity) external view returns (uint256);
 
   /**
    * @dev Get the last time reward applicable.

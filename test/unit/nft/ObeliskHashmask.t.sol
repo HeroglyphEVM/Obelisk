@@ -17,6 +17,8 @@ contract ObeliskHashmaskTest is BaseTest {
   address[] private POOL_TARGETS =
     [generateAddress("Pool A"), generateAddress("Pool B"), generateAddress("Pool C")];
   uint256 private HASH_MASK_ID = 33;
+  bytes32 private HASH_MASK_ID_IDENTITY =
+    keccak256(abi.encode("IDENTITY_HASH_MASK_OBELISK_33"));
 
   address private owner;
   address private user;
@@ -126,7 +128,7 @@ contract ObeliskHashmaskTest is BaseTest {
     underTest.link{ value: activationPrice }(HASH_MASK_ID);
 
     assertEq(treasury.balance, activationPrice);
-    assertEq(underTest.getIdentityReceiver(HASH_MASK_ID), hashmaskUser);
+    assertEq(underTest.linkers(HASH_MASK_ID), hashmaskUser);
   }
 
   function test_link_whenOldLinker_thenRemovesOldTickersWithoutRewards()
@@ -148,12 +150,16 @@ contract ObeliskHashmaskTest is BaseTest {
     vm.expectCall(
       POOL_TARGETS[0],
       abi.encodeWithSelector(
-        ILiteTicker.virtualWithdraw.selector, HASH_MASK_ID, hashmaskUser, true
+        ILiteTicker.virtualWithdraw.selector,
+        HASH_MASK_ID_IDENTITY,
+        HASH_MASK_ID,
+        hashmaskUser,
+        true
       )
     );
     underTest.link{ value: activationPrice }(HASH_MASK_ID);
 
-    assertEq(underTest.getIdentityReceiver(HASH_MASK_ID), user);
+    assertEq(underTest.linkers(HASH_MASK_ID), user);
   }
 
   function test_transferLink_whenNotLinkedToHolder_thenReverts()
@@ -180,7 +186,7 @@ contract ObeliskHashmaskTest is BaseTest {
     emit IObeliskHashmask.HashmaskLinked(HASH_MASK_ID, hashmaskUser, user);
     underTest.transferLink(HASH_MASK_ID);
 
-    assertEq(underTest.getIdentityReceiver(HASH_MASK_ID), user);
+    assertEq(underTest.linkers(HASH_MASK_ID), user);
   }
 
   function test_transferLink_whenLinkedTickers_thenRemovesOldTickersAndDepositsWithoutRewards(
@@ -198,7 +204,11 @@ contract ObeliskHashmaskTest is BaseTest {
     vm.expectCall(
       POOL_TARGETS[1],
       abi.encodeWithSelector(
-        ILiteTicker.virtualWithdraw.selector, HASH_MASK_ID, hashmaskUser, true
+        ILiteTicker.virtualWithdraw.selector,
+        HASH_MASK_ID_IDENTITY,
+        HASH_MASK_ID,
+        hashmaskUser,
+        true
       )
     );
 
@@ -230,7 +240,10 @@ contract ObeliskHashmaskTest is BaseTest {
     vm.expectCall(
       POOL_TARGETS[2],
       abi.encodeWithSelector(
-        ILiteTicker.virtualDeposit.selector, HASH_MASK_ID, hashmaskUser
+        ILiteTicker.virtualDeposit.selector,
+        HASH_MASK_ID_IDENTITY,
+        HASH_MASK_ID,
+        hashmaskUser
       )
     );
 
@@ -252,14 +265,21 @@ contract ObeliskHashmaskTest is BaseTest {
     vm.expectCall(
       POOL_TARGETS[0],
       abi.encodeWithSelector(
-        ILiteTicker.virtualWithdraw.selector, HASH_MASK_ID, hashmaskUser, true
+        ILiteTicker.virtualWithdraw.selector,
+        HASH_MASK_ID_IDENTITY,
+        HASH_MASK_ID,
+        hashmaskUser,
+        true
       )
     );
 
     vm.expectCall(
       POOL_TARGETS[1],
       abi.encodeWithSelector(
-        ILiteTicker.virtualDeposit.selector, HASH_MASK_ID, hashmaskUser
+        ILiteTicker.virtualDeposit.selector,
+        HASH_MASK_ID_IDENTITY,
+        HASH_MASK_ID,
+        hashmaskUser
       )
     );
 
@@ -282,21 +302,30 @@ contract ObeliskHashmaskTest is BaseTest {
     vm.expectCall(
       POOL_TARGETS[0],
       abi.encodeWithSelector(
-        ILiteTicker.virtualDeposit.selector, HASH_MASK_ID, hashmaskUser
+        ILiteTicker.virtualDeposit.selector,
+        HASH_MASK_ID_IDENTITY,
+        HASH_MASK_ID,
+        hashmaskUser
       )
     );
 
     vm.expectCall(
       POOL_TARGETS[2],
       abi.encodeWithSelector(
-        ILiteTicker.virtualDeposit.selector, HASH_MASK_ID, hashmaskUser
+        ILiteTicker.virtualDeposit.selector,
+        HASH_MASK_ID_IDENTITY,
+        HASH_MASK_ID,
+        hashmaskUser
       )
     );
 
     vm.expectCall(
       POOL_TARGETS[1],
       abi.encodeWithSelector(
-        ILiteTicker.virtualDeposit.selector, HASH_MASK_ID, hashmaskUser
+        ILiteTicker.virtualDeposit.selector,
+        HASH_MASK_ID_IDENTITY,
+        HASH_MASK_ID,
+        hashmaskUser
       )
     );
 
@@ -307,7 +336,9 @@ contract ObeliskHashmaskTest is BaseTest {
     expectExactEmit();
     emit IObeliskNFT.TickerActivated(HASH_MASK_ID, POOL_TARGETS[1]);
 
-    underTest.exposed_addNewTickers(hashmaskUser, HASH_MASK_ID, name);
+    underTest.exposed_addNewTickers(
+      HASH_MASK_ID_IDENTITY, hashmaskUser, HASH_MASK_ID, name
+    );
 
     assertEq(
       abi.encode(underTest.getLinkedTickers(HASH_MASK_ID)), abi.encode(expectedTickers)
@@ -384,20 +415,6 @@ contract ObeliskHashmaskTest is BaseTest {
     assertEq(underTest.treasury(), treasury);
   }
 
-  function test_rename_thenReverts() external {
-    vm.expectRevert(
-      abi.encodeWithSelector(IObeliskHashmask.UseUpdateNameInstead.selector)
-    );
-    underTest.rename(HASH_MASK_ID, "Hello");
-  }
-
-  function test_updateIdentityReceiver_thenReverts() external {
-    vm.expectRevert(
-      abi.encodeWithSelector(IObeliskHashmask.UseLinkOrTransferLinkInstead.selector)
-    );
-    underTest.updateIdentityReceiver(HASH_MASK_ID);
-  }
-
   function _mockHashmaskName(string memory _name) internal {
     vm.mockCall(
       mockHashmask,
@@ -419,10 +436,13 @@ contract ObeliskHashmaskHarness is ObeliskHashmask {
     linkedTickers[_id].push(_ticker);
   }
 
-  function exposed_addNewTickers(address _receiver, uint256 _tokenId, string memory _name)
-    external
-  {
-    _addNewTickers(_receiver, _tokenId, _name);
+  function exposed_addNewTickers(
+    bytes32 _identity,
+    address _receiver,
+    uint256 _tokenId,
+    string memory _name
+  ) external {
+    _addNewTickers(_identity, _receiver, _tokenId, _name);
   }
 
   function exposed_claimRequirements(uint256 _tokenId) external view returns (bool) {

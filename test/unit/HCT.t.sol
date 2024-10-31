@@ -72,7 +72,7 @@ contract HCTTest is BaseTest {
   function test_addPower_thenAddsPower() external pranking {
     IHCT.UserInfo memory expectedUserInfo = IHCT.UserInfo({
       multiplier: MULTIPLIER_BY_NFT_MOCK_A + MULTIPLIER_BY_NFT_MOCK_B,
-      lastUnixTimeClaim: uint32(block.timestamp)
+      userRates: 0
     });
 
     changePrank(wrappedNFTMock_A);
@@ -88,17 +88,15 @@ contract HCTTest is BaseTest {
     external
     prankAs(wrappedNFTMock_A)
   {
-    IHCT.UserInfo memory expectedUserInfo = IHCT.UserInfo({
-      multiplier: MULTIPLIER_BY_NFT_MOCK_A + MULTIPLIER_BY_NFT_MOCK_A,
-      lastUnixTimeClaim: uint32(block.timestamp + 30 days)
-    });
-
     underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
     skip(30 days);
+
+    uint256 userRatesBefore = underTest.getUserInfo(user).userRates;
     underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
 
-    assertEq(abi.encode(underTest.getUserInfo(user)), abi.encode(expectedUserInfo));
-    assertEq(underTest.getPendingToBeClaimed(user), 0);
+    assertEq(underTest.getUserInfo(user).multiplier, MULTIPLIER_BY_NFT_MOCK_A * 2);
+    assertGt(underTest.getUserInfo(user).userRates, userRatesBefore);
+    assertEq(underTest.getUserPendingRewards(user), 0);
     assertGt(underTest.balanceOf(user), 0);
   }
 
@@ -111,8 +109,7 @@ contract HCTTest is BaseTest {
     underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
     underTest.removePower(user, MULTIPLIER_BY_NFT_MOCK_A);
 
-    IHCT.UserInfo memory expectedUserInfo =
-      IHCT.UserInfo({ multiplier: 0, lastUnixTimeClaim: uint32(block.timestamp) });
+    IHCT.UserInfo memory expectedUserInfo = IHCT.UserInfo({ multiplier: 0, userRates: 0 });
 
     assertEq(underTest.balanceOf(user), 0);
     assertEq(abi.encode(underTest.getUserInfo(user)), abi.encode(expectedUserInfo));
@@ -122,19 +119,16 @@ contract HCTTest is BaseTest {
     external
     prankAs(wrappedNFTMock_A)
   {
-    IHCT.UserInfo memory expectedUserInfo = IHCT.UserInfo({
-      multiplier: MULTIPLIER_BY_NFT_MOCK_A,
-      lastUnixTimeClaim: uint32(block.timestamp + 30 days)
-    });
-
     underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
     skip(30 days);
     underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
 
+    uint256 userRatesBefore = underTest.getUserInfo(user).userRates;
     underTest.removePower(user, MULTIPLIER_BY_NFT_MOCK_A);
 
-    assertEq(abi.encode(underTest.getUserInfo(user)), abi.encode(expectedUserInfo));
-    assertEq(underTest.getPendingToBeClaimed(user), 0);
+    assertEq(underTest.getUserInfo(user).multiplier, MULTIPLIER_BY_NFT_MOCK_A);
+    assertLt(underTest.getUserInfo(user).userRates, userRatesBefore);
+    assertEq(underTest.getUserPendingRewards(user), 0);
   }
 
   function test_userForRenaming_asNonWrappedNFTSystem_thenReverts() external {
@@ -162,18 +156,15 @@ contract HCTTest is BaseTest {
     uint256 balance = underTest.balanceOf(user);
     uint128 cost = underTest.NAME_COST();
 
-    IHCT.UserInfo memory expectedUserInfo = IHCT.UserInfo({
-      multiplier: MULTIPLIER_BY_NFT_MOCK_A,
-      lastUnixTimeClaim: uint32(block.timestamp + 30 days)
-    });
-
     underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
     skip(30 days);
 
+    uint256 userRatesBefore = underTest.getUserInfo(user).userRates;
     underTest.usesForRenaming(user);
 
     assertGt(underTest.balanceOf(user), balance - cost);
-    assertEq(abi.encode(underTest.getUserInfo(user)), abi.encode(expectedUserInfo));
+    assertEq(underTest.getUserInfo(user).multiplier, MULTIPLIER_BY_NFT_MOCK_A);
+    assertGt(underTest.getUserInfo(user).userRates, userRatesBefore);
   }
 
   function test_claim_whenNothingToClaim_thenReverts() external {
@@ -181,19 +172,19 @@ contract HCTTest is BaseTest {
     underTest.claim();
   }
 
-  function test_claim_thenClaims() external {
-    underTest.exposed_setMultiplier(user, 2e18);
-    underTest.exposed_setLastUnixTimeClaim(user, block.timestamp);
+  function test_claim_thenClaims() external pranking {
+    changePrank(wrappedNFTMock_A);
+    underTest.addPower(user, 2e18);
 
     uint256 expectingAfterADay = Math.sqrt(2e18 * 1e18) / 1 days;
 
     skip(3 days);
-    assertEq(underTest.getPendingToBeClaimed(user), expectingAfterADay * 3 days);
+    assertEq(underTest.getUserPendingRewards(user), expectingAfterADay * 3 days);
 
-    vm.prank(user);
+    changePrank(user);
     underTest.claim();
 
-    assertEq(underTest.getPendingToBeClaimed(user), 0);
+    assertEq(underTest.getUserPendingRewards(user), 0);
     assertEq(underTest.balanceOf(user), expectingAfterADay * 3 days);
   }
 
@@ -208,16 +199,16 @@ contract HCTTest is BaseTest {
     assertGt(underTest.balanceOf(user), preMint);
   }
 
-  function test_getPendingToBeClaimed_thenReturnsPending() external {
-    underTest.exposed_setMultiplier(user, 2e18);
-    underTest.exposed_setLastUnixTimeClaim(user, block.timestamp);
+  function test_getPendingToBeClaimed_thenReturnsPending() external pranking {
+    changePrank(wrappedNFTMock_A);
+    underTest.addPower(user, 2e18);
 
     uint256 expectingAfterADay = Math.sqrt(2e18 * 1e18) / 1 days;
 
     skip(1 days);
-    assertEq(underTest.getPendingToBeClaimed(user), expectingAfterADay * 1 days);
+    assertEq(underTest.getUserPendingRewards(user), expectingAfterADay * 1 days);
     skip(2 days);
-    assertEq(underTest.getPendingToBeClaimed(user), expectingAfterADay * 3 days);
+    assertEq(underTest.getUserPendingRewards(user), expectingAfterADay * 3 days);
   }
 }
 
@@ -232,9 +223,7 @@ contract HCTHarness is HCT {
     usersInfo[_user].multiplier = _multiplier;
   }
 
-  function exposed_setLastUnixTimeClaim(address _user, uint256 _lastUnixTimeClaim)
-    external
-  {
-    usersInfo[_user].lastUnixTimeClaim = uint32(_lastUnixTimeClaim);
+  function exposed_setLastUnixTimeClaim(uint256 _lastUnixTimeClaim) external {
+    lastUnixTimeRewards = uint32(_lastUnixTimeClaim);
   }
 }
