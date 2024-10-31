@@ -22,7 +22,7 @@ import { HCT } from "src/services/HCT.sol";
  * @custom:export abi
  */
 contract ObeliskRegistry is IObeliskRegistry, Ownable {
-  uint256 private constant MINIMUM_SENDING_ETH = 0.005 ether;
+  uint256 public constant MINIMUM_SENDING_ETH = 0.005 ether;
   uint256 public constant MINIMUM_ETH_SUPPORT_AMOUNT = 1e18;
   uint256 public constant MINIMUM_DAI_SUPPORT_AMOUNT = 1000e18;
   uint128 public constant REQUIRED_ETH_TO_ENABLE_COLLECTION = 100e18;
@@ -164,7 +164,13 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     }
 
     collection.contributionBalance = currentBalance - _amount;
-    userSupportedCollections[msg.sender][_collection].deposit -= uint128(_amount);
+    depositedAmount -= _amount;
+
+    if (depositedAmount != 0 && depositedAmount < MINIMUM_SENDING_ETH) {
+      revert ContributionBalanceTooLow();
+    }
+
+    userSupportedCollections[msg.sender][_collection].deposit = uint128(depositedAmount);
     DRIP_VAULT_ETH.withdraw(msg.sender, _amount);
 
     emit CollectionContributionWithdrawn(_collection, msg.sender, _amount);

@@ -17,6 +17,7 @@ interface IObeliskRegistry {
   error NotAuthorized();
   error OnlyOneValue();
   error AmountTooLow();
+  error ContributionBalanceTooLow();
   error ZeroAddress();
   error CollectionAlreadyAllowed();
 

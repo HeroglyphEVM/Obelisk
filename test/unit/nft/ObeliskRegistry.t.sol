@@ -269,6 +269,17 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.removeFromCollection(collectionMock, 1);
   }
 
+  function test_removeFromCollection_whenContributionBalanceTooLow_thenReverts()
+    external
+    prankAs(user)
+  {
+    uint256 givingAmount = underTest.MINIMUM_SENDING_ETH();
+    underTest.addToCollection{ value: givingAmount }(collectionMock);
+
+    vm.expectRevert(IObeliskRegistry.ContributionBalanceTooLow.selector);
+    underTest.removeFromCollection(collectionMock, 1);
+  }
+
   function test_removeFromCollection_whenAmountIsZero_thenRemovesAll()
     external
     prankAs(user)
