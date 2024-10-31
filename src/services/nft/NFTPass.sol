@@ -11,6 +11,7 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
  * @notice A contract that allows users to buy NFT passes to create their own identity.
  * Without a pass, the user can't
  * use Obelisk.
+ * @custom:export abi
  */
 
 contract NFTPass is INFTPass, IdentityERC721 {
@@ -53,11 +54,12 @@ contract NFTPass is INFTPass, IdentityERC721 {
     merkleRoot = _merkleRoot;
   }
 
+  /// @inheritdoc INFTPass
   function claimPass(
     string calldata _name,
     address _receiverWallet,
     bytes32[] calldata merkleProof
-  ) external {
+  ) external override {
     if (bytes(_name).length > MAX_NAME_BYTES) revert NameTooLong();
     if (claimedPasses[msg.sender]) revert AlreadyClaimed();
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
@@ -80,7 +82,12 @@ contract NFTPass is INFTPass, IdentityERC721 {
     emit NFTPassCreated(id, _name, _receiverWallet, 0);
   }
 
-  function create(string calldata _name, address _receiverWallet) external payable {
+  /// @inheritdoc INFTPass
+  function create(string calldata _name, address _receiverWallet)
+    external
+    payable
+    override
+  {
     if (bytes(_name).length > MAX_NAME_BYTES) revert NameTooLong();
     if (cost == 0 && msg.value != 0) revert NoNeedToPay();
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
@@ -115,8 +122,10 @@ contract NFTPass is INFTPass, IdentityERC721 {
     if (!success) revert TransferFailed();
   }
 
+  /// @inheritdoc INFTPass
   function updateReceiverAddress(uint256 _nftId, string calldata _name, address _receiver)
     external
+    override
   {
     if (_nftId == 0) {
       _nftId = identityIds[_name];
@@ -135,7 +144,8 @@ contract NFTPass is INFTPass, IdentityERC721 {
     return userCost_;
   }
 
-  function getCost() external view returns (uint256 userCost_) {
+  /// @inheritdoc INFTPass
+  function getCost() external view override returns (uint256 userCost_) {
     (,,, userCost_) = _getCostDetails();
     return userCost_;
   }

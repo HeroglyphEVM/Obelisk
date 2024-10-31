@@ -19,6 +19,7 @@ import { HCT } from "src/services/HCT.sol";
  * @notice It can creates / allow / modify Tickers, have supporting option to boost yield
  * for 30 days and handle
  * Collection access & unlocking.
+ * @custom:export abi
  */
 contract ObeliskRegistry is IObeliskRegistry, Ownable {
   uint256 private constant MINIMUM_SENDING_ETH = 0.005 ether;

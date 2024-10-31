@@ -3,12 +3,11 @@ pragma solidity ^0.8.25;
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
-import { IObeliskNFT } from "src/interfaces/IObeliskNFT.sol";
+
 /**
  * @title LiteTicker
  * @notice Base Ticker logic for Obelisk.
  */
-
 abstract contract LiteTicker is ILiteTicker {
   uint256 internal constant DEPOSIT_AMOUNT = 1e18;
 

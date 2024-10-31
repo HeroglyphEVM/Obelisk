@@ -33,6 +33,7 @@ interface IChainlinkOracle {
  * @title InterestManager
  * @notice It manages the rewards distribution to the megapools based on people votes with
  * their HCT.
+ * @custom:export abi
  */
 contract InterestManager is IInterestManager, Ownable {
   uint256 public constant PRECISION = 1e18;

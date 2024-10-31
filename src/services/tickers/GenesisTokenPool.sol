@@ -15,6 +15,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
  * @notice Time-based rewards distribution for Heroglyph's Genesis tokens. It uses wrapped
  * version to simplify LayerZero
  * issue in the genesis tokens.
+ * @custom:export abi
  */
 contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   uint256 internal constant PRECISION = 1e18;

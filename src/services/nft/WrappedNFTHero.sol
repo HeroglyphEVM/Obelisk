@@ -30,6 +30,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
   uint256 public constant RATE_PER_YEAR = 0.43e18;
   uint256 public constant MAX_RATE = 3e18;
 
+  string public ipfsImage;
+
   IHCT public immutable HCT;
   ERC721 public immutable INPUT_COLLECTION;
 
@@ -101,7 +103,6 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     _renameRequirements(_tokenId);
     bytes32 identity;
     address receiver;
-
 
     if (bytes(names[_tokenId]).length != 0) {
       (identity, receiver) = _getIdentityInformation(_tokenId);

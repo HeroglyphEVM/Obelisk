@@ -8,6 +8,13 @@ import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ShareableMath } from "src/lib/ShareableMath.sol";
 
+/**
+ * @title HCT
+ * @author Heroglyph
+ * @notice HCT is the token used to pay for name changes on Obelisk and to vote for
+ * Megapools share.
+ * @custom:export abi
+ */
 contract HCT is ERC20, IHCT {
   uint128 public constant NAME_COST = 90e18;
   uint256 public constant PRE_MINT_AMOUNT = 10_000e18;
