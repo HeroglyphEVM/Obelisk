@@ -6,6 +6,7 @@ interface IDripVault {
   error InvalidAmount();
   error NotObeliskRegistry();
   error NativeNotAccepted();
+  error ZeroAddress();
 
   event ObeliskRegistryUpdated(address indexed obeliskRegistry);
   event InterestRateReceiverUpdated(address indexed interestRateReceiver);

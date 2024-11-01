@@ -83,11 +83,14 @@ abstract contract BaseDripVault is IDripVault, Ownable {
   }
 
   function setObeliskRegistry(address _obeliskRegistry) external onlyOwner {
+    if (_obeliskRegistry == address(0)) revert ZeroAddress();
+
     obeliskRegistry = _obeliskRegistry;
     emit ObeliskRegistryUpdated(_obeliskRegistry);
   }
 
   function setInterestRateReceiver(address _interestRateReceiver) external onlyOwner {
+    if (_interestRateReceiver == address(0)) revert ZeroAddress();
     interestRateReceiver = _interestRateReceiver;
     emit InterestRateReceiverUpdated(_interestRateReceiver);
   }

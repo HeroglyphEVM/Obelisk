@@ -58,6 +58,8 @@ contract WrappedGenesisToken is ERC20, OApp {
   }
 
   function attachPool(address _pool) external onlyOwner {
+    if (_pool == address(0)) revert ZeroAddress();
+
     pool = IGenesisTokenPool(_pool);
     emit NewPoolAttached(_pool);
   }
