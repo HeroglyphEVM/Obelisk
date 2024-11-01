@@ -22,6 +22,9 @@ interface IObeliskRegistry {
   error CollectionAlreadyAllowed();
 
   event WrappedNFTCreated(address indexed collection, address indexed wrappedNFT);
+  event WrappedNFTEnabled(address indexed collection, address indexed wrappedNFT);
+  event WrappedNFTDisabled(address indexed collection, address indexed wrappedNFT);
+
   event TickerLogicSet(string indexed ticker, address pool);
   event NewGenesisTickerCreated(string indexed ticker, address pool);
   event Supported(uint32 indexed supportId, address indexed supporter, uint256 amount);

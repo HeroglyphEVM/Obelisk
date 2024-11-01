@@ -304,7 +304,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   ) external onlyOwner {
     isWrappedNFT[_wrappedVersion] = _allowed;
 
-    emit WrappedNFTCreated(_collection, _wrappedVersion);
+    if (_allowed) {
+      emit WrappedNFTEnabled(_collection, _wrappedVersion);
+    } else {
+      emit WrappedNFTDisabled(_collection, _wrappedVersion);
+    }
   }
 
   function setTickerLogic(string memory _ticker, address _pool) external onlyOwner {

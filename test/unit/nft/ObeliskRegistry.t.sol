@@ -857,10 +857,16 @@ contract ObeliskRegistryTest is BaseTest {
     address wrappedNFT = generateAddress("WrappedNFT");
 
     expectExactEmit();
-    emit IObeliskRegistry.WrappedNFTCreated(collectionMock, wrappedNFT);
+    emit IObeliskRegistry.WrappedNFTEnabled(collectionMock, wrappedNFT);
     underTest.toggleIsWrappedNFTFor(collectionMock, wrappedNFT, true);
 
-    assertEq(underTest.isWrappedNFT(wrappedNFT), true);
+    assertTrue(underTest.isWrappedNFT(wrappedNFT));
+
+    expectExactEmit();
+    emit IObeliskRegistry.WrappedNFTDisabled(collectionMock, wrappedNFT);
+    underTest.toggleIsWrappedNFTFor(collectionMock, wrappedNFT, false);
+
+    assertFalse(underTest.isWrappedNFT(wrappedNFT));
   }
 
   function test_enableEmergencyWithdrawForCollection_whenNotOwner_thenReverts()
