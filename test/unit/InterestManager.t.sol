@@ -492,6 +492,28 @@ contract InterestManagerTest is BaseTest {
 
     assertLt(axpETH.balanceOf(address(underTest)), 1e6);
   }
+
+  function test_setEpochDuration_whenNotOwner_thenReverts() external prankAs(user) {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
+    underTest.setEpochDuration(1 days);
+  }
+
+  function test_setEpochDuration_whenInvalidDuration_thenReverts()
+    external
+    prankAs(owner)
+  {
+    vm.expectRevert(
+      abi.encodeWithSelector(IInterestManager.InvalidEpochDuration.selector)
+    );
+    underTest.setEpochDuration(1 days - 1);
+
+    vm.expectRevert(
+      abi.encodeWithSelector(IInterestManager.InvalidEpochDuration.selector)
+    );
+    underTest.setEpochDuration(30 days + 1);
+  }
 }
 
 contract InterestManagerHarness is InterestManager {

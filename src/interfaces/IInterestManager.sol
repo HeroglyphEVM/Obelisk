@@ -5,6 +5,7 @@ interface IInterestManager {
   error InvalidInputLength();
   error NotGaugeController();
   error EpochNotFinished();
+  error InvalidEpochDuration();
 
   event EpochInitialized(
     uint64 indexed epochId, address[] megapools, uint128[] weights, uint128 totalWeight

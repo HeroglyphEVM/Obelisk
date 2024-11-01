@@ -36,9 +36,12 @@ interface IChainlinkOracle {
  * @custom:export abi
  */
 contract InterestManager is IInterestManager, Ownable {
+  uint32 private constant MINIMUM_EPOCH_DURATION = 7 days;
+  uint32 private constant MAXIMUM_EPOCH_DURATION = 30 days;
+
   uint256 public constant PRECISION = 1e18;
   uint256 public constant MINIMUM_SWAP_DAI = 100e18;
-  uint256 public constant ALLOWED_SLIPPAGE = 1000; // 10%
+  uint256 public constant ALLOWED_SLIPPAGE = 500; // 5%
   uint256 public constant BPS = 10_000;
   uint24 private constant DAI_POOL_FEE = 500;
 
@@ -79,7 +82,7 @@ contract InterestManager is IInterestManager, Ownable {
     PIREX_ETH = IPirexEth(IApxETH(address(APX_ETH)).pirexEth());
     CHAINLINK_DAI_ETH = IChainlinkOracle(_chainlinkDaiETH);
 
-    epochDuration = 7 days;
+    epochDuration = MINIMUM_EPOCH_DURATION;
 
     TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, type(uint256).max);
   }
@@ -213,6 +216,12 @@ contract InterestManager is IInterestManager, Ownable {
   }
 
   function setEpochDuration(uint32 _epochDuration) external onlyOwner {
+    if (
+      _epochDuration < MINIMUM_EPOCH_DURATION || _epochDuration > MAXIMUM_EPOCH_DURATION
+    ) {
+      revert InvalidEpochDuration();
+    }
+
     epochDuration = _epochDuration;
     emit EpochDurationSet(_epochDuration);
   }
