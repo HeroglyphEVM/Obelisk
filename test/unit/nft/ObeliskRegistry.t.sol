@@ -16,7 +16,6 @@ import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 import { FailOnReceive } from "test/mock/contract/FailOnReceive.t.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
-import { Create } from "src/lib/Create.sol";
 
 import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
 
@@ -719,11 +718,6 @@ contract ObeliskRegistryTest is BaseTest {
     }
   }
 
-  function test_createContract_whenFailedDeployment_thenReverts() external {
-    vm.expectRevert(IObeliskRegistry.FailedDeployment.selector);
-    underTest.exposed_createContract(type(ObeliskRegistry).creationCode);
-  }
-
   function test_allowNewCollection_whenNotAuthorized_thenReverts() external prankAs(user) {
     vm.expectRevert(abi.encodeWithSelector(IObeliskRegistry.NotAuthorized.selector));
     underTest.allowNewCollection(
@@ -921,9 +915,5 @@ contract ObeliskRegistryHarness is ObeliskRegistry {
     bool _premium
   ) external returns (address addr_) {
     addr_ = _createWrappedNFT(_collection, _totalSupply, _blockOfCreation, _premium);
-  }
-
-  function exposed_createContract(bytes memory bytecode) external returns (address addr_) {
-    addr_ = Create.createContract(bytecode);
   }
 }

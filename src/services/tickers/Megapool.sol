@@ -90,11 +90,6 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     internal
     nonReentrant
   {
-    uint256 totalVirtualBalanceCached = totalVirtualBalance;
-    if (totalVirtualBalanceCached == 0) {
-      return;
-    }
-
     INTEREST_MANAGER.claim();
 
     uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this)) + queued;
@@ -102,6 +97,7 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
 
     uint256 holderVirtualBalance = virtualBalances[_identity];
     uint256 yieldPerTokenInRayCached = yieldPerTokenInRay;
+    uint256 totalVirtualBalanceCached = totalVirtualBalance;
 
     if (totalVirtualBalanceCached > 0) {
       yieldPerTokenInRayCached += ShareableMath.rdiv(

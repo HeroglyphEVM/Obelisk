@@ -10,8 +10,6 @@ import { IDripVault } from "src/interfaces/IDripVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { Create } from "src/lib/Create.sol";
-
 import { HCT } from "src/services/HCT.sol";
 
 /**
@@ -125,18 +123,15 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     uint32 _unixTimeCreation,
     bool _premium
   ) internal returns (address addr_) {
-    addr_ = Create.createContract(
-      abi.encodePacked(
-        type(WrappedNFTHero).creationCode,
-        abi.encode(
-          HCT_ADDRESS,
-          NFT_PASS,
-          _collection,
-          address(this),
-          _totalSupply,
-          _unixTimeCreation,
-          _premium
-        )
+    addr_ = address(
+      new WrappedNFTHero(
+        HCT_ADDRESS,
+        NFT_PASS,
+        _collection,
+        address(this),
+        _totalSupply,
+        _unixTimeCreation,
+        _premium
       )
     );
 
