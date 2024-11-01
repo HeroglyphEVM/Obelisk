@@ -60,7 +60,7 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
     address _receiver,
     uint256 _tokenId,
     string memory _name
-  ) internal virtual {
+  ) internal virtual nonReentrant {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory needle = TICKER_START_INDICE.toSlice();
     strings.slice memory substring =
@@ -88,7 +88,7 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
   }
 
   /// @inheritdoc IObeliskNFT
-  function claim(uint256 _tokenId) external {
+  function claim(uint256 _tokenId) external nonReentrant {
     address[] memory activePools = linkedTickers[_tokenId];
     assert(_claimRequirements(_tokenId));
 

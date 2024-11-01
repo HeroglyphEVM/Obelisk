@@ -12,6 +12,8 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { HCT } from "src/services/HCT.sol";
 
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 /**
  * @title ObeliskRegistry
  * @notice It can creates / allow / modify Tickers, have supporting option to boost yield
@@ -19,7 +21,7 @@ import { HCT } from "src/services/HCT.sol";
  * Collection access & unlocking.
  * @custom:export abi
  */
-contract ObeliskRegistry is IObeliskRegistry, Ownable {
+contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   uint256 public constant MINIMUM_SENDING_ETH = 0.005 ether;
   uint256 public constant MINIMUM_ETH_SUPPORT_AMOUNT = 1e18;
   uint256 public constant MINIMUM_DAI_SUPPORT_AMOUNT = 1000e18;
@@ -68,7 +70,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   }
 
   /// @inheritdoc IObeliskRegistry
-  function addToCollection(address _collection) external payable override {
+  function addToCollection(address _collection) external payable override nonReentrant {
     uint256 sendingAmount = msg.value;
     if (sendingAmount < MINIMUM_SENDING_ETH) revert AmountTooLow();
     Collection storage collection = supportedCollections[_collection];
@@ -144,7 +146,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   }
 
   /// @inheritdoc IObeliskRegistry
-  function removeFromCollection(address _collection, uint256 _amount) external override {
+  function removeFromCollection(address _collection, uint256 _amount)
+    external
+    override
+    nonReentrant
+  {
     Collection storage collection = supportedCollections[_collection];
     uint256 depositedAmount = userSupportedCollections[msg.sender][_collection].deposit;
     uint256 currentBalance = collection.contributionBalance;
@@ -202,7 +208,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   }
 
   /// @inheritdoc IObeliskRegistry
-  function retrieveSupportToYieldPool(uint32 _id) external override {
+  function retrieveSupportToYieldPool(uint32 _id) external override nonReentrant {
     Supporter storage supporter = supporters[_id];
     uint256 returningAmount = supporter.amount;
 
@@ -241,7 +247,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     emit SlotBought(msg.sender, toCollection, toTreasury);
   }
 
-  function claim(address _collection) external {
+  function claim(address _collection) external nonReentrant {
     Collection storage collection = supportedCollections[_collection];
     CollectionRewards storage collectionRewards =
       wrappedCollectionRewards[collection.wrappedVersion];

@@ -7,7 +7,9 @@ import {
   SafeERC20, IERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-abstract contract BaseDripVault is IDripVault, Ownable {
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+abstract contract BaseDripVault is IDripVault, Ownable, ReentrancyGuard {
   address public immutable INPUT_TOKEN;
 
   address public interestRateReceiver;
@@ -34,6 +36,7 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     external
     payable
     override
+    nonReentrant
     onlyObeliskRegistry
     returns (uint256 depositAmount_)
   {
@@ -57,6 +60,7 @@ abstract contract BaseDripVault is IDripVault, Ownable {
   function withdraw(address _to, uint256 _amount)
     external
     override
+    nonReentrant
     onlyObeliskRegistry
     returns (uint256 withdrawAmount_)
   {

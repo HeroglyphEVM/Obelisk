@@ -16,6 +16,8 @@ import { IWETH } from "src/interfaces/IWETH.sol";
 import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 interface IChainlinkOracle {
   function latestRoundData()
     external
@@ -35,7 +37,7 @@ interface IChainlinkOracle {
  * their HCT.
  * @custom:export abi
  */
-contract InterestManager is IInterestManager, Ownable {
+contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
   uint32 private constant MINIMUM_EPOCH_DURATION = 7 days;
   uint32 private constant MAXIMUM_EPOCH_DURATION = 30 days;
 
@@ -134,7 +136,7 @@ contract InterestManager is IInterestManager, Ownable {
     epochId = currentEpoch + 1;
   }
 
-  function claim() external override returns (uint256 rewards_) {
+  function claim() external override nonReentrant returns (uint256 rewards_) {
     Epoch storage epoch = epochs[epochId];
     epoch.totalRewards += uint128(_claimFromServices());
 

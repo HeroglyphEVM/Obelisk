@@ -41,7 +41,7 @@ contract ChaiMoneyVault is BaseDripVault {
     return _amount;
   }
 
-  function claim() external override returns (uint256 interest_) {
+  function claim() external override nonReentrant returns (uint256 interest_) {
     IChaiMoney cachedChaiMoney = CHAI_MONEY;
     IERC20 cachedDai = IERC20(INPUT_TOKEN);
 

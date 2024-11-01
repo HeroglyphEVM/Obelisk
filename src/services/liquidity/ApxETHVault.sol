@@ -44,7 +44,7 @@ contract ApxETHVault is BaseDripVault {
     return withdrawalAmount_;
   }
 
-  function claim() external override returns (uint256 interestInApx_) {
+  function claim() external override nonReentrant returns (uint256 interestInApx_) {
     interestInApx_ = _getPendingClaiming();
     _transfer(address(APXETH), interestRateReceiver, interestInApx_);
 
