@@ -38,6 +38,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
   uint32 public immutable COLLECTION_STARTED_UNIX_TIME;
   bool public immutable FREE_SLOT_FOR_ODD;
   bool public immutable PREMIUM;
+  bool public emergencyWithdrawEnabled;
 
   uint256 public freeSlots;
 
@@ -63,6 +64,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
   /// @inheritdoc IWrappedNFTHero
   function wrap(uint256 _inputCollectionNFTId) external payable override {
+    if (emergencyWithdrawEnabled) revert EmergencyModeIsActive();
+
     bool isIdOdd = _inputCollectionNFTId % 2 == 1;
     bool canHaveFreeSlot = freeSlots != 0 && FREE_SLOT_FOR_ODD == isIdOdd;
 
@@ -156,8 +159,10 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     if (!nftdata.isMinted) revert NotMinted();
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
-    (bytes32 identity, address receiver) = _getIdentityInformation(_tokenId);
-    _removeOldTickers(identity, receiver, _tokenId, false);
+    if (!emergencyWithdrawEnabled) {
+      (bytes32 identity, address receiver) = _getIdentityInformation(_tokenId);
+      _removeOldTickers(identity, receiver, _tokenId, false);
+    }
 
     _burn(_tokenId);
     delete names[_tokenId];
@@ -225,6 +230,14 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     HCT.removePower(msg.sender, multiplier);
     HCT.addPower(msg.sender, newMultiplier);
     nftData[_tokenId].assignedMultiplier = newMultiplier;
+  }
+
+  /// @inheritdoc IWrappedNFTHero
+  function enableEmergencyWithdraw() external override {
+    if (msg.sender != address(obeliskRegistry)) revert NotObeliskRegistry();
+    emergencyWithdrawEnabled = true;
+
+    emit EmergencyWithdrawEnabled();
   }
 
   /// @inheritdoc IWrappedNFTHero

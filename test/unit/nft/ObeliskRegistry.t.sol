@@ -18,6 +18,8 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Create } from "src/lib/Create.sol";
 
+import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
+
 contract ObeliskRegistryTest is BaseTest {
   uint256 private constant REQUIRED_ETH_TO_ENABLE_COLLECTION = 100e18;
   uint256 private constant TOTAL_SUPPLY_MOCK_COLLECTION = 10_000;
@@ -791,6 +793,34 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.toggleIsWrappedNFTFor(collectionMock, wrappedNFT, true);
 
     assertEq(underTest.isWrappedNFT(wrappedNFT), true);
+  }
+
+  function test_enableEmergencyWithdrawForCollection_whenNotOwner_thenReverts()
+    external
+    prankAs(user)
+  {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
+    underTest.enableEmergencyWithdrawForCollection(collectionMock);
+  }
+
+  function test_enableEmergencyWithdrawForCollection_thenEnables()
+    external
+    prankAs(owner)
+  {
+    vm.mockCall(
+      collectionMock,
+      abi.encodeWithSelector(IWrappedNFTHero.enableEmergencyWithdraw.selector),
+      abi.encode(true)
+    );
+
+    vm.expectCall(
+      collectionMock,
+      abi.encodeWithSelector(IWrappedNFTHero.enableEmergencyWithdraw.selector)
+    );
+
+    underTest.enableEmergencyWithdrawForCollection(collectionMock);
   }
 }
 

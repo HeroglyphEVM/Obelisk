@@ -11,12 +11,16 @@ interface IWrappedNFTHero {
   error SameMultiplier();
   error InvalidNameLength();
   error InvalidWalletReceiver();
+  error EmergencyWithdrawDisabled();
+  error EmergencyModeIsActive();
+  error NotObeliskRegistry();
 
   event Wrapped(uint256 indexed tokenId);
   event Unwrapped(uint256 indexed tokenId);
   event SlotBought(address indexed user, uint256 indexed inputCollectionNFTId);
   event FreeSlotUsed(uint256 freeSlotLeft);
   event NameChanged(uint256 indexed tokenId, string indexed newName);
+  event EmergencyWithdrawEnabled();
 
   struct NFTData {
     bool isMinted;
@@ -63,4 +67,9 @@ interface IWrappedNFTHero {
    * @param _tokenId The ID of the Wrapped NFT Hero to get the data.
    */
   function getNFTData(uint256 _tokenId) external view returns (NFTData memory);
+
+  /**
+   * @notice Enables emergency withdraw for the Wrapped NFT Hero.
+   */
+  function enableEmergencyWithdraw() external;
 }

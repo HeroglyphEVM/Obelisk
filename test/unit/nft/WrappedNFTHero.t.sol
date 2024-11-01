@@ -163,11 +163,25 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.wrap{ value: 1 }(tokenId);
   }
 
-  function test_givenNoEth_whenNoFreeSlotAvailable_thenReverts() external prankAs(user) {
+  function test_wrap_givenNoEth_whenNoFreeSlotAvailable_thenReverts()
+    external
+    prankAs(user)
+  {
     uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 2 : 1;
 
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NoFreeSlots.selector));
     underTest.wrap(tokenId);
+  }
+
+  function test_wrap_whenEmergencyWithdrawEnabled_thenReverts() external pranking {
+    changePrank(mockObeliskRegistry);
+    underTest.enableEmergencyWithdraw();
+
+    changePrank(user);
+    vm.expectRevert(
+      abi.encodeWithSelector(IWrappedNFTHero.EmergencyModeIsActive.selector)
+    );
+    underTest.wrap(1);
   }
 
   function test_wrap_whenBuyingSlot_thenCallsObeliskRegistryAndWraps()
@@ -440,6 +454,57 @@ contract WrappedNFTHeroTest is BaseTest {
     assertEq(underTest.getNFTData(tokenId).isMinted, false);
   }
 
+  function test_unwrap_whenHasTikcers_thenRemoveTickersAndUnwraps()
+    external
+    prankAs(user)
+  {
+    string memory newName = string.concat(START_NAME, TICKERS[0]);
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+
+    underTest.wrap(tokenId);
+    underTest.rename(tokenId, newName);
+
+    vm.expectCall(
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualWithdraw.selector,
+        IDENTITY,
+        tokenId,
+        mockNftPassMetadata.walletReceiver,
+        false
+      )
+    );
+
+    underTest.unwrap(tokenId);
+
+    assertEq(underTest.getLinkedTickers(tokenId).length, 0);
+  }
+
+  function test_unwrap_whenEmergencyWithdrawEnabled_thenIgnoresTickersAndUnwraps()
+    external
+    pranking
+  {
+    changePrank(user);
+    string memory newName = string.concat(START_NAME, TICKERS[0]);
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+
+    underTest.wrap(tokenId);
+    underTest.rename(tokenId, newName);
+
+    changePrank(mockObeliskRegistry);
+    underTest.enableEmergencyWithdraw();
+    changePrank(user);
+
+    vm.mockCallRevert(
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector),
+      "Should not be called"
+    );
+
+    underTest.unwrap(tokenId);
+    assertEq(mockInputCollection.ownerOf(tokenId), user);
+  }
+
   function test_renameRequirements_whenNotMinted_thenReverts() external prankAs(user) {
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotMinted.selector));
     underTest.exposed_renameRequirements(1);
@@ -528,6 +593,22 @@ contract WrappedNFTHeroTest is BaseTest {
 
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.SameMultiplier.selector));
     underTest.updateMultiplier(tokenId);
+  }
+
+  function test_enableEmergencyWithdraw_whenNotObeliskRegistry_thenReverts() external {
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotObeliskRegistry.selector));
+    underTest.enableEmergencyWithdraw();
+  }
+
+  function test_enableEmergencyWithdraw_thenEnables()
+    external
+    prankAs(mockObeliskRegistry)
+  {
+    expectExactEmit();
+    emit IWrappedNFTHero.EmergencyWithdrawEnabled();
+    underTest.enableEmergencyWithdraw();
+
+    assertTrue(underTest.emergencyWithdrawEnabled());
   }
 
   function test_mint_thenAddPower() external {

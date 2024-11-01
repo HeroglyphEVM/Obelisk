@@ -328,6 +328,31 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     emit MaxRewardPerCollectionSet(_maxRewardPerCollection);
   }
 
+  /**
+   * @notice Enable emergency withdraw for a wrapped collection
+   * @param _wrappedCollection Wrapped collection address
+   *
+   * @dev This function enables emergency withdrawal for users to retrieve their NFTs
+   * in case of external issues.
+   *
+   * Once activated, this action is irreversible, and the collection will be marked as
+   * "offline".
+   *
+   * This will result in "Ghost weight" in the Tickers, negatively impacting the pool's
+   * yield
+   * and locking the rewards of these "Ghosts".
+   *
+   * In such a scenario, a migration is recommended. Although we use a trusted third
+   * party,
+   * the possibility of this happening is low but not impossible.
+   */
+  function enableEmergencyWithdrawForCollection(address _wrappedCollection)
+    external
+    onlyOwner
+  {
+    WrappedNFTHero(_wrappedCollection).enableEmergencyWithdraw();
+  }
+
   /// @inheritdoc IObeliskRegistry
   function getTickerLogic(string memory _ticker) external view override returns (address) {
     return tickersLogic[_ticker];
