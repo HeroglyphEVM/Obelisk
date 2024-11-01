@@ -103,7 +103,10 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     if (nameBytesLength == 0 || nameBytesLength > MAX_NAME_BYTES_LENGTH) {
       revert InvalidNameLength();
     }
+
     _renameRequirements(_tokenId);
+    _updateMultiplier(_tokenId);
+
     bytes32 identity;
     address receiver;
 
@@ -219,17 +222,22 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
   /// @inheritdoc IWrappedNFTHero
   function updateMultiplier(uint256 _tokenId) external override {
+    if (!_updateMultiplier(_tokenId)) revert SameMultiplier();
+  }
+
+  function _updateMultiplier(uint256 _tokenId) internal returns (bool) {
     NFTData storage nftdata = nftData[_tokenId];
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
     uint128 newMultiplier = getWrapperMultiplier();
     uint128 multiplier = nftdata.assignedMultiplier;
 
-    if (newMultiplier == multiplier) revert SameMultiplier();
+    if (newMultiplier == multiplier) return false;
 
-    HCT.removePower(msg.sender, multiplier);
-    HCT.addPower(msg.sender, newMultiplier);
+    HCT.addPower(msg.sender, newMultiplier - multiplier);
     nftData[_tokenId].assignedMultiplier = newMultiplier;
+
+    return true;
   }
 
   /// @inheritdoc IWrappedNFTHero

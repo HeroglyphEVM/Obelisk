@@ -16,7 +16,7 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
-  uint256 internal constant SEND_ETH_GAS_MINIMUM = 20_000 * 2;
+  uint256 internal constant SEND_ETH_GAS_MINIMUM = 40_000;
   uint256 internal constant MAX_NAME_BYTES = 15;
 
   string[] public IMAGES = [

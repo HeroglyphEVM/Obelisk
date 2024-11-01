@@ -595,6 +595,23 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.updateMultiplier(tokenId);
   }
 
+  function test_updateMultiplier_whenIncreased_thenAddsPower() external prankAs(user) {
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+    underTest.wrap(tokenId);
+
+    uint256 multiplier = underTest.getWrapperMultiplier();
+
+    skip(YEAR_IN_SECONDS + 1);
+
+    uint256 newMultiplier = underTest.getWrapperMultiplier();
+
+    vm.expectCall(
+      mockHCT,
+      abi.encodeWithSelector(IHCT.addPower.selector, user, newMultiplier - multiplier)
+    );
+    underTest.updateMultiplier(tokenId);
+  }
+
   function test_enableEmergencyWithdraw_whenNotObeliskRegistry_thenReverts() external {
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotObeliskRegistry.selector));
     underTest.enableEmergencyWithdraw();
