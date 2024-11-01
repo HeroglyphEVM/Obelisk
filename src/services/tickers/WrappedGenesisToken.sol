@@ -44,6 +44,7 @@ contract WrappedGenesisToken is ERC20, OApp {
   error CannotWrapOnMainnet();
   error CannotUnwrapOnMainnet();
   error GasLimitCannotBeZero();
+  error ZeroAddress();
 
   constructor(
     address _owner,
@@ -66,6 +67,8 @@ contract WrappedGenesisToken is ERC20, OApp {
     payable
     returns (MessagingReceipt memory msgReceipt)
   {
+    if (_to == address(0)) revert ZeroAddress();
+
     bytes memory option = defaultLzOption;
     uint256 amountReceiving = _debit(_amountIn);
 

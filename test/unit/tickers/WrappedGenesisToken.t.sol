@@ -125,6 +125,11 @@ contract WrappedGenesisTokenTest is BaseTest {
     underTest.addRewardOnMainnet{ value: LZ_FEE }(amount);
   }
 
+  function test_unwrap_whenToIsZero_thenReverts() external prankAs(user) {
+    vm.expectRevert(abi.encodeWithSelector(WrappedGenesisToken.ZeroAddress.selector));
+    underTest.unwrap(address(0), 1e18);
+  }
+
   function test_unwrap_thenUnwraps() external prankAs(user) {
     uint256 amount = 37.2e18;
 
