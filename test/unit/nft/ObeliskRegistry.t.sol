@@ -79,17 +79,7 @@ contract ObeliskRegistryTest is BaseTest {
   function _setupMockCalls() internal {
     vm.mockCall(
       dripVaultETHMock,
-      abi.encodeWithSelector(IDripVault.deposit.selector),
-      abi.encode(true)
-    );
-    vm.mockCall(
-      dripVaultETHMock,
       abi.encodeWithSelector(IDripVault.withdraw.selector),
-      abi.encode(true)
-    );
-    vm.mockCall(
-      dripVaultDAIMock,
-      abi.encodeWithSelector(IDripVault.deposit.selector),
       abi.encode(true)
     );
     vm.mockCall(
@@ -118,11 +108,14 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_addToCollection_whenOverRequiredETH_thenReverts() external prankAs(user) {
+    mockDepositDripVaultReturn(dripVaultETHMock, REQUIRED_ETH_TO_ENABLE_COLLECTION + 1);
+
     vm.expectRevert(IObeliskRegistry.TooManyEth.selector);
     underTest.addToCollection{ value: REQUIRED_ETH_TO_ENABLE_COLLECTION + 1 }(
       collectionMock
     );
 
+    mockDepositDripVaultReturn(dripVaultETHMock, REQUIRED_ETH_TO_ENABLE_COLLECTION);
     underTest.addToCollection{ value: REQUIRED_ETH_TO_ENABLE_COLLECTION }(collectionMock);
 
     vm.expectRevert(IObeliskRegistry.TooManyEth.selector);
@@ -134,6 +127,8 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 givingAmount = 1.32e18;
+
+    mockDepositDripVaultReturn(dripVaultETHMock, givingAmount);
 
     vm.expectCall(
       dripVaultETHMock, givingAmount, abi.encodeWithSelector(IDripVault.deposit.selector)
@@ -152,6 +147,7 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 givingAmount = REQUIRED_ETH_TO_ENABLE_COLLECTION;
+    mockDepositDripVaultReturn(dripVaultETHMock, givingAmount);
 
     expectExactEmit();
     emit IObeliskRegistry.CollectionContributed(collectionMock, user, givingAmount);
@@ -159,6 +155,18 @@ contract ObeliskRegistryTest is BaseTest {
     emit IObeliskRegistry.WrappedNFTCreated(collectionMock, address(0));
 
     underTest.addToCollection{ value: givingAmount }(collectionMock);
+  }
+
+  function test_addToCollection_whenFeeOnDripVault_thenApplyFee() external prankAs(user) {
+    uint256 givingAmount = 2.3e18;
+    uint256 returnedAmount = givingAmount - 1e18;
+
+    mockDepositDripVaultReturn(dripVaultETHMock, returnedAmount);
+
+    underTest.addToCollection{ value: givingAmount }(collectionMock);
+    
+    assertEq(underTest.getCollection(collectionMock).contributionBalance, returnedAmount);
+    assertEq(underTest.getUserContribution(user, collectionMock).deposit, returnedAmount);
   }
 
   function test_forceActiveCollection_asNonOwner_thenReverts() external prankAs(user) {
@@ -178,6 +186,8 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_forceActiveCollection_whenTooManyEth_thenReverts() external pranking {
+    mockDepositDripVaultReturn(dripVaultETHMock, REQUIRED_ETH_TO_ENABLE_COLLECTION);
+
     changePrank(user);
     underTest.addToCollection{ value: REQUIRED_ETH_TO_ENABLE_COLLECTION }(collectionMock);
 
@@ -206,6 +216,7 @@ contract ObeliskRegistryTest is BaseTest {
     pranking
   {
     changePrank(user);
+    mockDepositDripVaultReturn(dripVaultETHMock, 25e18);
     underTest.addToCollection{ value: 25e18 }(collectionMock);
 
     changePrank(owner);
@@ -265,6 +276,8 @@ contract ObeliskRegistryTest is BaseTest {
 
   function test_removeFromCollection_whenGoalReached_thenReverts() external prankAs(user) {
     uint256 givingAmount = REQUIRED_ETH_TO_ENABLE_COLLECTION;
+    mockDepositDripVaultReturn(dripVaultETHMock, givingAmount);
+
     underTest.addToCollection{ value: givingAmount }(collectionMock);
 
     vm.expectRevert(IObeliskRegistry.GoalReached.selector);
@@ -276,6 +289,8 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 givingAmount = underTest.MINIMUM_SENDING_ETH();
+    mockDepositDripVaultReturn(dripVaultETHMock, givingAmount);
+
     underTest.addToCollection{ value: givingAmount }(collectionMock);
 
     vm.expectRevert(IObeliskRegistry.ContributionBalanceTooLow.selector);
@@ -287,6 +302,7 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 givingAmount = 32.32e18;
+    mockDepositDripVaultReturn(dripVaultETHMock, givingAmount);
     underTest.addToCollection{ value: givingAmount }(collectionMock);
 
     vm.expectCall(
@@ -309,6 +325,8 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 givingAmount = 32.32e18;
+    mockDepositDripVaultReturn(dripVaultETHMock, givingAmount);
+
     uint256 withdrawn = 13.211e18;
     underTest.addToCollection{ value: givingAmount }(collectionMock);
 
@@ -355,6 +373,7 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 supportAmount = 13.32e18;
+    mockDepositDripVaultReturn(dripVaultETHMock, supportAmount);
 
     IObeliskRegistry.Supporter memory expectedSupporter = IObeliskRegistry.Supporter({
       depositor: user,
@@ -381,6 +400,7 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 supportAmount = 1300.32e18;
+    mockDepositDripVaultReturn(dripVaultDAIMock, supportAmount);
 
     IObeliskRegistry.Supporter memory expectedSupporter = IObeliskRegistry.Supporter({
       depositor: user,
@@ -412,6 +432,7 @@ contract ObeliskRegistryTest is BaseTest {
     external
     prankAs(user)
   {
+    mockDepositDripVaultReturn(dripVaultETHMock, 1.1e18);
     underTest.supportYieldPool{ value: 1.1e18 }(0);
 
     skip(underTest.SUPPORT_LOCK_DURATION() - 1);
@@ -424,6 +445,7 @@ contract ObeliskRegistryTest is BaseTest {
     external
     prankAs(user)
   {
+    mockDepositDripVaultReturn(dripVaultETHMock, 1.1e18);
     underTest.supportYieldPool{ value: 1.1e18 }(0);
 
     skip(underTest.SUPPORT_LOCK_DURATION());
@@ -438,6 +460,7 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 supportAmount = 13.32e18;
+    mockDepositDripVaultReturn(dripVaultETHMock, supportAmount);
     underTest.supportYieldPool{ value: supportAmount }(0);
 
     skip(underTest.SUPPORT_LOCK_DURATION());
@@ -459,6 +482,7 @@ contract ObeliskRegistryTest is BaseTest {
     prankAs(user)
   {
     uint256 supportAmount = 1300.32e18;
+    mockDepositDripVaultReturn(dripVaultDAIMock, supportAmount);
     underTest.supportYieldPool(supportAmount);
 
     skip(underTest.SUPPORT_LOCK_DURATION());
@@ -625,6 +649,8 @@ contract ObeliskRegistryTest is BaseTest {
 
       changePrank(currentUser);
       vm.deal(currentUser, sanitizedAmount);
+
+      mockDepositDripVaultReturn(dripVaultETHMock, sanitizedAmount);
       underTest.addToCollection{ value: sanitizedAmount }(collectionMock);
     }
 
@@ -821,6 +847,12 @@ contract ObeliskRegistryTest is BaseTest {
     );
 
     underTest.enableEmergencyWithdrawForCollection(collectionMock);
+  }
+
+  function mockDepositDripVaultReturn(address _dripVault, uint256 _amount) internal {
+    vm.mockCall(
+      _dripVault, abi.encodeWithSelector(IDripVault.deposit.selector), abi.encode(_amount)
+    );
   }
 }
 

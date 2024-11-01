@@ -12,7 +12,7 @@ abstract contract BaseDripVault is IDripVault, Ownable {
 
   address public interestRateReceiver;
   address public obeliskRegistry;
-  uint256 private totalDeposit;
+  uint256 internal totalDeposit;
 
   modifier onlyObeliskRegistry() {
     if (msg.sender != obeliskRegistry) revert NotObeliskRegistry();
@@ -30,7 +30,13 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     INPUT_TOKEN = _inputToken;
   }
 
-  function deposit(uint256 _amount) external payable override onlyObeliskRegistry {
+  function deposit(uint256 _amount)
+    external
+    payable
+    override
+    onlyObeliskRegistry
+    returns (uint256 depositAmount_)
+  {
     address cachedInputToken = INPUT_TOKEN;
     uint256 cachedTotalBalance = totalDeposit;
 
@@ -40,17 +46,30 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     if (cachedInputToken != address(0) && msg.value != 0) revert NativeNotAccepted();
 
     totalDeposit = cachedTotalBalance + _amount;
-    _afterDeposit(_amount);
+    return _afterDeposit(_amount);
   }
 
-  function _afterDeposit(uint256 _amount) internal virtual;
+  function _afterDeposit(uint256 _amount)
+    internal
+    virtual
+    returns (uint256 depositAmount_);
 
-  function withdraw(address _to, uint256 _amount) external override onlyObeliskRegistry {
-    _beforeWithdrawal(_to, _amount);
+  function withdraw(address _to, uint256 _amount)
+    external
+    override
+    onlyObeliskRegistry
+    returns (uint256 withdrawAmount_)
+  {
+    withdrawAmount_ = _beforeWithdrawal(_to, _amount);
     totalDeposit -= _amount;
+
+    return withdrawAmount_;
   }
 
-  function _beforeWithdrawal(address _to, uint256 _amount) internal virtual;
+  function _beforeWithdrawal(address _to, uint256 _amount)
+    internal
+    virtual
+    returns (uint256 withdrawalAmount_);
 
   function _transfer(address _asset, address _to, uint256 _amount) internal {
     if (_amount == 0) return;

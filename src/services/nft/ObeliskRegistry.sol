@@ -71,22 +71,22 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
   /// @inheritdoc IObeliskRegistry
   function addToCollection(address _collection) external payable override {
-    if (msg.value < MINIMUM_SENDING_ETH) revert AmountTooLow();
-
+    uint256 sendingAmount = msg.value;
+    if (sendingAmount < MINIMUM_SENDING_ETH) revert AmountTooLow();
     Collection storage collection = supportedCollections[_collection];
-    uint256 newTotalContribution = collection.contributionBalance + msg.value;
-
     if (!collection.allowed) revert CollectionNotAllowed();
 
+    sendingAmount = DRIP_VAULT_ETH.deposit{ value: sendingAmount }(0);
+    uint256 newTotalContribution = collection.contributionBalance + sendingAmount;
+
     collection.contributionBalance = newTotalContribution;
-    userSupportedCollections[msg.sender][_collection].deposit += uint128(msg.value);
-    DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
+    userSupportedCollections[msg.sender][_collection].deposit += uint128(sendingAmount);
 
     if (newTotalContribution > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       revert TooManyEth();
     }
 
-    emit CollectionContributed(_collection, msg.sender, msg.value);
+    emit CollectionContributed(_collection, msg.sender, sendingAmount);
     if (newTotalContribution != REQUIRED_ETH_TO_ENABLE_COLLECTION) return;
 
     _createWrappedNFT(
@@ -187,6 +187,13 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     if (sanitizedAmount < minimumAmount) revert AmountTooLow();
 
+    if (token == address(0)) {
+      sanitizedAmount = DRIP_VAULT_ETH.deposit{ value: sanitizedAmount }(0);
+    } else {
+      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), sanitizedAmount);
+      sanitizedAmount = DRIP_VAULT_DAI.deposit(sanitizedAmount);
+    }
+
     supportId++;
     supporters[supportId] = Supporter({
       depositor: msg.sender,
@@ -195,13 +202,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
       lockUntil: uint32(block.timestamp + SUPPORT_LOCK_DURATION),
       removed: false
     });
-
-    if (token == address(0)) {
-      DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
-    } else {
-      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), sanitizedAmount);
-      DRIP_VAULT_DAI.deposit(sanitizedAmount);
-    }
 
     emit Supported(supportId, msg.sender, sanitizedAmount);
   }

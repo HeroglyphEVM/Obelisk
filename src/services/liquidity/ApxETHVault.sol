@@ -20,12 +20,28 @@ contract ApxETHVault is BaseDripVault {
     PIREX_ETH = IPirexEth(IApxETH(_apxETH).pirexEth());
   }
 
-  function _afterDeposit(uint256 _amount) internal override {
-    PIREX_ETH.deposit{ value: _amount }(address(this), true);
+  function _afterDeposit(uint256 _amount)
+    internal
+    override
+    returns (uint256 depositAmount_)
+  {
+    uint256 fee;
+    (depositAmount_, fee) = PIREX_ETH.deposit{ value: _amount }(address(this), true);
+
+    totalDeposit -= fee;
+
+    return depositAmount_;
   }
 
-  function _beforeWithdrawal(address _to, uint256 _amount) internal override {
-    _transfer(address(APXETH), _to, APXETH.convertToShares(_amount));
+  function _beforeWithdrawal(address _to, uint256 _amount)
+    internal
+    override
+    returns (uint256 withdrawalAmount_)
+  {
+    withdrawalAmount_ = APXETH.convertToShares(_amount);
+    _transfer(address(APXETH), _to, withdrawalAmount_);
+
+    return withdrawalAmount_;
   }
 
   function claim() external override returns (uint256 interestInApx_) {
