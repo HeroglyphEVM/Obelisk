@@ -164,7 +164,7 @@ contract ObeliskRegistryTest is BaseTest {
     mockDepositDripVaultReturn(dripVaultETHMock, returnedAmount);
 
     underTest.addToCollection{ value: givingAmount }(collectionMock);
-    
+
     assertEq(underTest.getCollection(collectionMock).contributionBalance, returnedAmount);
     assertEq(underTest.getUserContribution(user, collectionMock).deposit, returnedAmount);
   }
@@ -209,6 +209,11 @@ contract ObeliskRegistryTest is BaseTest {
       underTest.getCollection(collectionMock).contributionBalance,
       REQUIRED_ETH_TO_ENABLE_COLLECTION
     );
+
+    assertEq(
+      underTest.getUserContribution(treasury, collectionMock).deposit,
+      REQUIRED_ETH_TO_ENABLE_COLLECTION
+    );
   }
 
   function test_forceActiveCollection_whenSomeContribution_thenAddsToAllowedCollections()
@@ -216,8 +221,9 @@ contract ObeliskRegistryTest is BaseTest {
     pranking
   {
     changePrank(user);
-    mockDepositDripVaultReturn(dripVaultETHMock, 25e18);
-    underTest.addToCollection{ value: 25e18 }(collectionMock);
+    uint256 contributionUserAmount = 25e18;
+    mockDepositDripVaultReturn(dripVaultETHMock, contributionUserAmount);
+    underTest.addToCollection{ value: contributionUserAmount }(collectionMock);
 
     changePrank(owner);
     vm.expectEmit(true, false, false, false);
@@ -227,6 +233,14 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(
       underTest.getCollection(collectionMock).contributionBalance,
       REQUIRED_ETH_TO_ENABLE_COLLECTION
+    );
+
+    assertEq(
+      underTest.getUserContribution(user, collectionMock).deposit, contributionUserAmount
+    );
+    assertEq(
+      underTest.getUserContribution(treasury, collectionMock).deposit,
+      REQUIRED_ETH_TO_ENABLE_COLLECTION - contributionUserAmount
     );
   }
 
@@ -603,6 +617,34 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_claim_thenSendsRewards() external pranking {
+    uint256 sending = REQUIRED_ETH_TO_ENABLE_COLLECTION;
+    uint256 slotAmount = 1.32e18;
+    mockDepositDripVaultReturn(dripVaultETHMock, sending);
+
+    changePrank(user);
+    underTest.addToCollection{ value: sending }(collectionMock);
+
+    uint256 expectedCollectionReward =
+      slotAmount * underTest.COLLECTION_REWARD_PERCENT() / 10_000;
+
+    address wrappedNFT = address(underTest.getCollection(collectionMock).wrappedVersion);
+
+    uint256 userBalanceBefore = user.balance;
+
+    changePrank(wrappedNFT);
+    vm.deal(wrappedNFT, slotAmount);
+    underTest.onSlotBought{ value: slotAmount }();
+
+    changePrank(user);
+    expectExactEmit();
+    emit IObeliskRegistry.Claimed(collectionMock, user, expectedCollectionReward);
+    underTest.claim(collectionMock);
+
+    assertEq(user.balance - userBalanceBefore, expectedCollectionReward);
+    assertEq(treasury.balance, slotAmount - expectedCollectionReward);
+  }
+
+  function test_claim_whenForceActive_thenSendsRewards() external pranking {
     uint256 givingAmount = 1.32e18;
     uint256 expectedCollectionReward =
       givingAmount * underTest.COLLECTION_REWARD_PERCENT() / 10_000;
@@ -615,12 +657,12 @@ contract ObeliskRegistryTest is BaseTest {
     vm.deal(wrappedNFT, givingAmount);
     underTest.onSlotBought{ value: givingAmount }();
 
-    changePrank(owner);
+    changePrank(treasury);
     expectExactEmit();
-    emit IObeliskRegistry.Claimed(collectionMock, owner, expectedCollectionReward);
+    emit IObeliskRegistry.Claimed(collectionMock, treasury, expectedCollectionReward);
     underTest.claim(collectionMock);
 
-    assertEq(owner.balance, expectedCollectionReward);
+    assertEq(treasury.balance, givingAmount);
   }
 
   function test_fizz_claim(uint128[10] memory _amounts, uint128 _slotBought) external {

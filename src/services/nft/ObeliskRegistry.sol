@@ -109,7 +109,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     uint256 missingEth = REQUIRED_ETH_TO_ENABLE_COLLECTION - currentBalance;
 
     collection.contributionBalance += missingEth;
-    userSupportedCollections[msg.sender][_collection].deposit += uint128(missingEth);
+    userSupportedCollections[treasury][_collection].deposit += uint128(missingEth);
 
     _createWrappedNFT(
       _collection,
