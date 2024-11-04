@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-/**
- * @title WrappedGenesisToken
- * @notice We wrapped our GenesisTokens so we don't have to cross-chain with uint64
- * limitations from LZ template.
- * @custom:export abi
- */
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import {
@@ -20,6 +14,12 @@ import { OptionsBuilder } from
 
 import { IGenesisTokenPool } from "src/interfaces/IGenesisTokenPool.sol";
 
+/**
+ * @title WrappedGenesisToken
+ * @notice We wrapped our GenesisTokens so we don't have to cross-chain with uint64
+ * limitations from LZ template.
+ * @custom:export abi
+ */
 contract WrappedGenesisToken is ERC20, OApp {
   using OptionsBuilder for bytes;
 

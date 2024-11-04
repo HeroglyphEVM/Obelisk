@@ -145,6 +145,19 @@
   },
   {
     "type": "function",
+    "name": "MINIMUM_SENDING_ETH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "NFT_PASS",
     "inputs": [],
     "outputs": [
@@ -248,6 +261,19 @@
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "enableEmergencyWithdrawForCollection",
+    "inputs": [
+      {
+        "name": "_wrappedCollection",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -964,6 +990,44 @@
     "anonymous": false
   },
   {
+    "type": "event",
+    "name": "WrappedNFTDisabled",
+    "inputs": [
+      {
+        "name": "collection",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "wrappedNFT",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WrappedNFTEnabled",
+    "inputs": [
+      {
+        "name": "collection",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "wrappedNFT",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "type": "error",
     "name": "AlreadyRemoved",
     "inputs": []
@@ -990,7 +1054,7 @@
   },
   {
     "type": "error",
-    "name": "FailedDeployment",
+    "name": "ContributionBalanceTooLow",
     "inputs": []
   },
   {
@@ -1054,6 +1118,11 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
   },
   {
     "type": "error",

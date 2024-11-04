@@ -76,6 +76,8 @@ interface IObeliskRegistry {
     uint128 claimed;
   }
 
+  function wrappedCollectionImageIPFS() external view returns (string memory);
+
   function isWrappedNFT(address _collection) external view returns (bool);
 
   /**

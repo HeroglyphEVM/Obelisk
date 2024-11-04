@@ -51,6 +51,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   uint32 public supportId;
   uint256 public maxRewardPerCollection;
 
+  string public override wrappedCollectionImageIPFS;
+
   constructor(
     address _owner,
     address _treasury,
@@ -72,19 +74,21 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   /// @inheritdoc IObeliskRegistry
   function addToCollection(address _collection) external payable override nonReentrant {
     uint256 sendingAmount = msg.value;
+    uint256 surplus = 0;
+
     if (sendingAmount < MINIMUM_SENDING_ETH) revert AmountTooLow();
+
     Collection storage collection = supportedCollections[_collection];
     if (!collection.allowed) revert CollectionNotAllowed();
+    if (collection.contributionBalance >= REQUIRED_ETH_TO_ENABLE_COLLECTION) {
+      revert TooManyEth();
+    }
 
     sendingAmount = DRIP_VAULT_ETH.deposit{ value: sendingAmount }(0);
     uint256 newTotalContribution = collection.contributionBalance + sendingAmount;
 
     collection.contributionBalance = newTotalContribution;
     userSupportedCollections[msg.sender][_collection].deposit += uint128(sendingAmount);
-
-    if (newTotalContribution > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
-      revert TooManyEth();
-    }
 
     emit CollectionContributed(_collection, msg.sender, sendingAmount);
     if (newTotalContribution != REQUIRED_ETH_TO_ENABLE_COLLECTION) return;
@@ -95,6 +99,12 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
       collection.collectionStartedUnixTime,
       collection.premium
     );
+
+    if (newTotalContribution > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
+      surplus = newTotalContribution - REQUIRED_ETH_TO_ENABLE_COLLECTION;
+      (bool success,) = msg.sender.call{ value: surplus }("");
+      if (!success) revert TransferFailed();
+    }
   }
 
   function forceActiveCollection(address _collection) external onlyOwner {
@@ -356,6 +366,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     onlyOwner
   {
     WrappedNFTHero(_wrappedCollection).enableEmergencyWithdraw();
+  }
+
+  function setWrappedCollectionImageIPFS(string memory _ipfsImage) external onlyOwner {
+    wrappedCollectionImageIPFS = _ipfsImage;
   }
 
   /// @inheritdoc IObeliskRegistry

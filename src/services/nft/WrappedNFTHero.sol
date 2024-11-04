@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-
-import { IHCT } from "src/interfaces/IHCT.sol";
 import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
 import { ObeliskNFT } from "./ObeliskNFT.sol";
-
+import { IHCT } from "src/interfaces/IHCT.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { strings } from "src/lib/strings.sol";
 
@@ -29,8 +28,6 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
   uint256 public constant RATE_PER_YEAR = 0.43e18;
   uint256 public constant MAX_RATE = 3e18;
-
-  string public ipfsImage;
 
   IHCT public immutable HCT;
   ERC721 public immutable INPUT_COLLECTION;
@@ -284,7 +281,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
         '{"name":"',
         name,
         '","description":"Wrapped Version of an external collection","image":"',
-        "ipfs://QmdTq1vZ6cZ6mcJBfkG49FocwqTPFQ8duq6j2tL2rpzEWF",
+        IObeliskRegistry(obeliskRegistry).wrappedCollectionImageIPFS(),
         '"}'
       )
     );
