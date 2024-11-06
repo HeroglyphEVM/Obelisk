@@ -54,6 +54,7 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
   uint64 public epochId;
   uint32 public override epochDuration;
   IStreamingPool public streamingPool;
+  uint256 private apxBalanceTracker;
 
   address public immutable SWAP_ROUTER;
   IDripVault public immutable DRIP_VAULT_ETH;
@@ -126,19 +127,24 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
 
     if (epoch.endOfEpoch > block.timestamp) revert EpochNotFinished();
 
-    epoch.totalRewards += uint128(_claimFromServices());
+    if (epoch.totalWeight != 0) {
+      epoch.totalRewards += uint128(_claimFromServices());
 
-    for (uint256 i = 0; i < epoch.megapools.length; ++i) {
-      _assignRewardToMegapool(epoch, epoch.megapools[i]);
+      for (uint256 i = 0; i < epoch.megapools.length; ++i) {
+        _assignRewardToMegapool(epoch, epoch.megapools[i]);
+      }
+
+      emit EpochEnded(currentEpoch);
     }
-
-    emit EpochEnded(currentEpoch);
     epochId = currentEpoch + 1;
   }
 
   function claim() external override nonReentrant returns (uint256 rewards_) {
     Epoch storage epoch = epochs[epochId];
-    epoch.totalRewards += uint128(_claimFromServices());
+
+    if (epoch.totalWeight != 0) {
+      epoch.totalRewards += uint128(_claimFromServices());
+    }
 
     _assignRewardToMegapool(epoch, msg.sender);
 
@@ -149,18 +155,27 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
     pendingRewards[msg.sender] = 0;
     APX_ETH.transfer(msg.sender, rewards_);
 
+    apxBalanceTracker -= rewards_;
+
     emit RewardClaimed(msg.sender, rewards_);
 
     return rewards_;
   }
 
   function _claimFromServices() internal returns (uint256 rewards_) {
-    uint256 apxBalanceBefore = APX_ETH.balanceOf(address(this));
+    IStreamingPool cachedStreamingPool = streamingPool;
+    if (address(cachedStreamingPool) != address(0)) {
+      cachedStreamingPool.claim();
+    }
 
     DRIP_VAULT_ETH.claim();
-    rewards_ += APX_ETH.balanceOf(address(this)) - apxBalanceBefore;
-    rewards_ += address(streamingPool) != address(0) ? streamingPool.claim() : 0;
+
+    uint256 newApxBalance = APX_ETH.balanceOf(address(this));
+
+    rewards_ += newApxBalance - apxBalanceTracker;
     rewards_ += _claimDaiAndConvertToApxETH();
+
+    apxBalanceTracker = newApxBalance;
 
     return rewards_;
   }
