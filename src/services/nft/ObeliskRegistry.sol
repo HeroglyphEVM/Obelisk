@@ -73,25 +73,34 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
 
   /// @inheritdoc IObeliskRegistry
   function addToCollection(address _collection) external payable override nonReentrant {
-    uint256 sendingAmount = msg.value;
-    uint256 surplus = 0;
+    Collection storage collection = supportedCollections[_collection];
+    uint256 sendingAmount = DRIP_VAULT_ETH.previewDeposit(msg.value);
+    uint256 contributionBalance = collection.contributionBalance;
+    uint256 surplus;
 
     if (sendingAmount < MINIMUM_SENDING_ETH) revert AmountTooLow();
 
-    Collection storage collection = supportedCollections[_collection];
-    if (!collection.allowed) revert CollectionNotAllowed();
-    if (collection.contributionBalance >= REQUIRED_ETH_TO_ENABLE_COLLECTION) {
+    if (contributionBalance >= REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       revert TooManyEth();
     }
 
-    sendingAmount = DRIP_VAULT_ETH.deposit{ value: sendingAmount }(0);
-    uint256 newTotalContribution = collection.contributionBalance + sendingAmount;
+    contributionBalance += sendingAmount;
 
-    collection.contributionBalance = newTotalContribution;
+    if (contributionBalance > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
+      surplus = contributionBalance - REQUIRED_ETH_TO_ENABLE_COLLECTION;
+    }
+
+    if (!collection.allowed) revert CollectionNotAllowed();
+
+    sendingAmount = DRIP_VAULT_ETH.deposit{ value: sendingAmount }(0);
     userSupportedCollections[msg.sender][_collection].deposit += uint128(sendingAmount);
 
+    //Ignore the potential fee from drip_vault.
+    collection.contributionBalance =
+      Math.min(contributionBalance, REQUIRED_ETH_TO_ENABLE_COLLECTION);
+
     emit CollectionContributed(_collection, msg.sender, sendingAmount);
-    if (newTotalContribution != REQUIRED_ETH_TO_ENABLE_COLLECTION) return;
+    if (contributionBalance < REQUIRED_ETH_TO_ENABLE_COLLECTION) return;
 
     _createWrappedNFT(
       _collection,
@@ -100,8 +109,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
       collection.premium
     );
 
-    if (newTotalContribution > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
-      surplus = newTotalContribution - REQUIRED_ETH_TO_ENABLE_COLLECTION;
+    if (surplus != 0) {
       (bool success,) = msg.sender.call{ value: surplus }("");
       if (!success) revert TransferFailed();
     }

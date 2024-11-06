@@ -164,17 +164,16 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
 
   function _claimFromServices() internal returns (uint256 rewards_) {
     IStreamingPool cachedStreamingPool = streamingPool;
+
     if (address(cachedStreamingPool) != address(0)) {
       cachedStreamingPool.claim();
     }
 
     DRIP_VAULT_ETH.claim();
+    _claimDaiAndConvertToApxETH();
 
     uint256 newApxBalance = APX_ETH.balanceOf(address(this));
-
-    rewards_ += newApxBalance - apxBalanceTracker;
-    rewards_ += _claimDaiAndConvertToApxETH();
-
+    rewards_ = newApxBalance - apxBalanceTracker;
     apxBalanceTracker = newApxBalance;
 
     return rewards_;

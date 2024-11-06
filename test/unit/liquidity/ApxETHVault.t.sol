@@ -166,4 +166,8 @@ contract MockPirexETH is IPirexEth {
   function toRatio(uint256 _raw) public pure returns (uint256) {
     return _raw * 1e18 / ratio();
   }
+
+  function fees(uint8) external pure returns (uint32) {
+    return 0;
+  }
 }

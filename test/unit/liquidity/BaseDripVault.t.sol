@@ -131,4 +131,8 @@ contract BaseDripVaultHarness is BaseDripVault {
   function getOutputToken() external view override returns (address) {
     return INPUT_TOKEN;
   }
+
+  function previewDeposit(uint256 _amount) external pure override returns (uint256) {
+    return _amount;
+  }
 }

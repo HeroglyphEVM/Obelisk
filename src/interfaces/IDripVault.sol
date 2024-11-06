@@ -49,4 +49,10 @@ interface IDripVault {
    * @return The output token address.
    */
   function getOutputToken() external view returns (address);
+
+  /**
+   * @notice Gets the preview deposit amount of the vault.
+   * @return The preview deposit amount.
+   */
+  function previewDeposit(uint256 _amount) external view returns (uint256);
 }

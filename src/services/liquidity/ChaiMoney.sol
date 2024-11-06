@@ -70,4 +70,8 @@ contract ChaiMoneyVault is BaseDripVault {
   function getOutputToken() external view returns (address) {
     return INPUT_TOKEN;
   }
+
+  function previewDeposit(uint256 _amount) external pure override returns (uint256) {
+    return _amount;
+  }
 }

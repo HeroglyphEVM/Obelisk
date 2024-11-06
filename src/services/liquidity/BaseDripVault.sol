@@ -106,4 +106,6 @@ abstract contract BaseDripVault is IDripVault, Ownable, ReentrancyGuard {
   function getInputToken() external view returns (address) {
     return INPUT_TOKEN;
   }
+
+  function previewDeposit(uint256 _amount) external view virtual returns (uint256);
 }

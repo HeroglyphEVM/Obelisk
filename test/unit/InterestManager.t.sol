@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "test/base/BaseTest.t.sol";
 
-import { MockERC20, DefaultERC20 } from "test/mock/contract/MockERC20.t.sol";
+import { MockERC20 } from "test/mock/contract/MockERC20.t.sol";
 import {
   InterestManager,
   IInterestManager,
@@ -13,7 +13,6 @@ import {
   IChainlinkOracle
 } from "src/services/InterestManager.sol";
 import { ISwapRouter } from "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import { IStreamingPool } from "src/interfaces/IStreamingPool.sol";
 
 import { IWETH } from "src/interfaces/IWETH.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -255,9 +254,7 @@ contract InterestManagerTest is BaseTest {
     uint256 reward = 3e18;
 
     axpETH.mint(address(underTest), reward);
-
     underTest.applyGauges(ADDRESSES, WEIGHTS);
-    underTest.exposed_setTotalEpochRewards(uint128(reward));
 
     skip(underTest.epochDuration());
 
@@ -352,7 +349,8 @@ contract InterestManagerTest is BaseTest {
   }
 
   function test_claim_thenSendsRewards() external pranking {
-    address streamingPool = generateAddress("streamingPool");
+    address streamingPool = address(new ApxDripVaultMock(axpETH));
+
     uint256 daiReward = 12_000e18;
     uint256 ethReward = 3.3e18;
     uint256 streamingPoolReward = 0.25e18;
@@ -366,16 +364,12 @@ contract InterestManagerTest is BaseTest {
     ADDRESSES.push(generateAddress("pool1"));
     WEIGHTS.push(1e18);
 
-    vm.mockCall(
-      streamingPool,
-      abi.encodeWithSelector(IStreamingPool.claim.selector),
-      abi.encode(streamingPoolReward)
-    );
-
     underTest.applyGauges(ADDRESSES, WEIGHTS);
 
     dai.mint(address(underTest), daiReward);
-    axpETH.mint(address(underTest), reward - ethReward);
+    axpETH.mint(address(underTest), convertedDaiReward);
+    ApxDripVaultMock(mockDripVaultETH).mockNextReward(ethReward);
+    ApxDripVaultMock(streamingPool).mockNextReward(streamingPoolReward);
 
     vm.mockCall(
       mockSwapRouter,
@@ -480,7 +474,6 @@ contract InterestManagerTest is BaseTest {
     axpETH.mint(address(underTest), _totalRewards);
 
     underTest.applyGauges(ADDRESSES, WEIGHTS);
-    underTest.exposed_setTotalEpochRewards(_totalRewards);
 
     for (uint256 i = 0; i < ADDRESSES.length; i++) {
       changePrank(ADDRESSES[i]);
