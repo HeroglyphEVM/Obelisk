@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "../base/BaseTest.t.sol";
 
-import { ChaiMoneyVault } from "src/services/liquidity/ChaiMoney.sol";
+import { ChaiMoneyVault } from "src/services/liquidity/ChaiMoneyVault.sol";
 import { IPot } from "src/vendor/chai/IPot.sol";
 import { IChaiMoney } from "src/vendor/chai/IChaiMoney.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";

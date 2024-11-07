@@ -505,10 +505,41 @@
   },
   {
     "type": "function",
+    "name": "megapoolFactory",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "onSlotBought",
     "inputs": [],
     "outputs": [],
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "overrideTickerLogic",
+    "inputs": [
+      {
+        "name": "_ticker",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_pool",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -589,6 +620,19 @@
   },
   {
     "type": "function",
+    "name": "setMegapoolFactory",
+    "inputs": [
+      {
+        "name": "_megapoolFactory",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setTickerLogic",
     "inputs": [
       {
@@ -613,6 +657,19 @@
         "name": "_treasury",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setWrappedCollectionImageIPFS",
+    "inputs": [
+      {
+        "name": "_ipfsImage",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "outputs": [],
@@ -689,6 +746,19 @@
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "wrappedCollectionImageIPFS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
@@ -827,6 +897,19 @@
   },
   {
     "type": "event",
+    "name": "MegapoolFactorySet",
+    "inputs": [
+      {
+        "name": "megapoolFactory",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "NewGenesisTickerCreated",
     "inputs": [
       {
@@ -951,7 +1034,7 @@
       {
         "name": "pool",
         "type": "address",
-        "indexed": false,
+        "indexed": true,
         "internalType": "address"
       }
     ],
@@ -1070,6 +1153,11 @@
   {
     "type": "error",
     "name": "MathOverflowedMulDiv",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoAccess",
     "inputs": []
   },
   {

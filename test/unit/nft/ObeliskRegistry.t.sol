@@ -536,20 +536,63 @@ contract ObeliskRegistryTest is BaseTest {
     assertTrue(underTest.getSupporter(1).removed);
   }
 
-  function test_setTickerLogic_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
-    );
+  function test_setTickerLogic_asNonOwner_thenReverts() external {
+    vm.expectRevert(IObeliskRegistry.NoAccess.selector);
+    underTest.setTickerLogic("ticker", generateAddress("TickerPool"));
+  }
+
+  function test_setTickerLogic_whenTickerAlreadyExists_thenReverts()
+    external
+    prankAs(owner)
+  {
+    underTest.setTickerLogic("ticker", generateAddress("TickerPool"));
+
+    vm.expectRevert(IObeliskRegistry.TickerAlreadyExists.selector);
     underTest.setTickerLogic("ticker", generateAddress("TickerPool"));
   }
 
   function test_setTickerLogic_thenUpdatesTickerPool() external prankAs(owner) {
+    address megapoolFactory = generateAddress("MegapoolFactory");
+
+    underTest.setMegapoolFactory(megapoolFactory);
+
     address expectedPool = generateAddress("TickerPool");
     string memory ticker = "Super Ticker";
 
     expectExactEmit();
     emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool);
     underTest.setTickerLogic(ticker, expectedPool);
+
+    assertEq(underTest.getTickerLogic(ticker), expectedPool);
+
+    changePrank(megapoolFactory);
+
+    expectedPool = generateAddress("TickerPool2");
+    ticker = "Super Ticker 2";
+
+    expectExactEmit();
+    emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool);
+    underTest.setTickerLogic(ticker, expectedPool);
+
+    assertEq(underTest.getTickerLogic(ticker), expectedPool);
+  }
+
+  function test_overrideTickerLogic_whenNotOwner_thenReverts() external prankAs(user) {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
+    underTest.overrideTickerLogic("ticker", generateAddress("TickerPool"));
+  }
+
+  function test_overrideTickerLogic_thenUpdatesTickerPool() external prankAs(owner) {
+    address expectedPool = generateAddress("TickerPool");
+    string memory ticker = "Super Ticker";
+
+    underTest.overrideTickerLogic(ticker, generateAddress("Random"));
+
+    expectExactEmit();
+    emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool);
+    underTest.overrideTickerLogic(ticker, expectedPool);
 
     assertEq(underTest.getTickerLogic(ticker), expectedPool);
   }
@@ -862,6 +905,21 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.setDataAsserter(newDataAsserter);
 
     assertEq(underTest.dataAsserter(), newDataAsserter);
+  }
+
+  function test_setMegapoolFactory_whenNotOwner_thenReverts() external prankAs(user) {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
+    underTest.setMegapoolFactory(generateAddress("MegapoolFactory"));
+  } 
+
+  function test_setMegapoolFactory_thenUpdatesMegapoolFactory() external prankAs(owner) {
+    address newMegapoolFactory = generateAddress("MegapoolFactory");
+
+    expectExactEmit();
+    emit IObeliskRegistry.MegapoolFactorySet(newMegapoolFactory);
+    underTest.setMegapoolFactory(newMegapoolFactory);
   }
 
   function test_toggleIsWrappedNFTFor_whenNotOwner_thenReverts() external prankAs(user) {

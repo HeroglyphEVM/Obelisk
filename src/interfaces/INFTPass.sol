@@ -8,6 +8,7 @@ interface INFTPass {
   error AlreadyClaimed();
   error InvalidProof();
   error NameTooLong();
+  error ClaimingEnded();
 
   event NFTPassCreated(
     uint256 indexed nftId, string indexed name, address indexed receiver, uint256 cost

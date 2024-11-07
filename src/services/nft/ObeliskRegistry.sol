@@ -48,6 +48,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
 
   address public treasury;
   address public dataAsserter;
+  address public megapoolFactory;
   uint32 public supportId;
   uint256 public maxRewardPerCollection;
 
@@ -64,11 +65,13 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     maxRewardPerCollection = 250e18;
 
     treasury = _treasury;
-    HCT_ADDRESS = address(new HCT(_treasury));
+    HCT_ADDRESS = address(new HCT(_owner, _treasury));
     DRIP_VAULT_ETH = IDripVault(_dripVaultETH);
     DRIP_VAULT_DAI = IDripVault(_dripVaultDAI);
     NFT_PASS = _nftPass;
     DAI = IERC20(_dai);
+
+    wrappedCollectionImageIPFS = "ipfs://QmVLK98G9xCXKA3r1mAJ2ytJ7XVCfWBy4DfnHkXF2VWJ53";
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -330,7 +333,15 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     }
   }
 
-  function setTickerLogic(string memory _ticker, address _pool) external onlyOwner {
+  function setTickerLogic(string memory _ticker, address _pool) external {
+    if (msg.sender != owner() && msg.sender != megapoolFactory) revert NoAccess();
+    if (tickersLogic[_ticker] != address(0)) revert TickerAlreadyExists();
+
+    tickersLogic[_ticker] = _pool;
+    emit TickerLogicSet(_ticker, _pool);
+  }
+
+  function overrideTickerLogic(string memory _ticker, address _pool) external onlyOwner {
     tickersLogic[_ticker] = _pool;
     emit TickerLogicSet(_ticker, _pool);
   }
@@ -344,6 +355,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   function setDataAsserter(address _dataAsserter) external onlyOwner {
     dataAsserter = _dataAsserter;
     emit DataAsserterSet(_dataAsserter);
+  }
+
+  function setMegapoolFactory(address _megapoolFactory) external onlyOwner {
+    megapoolFactory = _megapoolFactory;
+    emit MegapoolFactorySet(_megapoolFactory);
   }
 
   function setMaxRewardPerCollection(uint256 _maxRewardPerCollection) external onlyOwner {

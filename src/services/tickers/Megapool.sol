@@ -8,6 +8,7 @@ import { ShareableMath } from "src/lib/ShareableMath.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
 /**
  * @title Megapool
@@ -17,20 +18,25 @@ import { IInterestManager } from "src/interfaces/IInterestManager.sol";
  */
 contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   error MaxEntryExceeded();
+  error NotAllowedCollection();
+  error InvalidWrappedCollection(address collection);
 
   event MaxEntryUpdated(uint256 newMaxEntry);
 
+  IInterestManager public immutable INTEREST_MANAGER;
   ERC20 public immutable REWARD_TOKEN;
+
+  bool public hasReservedCollections;
 
   uint256 public yieldPerTokenInRay;
   uint256 public yieldBalance;
   uint256 public totalVirtualBalance;
   uint256 public maxEntry;
 
-  IInterestManager public immutable INTEREST_MANAGER;
-
-  mapping(bytes32 => uint256) internal userYieldSnapshot;
-  mapping(bytes32 => uint256) private virtualBalances;
+  mapping(bytes32 => uint256) public virtualBalances;
+  mapping(bytes32 => uint256) public userYieldSnapshot;
+  mapping(address => bool) public allowedWrappedCollections;
+  address[] public allowedWrappedCollectionsList;
 
   uint256 private queued;
 
@@ -38,14 +44,36 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     address _owner,
     address _registry,
     address _tokenReward,
-    address _interestManager
+    address _interestManager,
+    address[] memory _allowedWrappedCollections
   ) LiteTicker(_registry) Ownable(_owner) {
     REWARD_TOKEN = ERC20(_tokenReward);
     INTEREST_MANAGER = IInterestManager(_interestManager);
     maxEntry = 1000e18;
+
+    uint256 collectionCount = _allowedWrappedCollections.length;
+    if (collectionCount == 0) return;
+
+    hasReservedCollections = true;
+    allowedWrappedCollectionsList = _allowedWrappedCollections;
+
+    address collection;
+    for (uint256 i = 0; i < collectionCount; ++i) {
+      collection = _allowedWrappedCollections[i];
+
+      if (!IObeliskRegistry(_registry).isWrappedNFT(collection)) {
+        revert InvalidWrappedCollection(collection);
+      }
+
+      allowedWrappedCollections[collection] = true;
+    }
   }
 
   function _afterVirtualDeposit(bytes32 _identity, address _receiver) internal override {
+    if (hasReservedCollections && !allowedWrappedCollections[msg.sender]) {
+      revert NotAllowedCollection();
+    }
+
     _claim(_identity, _receiver, false);
 
     uint256 userVirtualBalance = virtualBalances[_identity] + DEPOSIT_AMOUNT;
@@ -127,13 +155,5 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   function updateMaxEntry(uint256 _newMaxEntry) external onlyOwner {
     maxEntry = _newMaxEntry;
     emit MaxEntryUpdated(_newMaxEntry);
-  }
-
-  function getVirtualBalanceOf(bytes32 _identity) external view returns (uint256) {
-    return virtualBalances[_identity];
-  }
-
-  function getYieldSnapshotOf(bytes32 _identity) external view returns (uint256) {
-    return userYieldSnapshot[_identity];
   }
 }

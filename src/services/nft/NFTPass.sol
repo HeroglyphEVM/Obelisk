@@ -32,6 +32,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
   uint32 public priceDecayBPS;
   uint32 public resetCounterTimestamp;
   uint32 public boughtToday;
+  uint32 public endFreeClaimTimestamp;
   uint256 public currentPrice;
 
   bytes32 public immutable merkleRoot;
@@ -52,6 +53,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
     priceIncreaseThreshold = 10;
     priceDecayBPS = 2500;
     merkleRoot = _merkleRoot;
+    endFreeClaimTimestamp = uint32(block.timestamp + 31 days);
   }
 
   /// @inheritdoc INFTPass
@@ -60,6 +62,7 @@ contract NFTPass is INFTPass, IdentityERC721 {
     address _receiverWallet,
     bytes32[] calldata merkleProof
   ) external override {
+    if (block.timestamp > endFreeClaimTimestamp) revert ClaimingEnded();
     if (bytes(_name).length > MAX_NAME_BYTES) revert NameTooLong();
     if (claimedPasses[msg.sender]) revert AlreadyClaimed();
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;

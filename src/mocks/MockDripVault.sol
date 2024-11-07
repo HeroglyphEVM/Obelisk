@@ -22,14 +22,19 @@ contract MockDripVault is BaseDripVault {
     override
     returns (uint256)
   {
-    if (INPUT_TOKEN == address(0)) {
+    if (address(this).balance >= _amount) {
       (bool success,) = _to.call{ value: _amount }("");
       if (!success) revert("Failed to send ETH");
-    } else {
-      IERC20(INPUT_TOKEN).transfer(_to, _amount);
     }
 
+    IERC20(INPUT_TOKEN).transfer(_to, _amount);
+
     return _amount;
+  }
+
+  function emptyETH() external {
+    (bool success,) = msg.sender.call{ value: address(this).balance }("");
+    if (!success) revert("Failed to send ETH");
   }
 
   function claim() external pure override returns (uint256 interest_) {

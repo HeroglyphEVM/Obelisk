@@ -20,12 +20,14 @@ interface IObeliskRegistry {
   error ContributionBalanceTooLow();
   error ZeroAddress();
   error CollectionAlreadyAllowed();
+  error NoAccess();
 
   event WrappedNFTCreated(address indexed collection, address indexed wrappedNFT);
   event WrappedNFTEnabled(address indexed collection, address indexed wrappedNFT);
   event WrappedNFTDisabled(address indexed collection, address indexed wrappedNFT);
+  event MegapoolFactorySet(address indexed megapoolFactory);
 
-  event TickerLogicSet(string indexed ticker, address pool);
+  event TickerLogicSet(string indexed ticker, address indexed pool);
   event NewGenesisTickerCreated(string indexed ticker, address pool);
   event Supported(uint32 indexed supportId, address indexed supporter, uint256 amount);
   event SupportRetrieved(
@@ -107,6 +109,13 @@ interface IObeliskRegistry {
    * @param _id Support ID
    */
   function retrieveSupportToYieldPool(uint32 _id) external;
+
+  /**
+   * @notice Set ticker logic
+   * @param _ticker Ticker
+   * @param _pool Pool address
+   */
+  function setTickerLogic(string memory _ticker, address _pool) external;
 
   /**
    * @notice When a slot is bought from the wrapped NFT

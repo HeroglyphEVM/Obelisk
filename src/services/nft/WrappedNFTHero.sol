@@ -196,7 +196,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
       multiplier = 0;
     } else if (from == address(0)) {
       multiplier = getWrapperMultiplier();
-      HCT.addPower(to, multiplier);
+      HCT.addPower(to, multiplier, true);
     } else {
       revert CannotTransferUnwrapFirst();
     }
@@ -231,7 +231,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
     if (newMultiplier == multiplier) return false;
 
-    HCT.addPower(msg.sender, newMultiplier - multiplier);
+    HCT.addPower(msg.sender, newMultiplier - multiplier, false);
     nftData[_tokenId].assignedMultiplier = newMultiplier;
 
     return true;
@@ -268,7 +268,6 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     return this.onERC721Received.selector;
   }
 
-  //TODO: Customize metadata -- This is a place holder
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     _requireOwned(tokenId);
 
