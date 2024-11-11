@@ -10,6 +10,7 @@ import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
 import { MockERC721 } from "test/mock/contract/MockERC721.t.sol";
 import { WrappedNFTHero, IWrappedNFTHero } from "src/services/nft/WrappedNFTHero.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
+import { IObeliskNFT } from "src/interfaces/IObeliskNFT.sol";
 
 contract WrappedNFTHeroTest is BaseTest {
   uint128 private constant ACTIVE_SUPPLY = 10_000e18;
@@ -268,7 +269,7 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.wrap(tokenId);
 
     expectExactEmit();
-    emit IWrappedNFTHero.NameChanged(tokenId, newName);
+    emit IObeliskNFT.NameUpdated(tokenId, newName);
     underTest.rename(tokenId, newName);
 
     assertEq(underTest.names(tokenId), newName);

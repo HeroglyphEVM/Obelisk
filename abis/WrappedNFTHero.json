@@ -809,7 +809,7 @@
   },
   {
     "type": "event",
-    "name": "NameChanged",
+    "name": "MultiplierUpdated",
     "inputs": [
       {
         "name": "tokenId",
@@ -818,9 +818,28 @@
         "internalType": "uint256"
       },
       {
-        "name": "newName",
-        "type": "string",
+        "name": "newMultiplier",
+        "type": "uint128",
+        "indexed": false,
+        "internalType": "uint128"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "NameUpdated",
+    "inputs": [
+      {
+        "name": "tokenId",
+        "type": "uint256",
         "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "indexed": false,
         "internalType": "string"
       }
     ],

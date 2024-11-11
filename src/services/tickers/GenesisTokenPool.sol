@@ -186,12 +186,20 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     return _rewardPerToken(totalSupply, lastTimeRewardApplicable());
   }
 
-  function earned(bytes32 _identity) external view override returns (uint256) {
-    return _earned(
-      _identity,
-      balanceOf[_identity],
-      _rewardPerToken(totalSupply, lastTimeRewardApplicable()),
-      rewards[_identity]
+  function getClaimableRewards(bytes32 _identity, uint256)
+    external
+    view
+    override
+    returns (uint256 rewards_, address rewardsToken_)
+  {
+    return (
+      _earned(
+        _identity,
+        balanceOf[_identity],
+        _rewardPerToken(totalSupply, lastTimeRewardApplicable()),
+        rewards[_identity]
+      ),
+      address(REWARD_TOKEN)
     );
   }
 

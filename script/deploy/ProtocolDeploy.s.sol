@@ -16,8 +16,7 @@ import { NameFilter } from "src/vendor/heroglyph/NameFilter.sol";
 import { TestnetERC20 } from "src/mocks/TestnetERC20.sol";
 import { MockDripVault } from "src/mocks/MockDripVault.sol";
 import { MockHashmask } from "src/mocks/MockHashmask.sol";
-
-import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
+import { TestnetERC721 } from "src/mocks/TestnetERC721.sol";
 
 contract ProtocolDeploy is BaseScript {
   struct Config {
@@ -58,6 +57,8 @@ contract ProtocolDeploy is BaseScript {
     bool streamingExists;
     bool obeliskRegistryExists;
     bool megapoolFactoryExists;
+    address testnetERC721;
+    address pending721;
 
     string memory file = _getConfig(CONFIG_NAME);
     config = abi.decode(vm.parseJson(file, string.concat(".", _getNetwork())), (Config));
@@ -75,6 +76,20 @@ contract ProtocolDeploy is BaseScript {
         0,
         type(TestnetERC20).creationCode,
         abi.encode("Mock Apx ETH", "MAPXETH")
+      );
+
+      (testnetERC721,) = _tryDeployContract(
+        "Testnet ERC721",
+        0,
+        type(TestnetERC721).creationCode,
+        abi.encode("Testnet ERC721", "T721")
+      );
+
+      (pending721,) = _tryDeployContract(
+        "Pending ERC721",
+        0,
+        type(TestnetERC721).creationCode,
+        abi.encode("Pending ERC721", "TP721")
       );
     }
 
@@ -160,6 +175,21 @@ contract ProtocolDeploy is BaseScript {
     if (!obeliskRegistryExists) {
       vm.broadcast(_getDeployerPrivateKey());
       ObeliskRegistry(payable(obeliskRegistry)).setMegapoolFactory(megapoolFactory);
+
+      if (_isTestnet()) {
+        vm.startBroadcast(_getDeployerPrivateKey());
+        ObeliskRegistry(payable(obeliskRegistry)).allowNewCollection(
+          testnetERC721, 10_000, uint32(block.timestamp - 375 days), false
+        );
+
+        ObeliskRegistry(payable(obeliskRegistry)).forceActiveCollection(testnetERC721);
+
+        ObeliskRegistry(payable(obeliskRegistry)).allowNewCollection(
+          pending721, 10_000, uint32(block.timestamp - 250 days), true
+        );
+
+        vm.stopBroadcast();
+      }
     }
 
     if (!megapoolFactoryExists) {

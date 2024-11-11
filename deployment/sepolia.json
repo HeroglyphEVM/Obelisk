@@ -16,39 +16,47 @@
     "contractName": "NameFilter"
   },
   {
-    "contractAddress": "0xbf903Fb52dD5135b5b117dA3b97094e3FccaF600",
+    "contractAddress": "0x223087419fBB288255f42375504c78B397d2f8c6",
+    "contractName": "Testnet ERC721"
+  },
+  {
+    "contractAddress": "0xF4C2bB12C00F86239C911007b1E2Cb79257e8E39",
+    "contractName": "Pending ERC721"
+  },
+  {
+    "contractAddress": "0xBA1beD1444e6D73a4Bf9ddd8fd409Aa91c84eA54",
     "contractName": "NFT Pass"
   },
   {
-    "contractAddress": "0xa18697327E2d6D4D996158790109613D87CBb00C",
+    "contractAddress": "0x0a4bbbEbb5759d5ca33A440b17709ae62B42515C",
     "contractName": "Apx ETH Vault"
   },
   {
-    "contractAddress": "0x854d979716C7c556d115CfFE7f4321A6bc50a86b",
+    "contractAddress": "0x6611577d92796E20FB54F2E4bf122725C6Befe5e",
     "contractName": "Dai Vault"
   },
   {
-    "contractAddress": "0x9846dF52462548A0d823b0a77d5D0624Da732853",
+    "contractAddress": "0x5968BD3300128302e2C64Fb55F5F1AcCE99859C7",
     "contractName": "Obelisk Registry"
   },
   {
-    "contractAddress": "0x635642e3Af61e0C756a428831F8100a0665921a2",
+    "contractAddress": "0x220103Ac7716d1F501c4910e5CaCE3b103a61C48",
     "contractName": "HCT"
   },
   {
-    "contractAddress": "0x3e16C8E5170A2ce0bF376d30E02B1d228323c67e",
+    "contractAddress": "0x80Aa3AeD14dE1679B631eaEC761a13f4c03C16D9",
     "contractName": "Obelisk Hashmask"
   },
   {
-    "contractAddress": "0x91078365CfBa78764CB8FAD019ac973137CB146A",
+    "contractAddress": "0x6B49Ad30E23690f8E5976d3690762215D8eEAB3F",
     "contractName": "Interest Manager"
   },
   {
-    "contractAddress": "0x7E937795A4476BbE6d7e95392168f9f3b8e318e5",
+    "contractAddress": "0x8b987f74bF184B9802D20Eb396BE57F3040C16c3",
     "contractName": "Streaming Pool"
   },
   {
-    "contractAddress": "0x23D951fb516b4a2751e7a2AdeD9F597A37Bd6d02",
+    "contractAddress": "0x2C4d0c02Ae1e97Ace1d0dc8BF3dce70EE3E5dd6E",
     "contractName": "Megapool Factory"
   }
 ]

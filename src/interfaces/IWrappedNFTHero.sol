@@ -19,8 +19,8 @@ interface IWrappedNFTHero {
   event Unwrapped(uint256 indexed tokenId);
   event SlotBought(address indexed user, uint256 indexed inputCollectionNFTId);
   event FreeSlotUsed(uint256 freeSlotLeft);
-  event NameChanged(uint256 indexed tokenId, string indexed newName);
   event EmergencyWithdrawEnabled();
+  event MultiplierUpdated(uint256 indexed tokenId, uint128 newMultiplier);
 
   struct NFTData {
     bool isMinted;

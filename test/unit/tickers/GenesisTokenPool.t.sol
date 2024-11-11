@@ -151,8 +151,12 @@ contract GenesisTokenPoolTest is BaseTest {
     underTest.exposed_afterVirtualDeposit(user_A_identity, user_A);
 
     skip(underTest.DISTRIBUTION_DURATION());
-    assertEqTolerance(underTest.earned(user_A_identity), REWARD_AMOUNT, 1);
 
+    (uint256 expectingRewards, address expectingRewardsToken) =
+      underTest.getClaimableRewards(user_A_identity, 0);
+
+    assertEqTolerance(expectingRewards, REWARD_AMOUNT, 1);
+    assertEq(expectingRewardsToken, address(wrappedReward));
     underTest.exposed_afterVirtualWithdraw(user_A_identity, user_A, false);
 
     assertEqTolerance(wrappedReward.balanceOf(address(underTest)), queuedReward, 1); //0.001%

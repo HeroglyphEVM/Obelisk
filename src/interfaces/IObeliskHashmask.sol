@@ -12,7 +12,6 @@ interface IObeliskHashmask {
   event HashmaskLinked(
     uint256 indexed hashmaskId, address indexed from, address indexed to
   );
-  event NameUpdated(uint256 indexed hashmaskId, string name);
   event TreasurySet(address treasury);
 
   /**

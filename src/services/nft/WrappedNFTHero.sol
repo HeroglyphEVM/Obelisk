@@ -115,7 +115,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     (identity, receiver) = _updateIdentity(_tokenId, _newName);
     _addNewTickers(identity, receiver, _tokenId, _newName);
 
-    emit NameChanged(_tokenId, _newName);
+    emit NameUpdated(_tokenId, _newName);
     names[_tokenId] = _newName;
   }
 
@@ -202,6 +202,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     }
 
     nftdata.assignedMultiplier = multiplier;
+    emit MultiplierUpdated(tokenId, multiplier);
+
     return super._update(to, tokenId, auth);
   }
 
@@ -233,6 +235,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
     HCT.addPower(msg.sender, newMultiplier - multiplier, false);
     nftData[_tokenId].assignedMultiplier = newMultiplier;
+    emit MultiplierUpdated(_tokenId, newMultiplier);
 
     return true;
   }

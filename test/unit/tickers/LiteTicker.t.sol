@@ -148,4 +148,13 @@ contract LiteTickerHarness is LiteTicker {
   {
     emit OnClaimTriggered(_identity, _holder, _ignoreRewards);
   }
+
+  function getClaimableRewards(bytes32 _identity, uint256 _extraRewards)
+    external
+    pure
+    override
+    returns (uint256 rewards_, address rewardsToken_)
+  {
+    return (0, address(0));
+  }
 }

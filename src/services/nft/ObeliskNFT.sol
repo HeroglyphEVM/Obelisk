@@ -102,6 +102,15 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
 
   function _claimRequirements(uint256 _tokenId) internal view virtual returns (bool);
 
+  function getIdentityInformation(uint256 _tokenId)
+    external
+    view
+    override
+    returns (bytes32 identityInTicker_, address rewardReceiver_)
+  {
+    return _getIdentityInformation(_tokenId);
+  }
+
   function _getIdentityInformation(uint256 _tokenId)
     internal
     view
@@ -110,5 +119,30 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
 
   function getLinkedTickers(uint256 _tokenId) external view returns (address[] memory) {
     return linkedTickers[_tokenId];
+  }
+
+  function getPendingRewards(uint256 _tokenId)
+    external
+    view
+    returns (uint256[] memory pendingRewards_, address[] memory pendingRewardsTokens_)
+  {
+    address[] memory activePools = linkedTickers[_tokenId];
+    (bytes32 identity,) = _getIdentityInformation(_tokenId);
+
+    pendingRewards_ = new uint256[](activePools.length);
+    pendingRewardsTokens_ = new address[](activePools.length);
+
+    uint256 pendingRewards;
+    address pendingRewardsToken;
+
+    for (uint256 i = 0; i < activePools.length; ++i) {
+      (pendingRewards, pendingRewardsToken) =
+        ILiteTicker(activePools[i]).getClaimableRewards(identity, 0);
+
+      pendingRewards_[i] = pendingRewards;
+      pendingRewardsTokens_[i] = pendingRewardsToken;
+    }
+
+    return (pendingRewards_, pendingRewardsTokens_);
   }
 }

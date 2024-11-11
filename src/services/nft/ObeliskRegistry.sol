@@ -338,12 +338,12 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     if (tickersLogic[_ticker] != address(0)) revert TickerAlreadyExists();
 
     tickersLogic[_ticker] = _pool;
-    emit TickerLogicSet(_ticker, _pool);
+    emit TickerLogicSet(_ticker, _pool, _ticker);
   }
 
   function overrideTickerLogic(string memory _ticker, address _pool) external onlyOwner {
     tickersLogic[_ticker] = _pool;
-    emit TickerLogicSet(_ticker, _pool);
+    emit TickerLogicSet(_ticker, _pool, _ticker);
   }
 
   function setTreasury(address _treasury) external onlyOwner {

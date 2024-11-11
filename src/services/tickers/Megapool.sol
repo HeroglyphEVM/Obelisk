@@ -38,8 +38,6 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   mapping(address => bool) public allowedWrappedCollections;
   address[] public allowedWrappedCollectionsList;
 
-  uint256 private queued;
-
   constructor(
     address _owner,
     address _registry,
@@ -120,17 +118,16 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   {
     INTEREST_MANAGER.claim();
 
-    uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this)) + queued;
-    queued = 0;
+    uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this));
+    uint256 queued = 0;
 
     uint256 holderVirtualBalance = virtualBalances[_identity];
     uint256 yieldPerTokenInRayCached = yieldPerTokenInRay;
     uint256 totalVirtualBalanceCached = totalVirtualBalance;
 
     if (totalVirtualBalanceCached > 0) {
-      yieldPerTokenInRayCached += ShareableMath.rdiv(
-        REWARD_TOKEN.balanceOf(address(this)) - yieldBalance, totalVirtualBalanceCached
-      );
+      yieldPerTokenInRayCached +=
+        ShareableMath.rdiv(currentYieldBalance - yieldBalance, totalVirtualBalanceCached);
     } else if (currentYieldBalance != 0) {
       REWARD_TOKEN.transfer(owner(), currentYieldBalance);
     }
@@ -155,5 +152,32 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   function updateMaxEntry(uint256 _newMaxEntry) external onlyOwner {
     maxEntry = _newMaxEntry;
     emit MaxEntryUpdated(_newMaxEntry);
+  }
+
+  function getClaimableRewards(bytes32 _identity, uint256 _extraRewards)
+    external
+    view
+    override
+    returns (uint256 rewards_, address rewardsToken_)
+  {
+    uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this)) + _extraRewards;
+
+    uint256 holderVirtualBalance = virtualBalances[_identity];
+    uint256 yieldPerTokenInRayCached = yieldPerTokenInRay;
+    uint256 totalVirtualBalanceCached = totalVirtualBalance;
+
+    if (totalVirtualBalanceCached > 0) {
+      yieldPerTokenInRayCached +=
+        ShareableMath.rdiv(currentYieldBalance - yieldBalance, totalVirtualBalanceCached);
+    }
+
+    uint256 last = userYieldSnapshot[_identity];
+    uint256 curr = ShareableMath.rmul(holderVirtualBalance, yieldPerTokenInRayCached);
+
+    if (curr > last) {
+      rewards_ = curr - last;
+    }
+
+    return (rewards_, address(REWARD_TOKEN));
   }
 }

@@ -26,13 +26,6 @@ interface IGenesisTokenPool is ILiteTicker {
   function rewardPerToken() external view returns (uint256);
 
   /**
-   * @dev Get the earned reward for the user.
-   * @param _identity The identity of the user.
-   * @return The earned reward.
-   */
-  function earned(bytes32 _identity) external view returns (uint256);
-
-  /**
    * @dev Get the last time reward applicable.
    * @return The last time reward applicable.
    */

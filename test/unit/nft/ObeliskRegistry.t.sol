@@ -560,7 +560,7 @@ contract ObeliskRegistryTest is BaseTest {
     string memory ticker = "Super Ticker";
 
     expectExactEmit();
-    emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool);
+    emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool, ticker);
     underTest.setTickerLogic(ticker, expectedPool);
 
     assertEq(underTest.getTickerLogic(ticker), expectedPool);
@@ -571,7 +571,7 @@ contract ObeliskRegistryTest is BaseTest {
     ticker = "Super Ticker 2";
 
     expectExactEmit();
-    emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool);
+    emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool, ticker);
     underTest.setTickerLogic(ticker, expectedPool);
 
     assertEq(underTest.getTickerLogic(ticker), expectedPool);
@@ -591,7 +591,7 @@ contract ObeliskRegistryTest is BaseTest {
     underTest.overrideTickerLogic(ticker, generateAddress("Random"));
 
     expectExactEmit();
-    emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool);
+    emit IObeliskRegistry.TickerLogicSet(ticker, expectedPool, ticker);
     underTest.overrideTickerLogic(ticker, expectedPool);
 
     assertEq(underTest.getTickerLogic(ticker), expectedPool);
@@ -912,7 +912,7 @@ contract ObeliskRegistryTest is BaseTest {
       abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
     );
     underTest.setMegapoolFactory(generateAddress("MegapoolFactory"));
-  } 
+  }
 
   function test_setMegapoolFactory_thenUpdatesMegapoolFactory() external prankAs(owner) {
     address newMegapoolFactory = generateAddress("MegapoolFactory");

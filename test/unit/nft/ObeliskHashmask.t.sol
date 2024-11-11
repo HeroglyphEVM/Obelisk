@@ -248,7 +248,7 @@ contract ObeliskHashmaskTest is BaseTest {
     );
 
     expectExactEmit();
-    emit IObeliskHashmask.NameUpdated(HASH_MASK_ID, name);
+    emit IObeliskNFT.NameUpdated(HASH_MASK_ID, name);
 
     underTest.updateName(HASH_MASK_ID);
   }
