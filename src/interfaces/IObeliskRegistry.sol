@@ -114,8 +114,9 @@ interface IObeliskRegistry {
    * @notice Set ticker logic
    * @param _ticker Ticker
    * @param _pool Pool address
+   * @param _override Override existing ticker logic. Only owner can override.
    */
-  function setTickerLogic(string memory _ticker, address _pool) external;
+  function setTickerLogic(string memory _ticker, address _pool, bool _override) external;
 
   /**
    * @notice When a slot is bought from the wrapped NFT

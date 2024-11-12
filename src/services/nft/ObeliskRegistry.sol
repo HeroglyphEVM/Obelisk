@@ -2,17 +2,20 @@
 pragma solidity ^0.8.25;
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
-import { WrappedNFTHero } from "./WrappedNFTHero.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { IWrappedNFTFactory } from "src/interfaces/IWrappedNFTFactory.sol";
+import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
 
 import { HCT } from "src/services/HCT.sol";
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+import { WrappedNFTFactory } from "src/services/WrappedNFTFactory.sol";
 
 /**
  * @title ObeliskRegistry
@@ -45,6 +48,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   IERC20 public immutable DAI;
   IDripVault public immutable DRIP_VAULT_ETH;
   IDripVault public immutable DRIP_VAULT_DAI;
+  IWrappedNFTFactory public immutable WRAPPED_NFT_FACTORY;
 
   address public treasury;
   address public dataAsserter;
@@ -70,6 +74,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     DRIP_VAULT_DAI = IDripVault(_dripVaultDAI);
     NFT_PASS = _nftPass;
     DAI = IERC20(_dai);
+    WRAPPED_NFT_FACTORY =
+      IWrappedNFTFactory(new WrappedNFTFactory(address(HCT_ADDRESS), _nftPass));
 
     wrappedCollectionImageIPFS = "ipfs://QmVLK98G9xCXKA3r1mAJ2ytJ7XVCfWBy4DfnHkXF2VWJ53";
   }
@@ -146,16 +152,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     uint32 _unixTimeCreation,
     bool _premium
   ) internal returns (address addr_) {
-    addr_ = address(
-      new WrappedNFTHero(
-        HCT_ADDRESS,
-        NFT_PASS,
-        _collection,
-        address(this),
-        _totalSupply,
-        _unixTimeCreation,
-        _premium
-      )
+    addr_ = WRAPPED_NFT_FACTORY.createWrappedNFT(
+      _collection, address(this), _totalSupply, _unixTimeCreation, _premium
     );
 
     isWrappedNFT[addr_] = true;
@@ -333,15 +331,13 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     }
   }
 
-  function setTickerLogic(string memory _ticker, address _pool) external {
-    if (msg.sender != owner() && msg.sender != megapoolFactory) revert NoAccess();
-    if (tickersLogic[_ticker] != address(0)) revert TickerAlreadyExists();
+  function setTickerLogic(string memory _ticker, address _pool, bool _override) external {
+    bool isOwner = msg.sender == owner();
+    _override = isOwner ? _override : false;
 
-    tickersLogic[_ticker] = _pool;
-    emit TickerLogicSet(_ticker, _pool, _ticker);
-  }
+    if (!isOwner && msg.sender != megapoolFactory) revert NoAccess();
+    if (!_override && tickersLogic[_ticker] != address(0)) revert TickerAlreadyExists();
 
-  function overrideTickerLogic(string memory _ticker, address _pool) external onlyOwner {
     tickersLogic[_ticker] = _pool;
     emit TickerLogicSet(_ticker, _pool, _ticker);
   }
@@ -389,7 +385,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     external
     onlyOwner
   {
-    WrappedNFTHero(_wrappedCollection).enableEmergencyWithdraw();
+    IWrappedNFTHero(_wrappedCollection).enableEmergencyWithdraw();
   }
 
   function setWrappedCollectionImageIPFS(string memory _ipfsImage) external onlyOwner {

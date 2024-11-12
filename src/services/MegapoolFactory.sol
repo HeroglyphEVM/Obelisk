@@ -75,7 +75,7 @@ contract MegapoolFactory is Ownable {
       )
     );
 
-    IObeliskRegistry(OBELISK_REGISTRY).setTickerLogic(name_, pool_);
+    IObeliskRegistry(OBELISK_REGISTRY).setTickerLogic(name_, pool_, false);
     megapools[megapoolCount] = pool_;
     emit MegapoolCreated(pool_, msg.sender, name_, _allowedWrappedCollections);
 
