@@ -14,6 +14,7 @@ interface IWrappedNFTHero {
   error EmergencyWithdrawDisabled();
   error EmergencyModeIsActive();
   error NotObeliskRegistry();
+  error NotNFTPassHolder();
 
   event Wrapped(uint256 indexed tokenId);
   event Unwrapped(uint256 indexed tokenId);

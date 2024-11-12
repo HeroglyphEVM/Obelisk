@@ -17,7 +17,7 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 contract NFTPass is INFTPass, IdentityERC721 {
   uint256 internal constant MAX_BPS = 10_000;
   uint256 internal constant SEND_ETH_GAS_MINIMUM = 40_000;
-  uint256 internal constant MAX_NAME_BYTES = 15;
+  uint256 public constant MAX_NAME_BYTES = 15;
 
   string[] public IMAGES = [
     "ipfs://QmWDi6zXedMwyy4rBgTb2KRJpEL7T4GJm94TFb64dgUP8W",
@@ -67,7 +67,8 @@ contract NFTPass is INFTPass, IdentityERC721 {
     if (claimedPasses[msg.sender]) revert AlreadyClaimed();
     if (_receiverWallet == address(0)) _receiverWallet = msg.sender;
 
-    if (!MerkleProof.verify(merkleProof, merkleRoot, keccak256(abi.encode(msg.sender)))) {
+    bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender))));
+    if (!MerkleProof.verify(merkleProof, merkleRoot, leaf)) {
       revert InvalidProof();
     }
 

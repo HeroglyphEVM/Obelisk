@@ -9,6 +9,7 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { strings } from "src/lib/strings.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 /**
  * @title WrappedNFTHero
@@ -62,6 +63,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
   /// @inheritdoc IWrappedNFTHero
   function wrap(uint256 _inputCollectionNFTId) external payable override {
     if (emergencyWithdrawEnabled) revert EmergencyModeIsActive();
+    if (IERC721(address(NFT_PASS)).balanceOf(msg.sender) == 0) revert NotNFTPassHolder();
 
     bool isIdOdd = _inputCollectionNFTId % 2 == 1;
     bool canHaveFreeSlot = freeSlots != 0 && FREE_SLOT_FOR_ODD == isIdOdd;
