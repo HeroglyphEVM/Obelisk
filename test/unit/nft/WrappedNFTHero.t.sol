@@ -11,6 +11,7 @@ import { MockERC721 } from "test/mock/contract/MockERC721.t.sol";
 import { WrappedNFTHero, IWrappedNFTHero } from "src/services/nft/WrappedNFTHero.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
 import { IObeliskNFT } from "src/interfaces/IObeliskNFT.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract WrappedNFTHeroTest is BaseTest {
   uint128 private constant ACTIVE_SUPPLY = 10_000e18;
@@ -109,6 +110,10 @@ contract WrappedNFTHeroTest is BaseTest {
       abi.encodeWithSelector(INFTPass.getMetadata.selector),
       abi.encode(EMPTY_NFT_METADATA)
     );
+
+    vm.mockCall(
+      mockNFTPass, abi.encodeWithSelector(IERC721.balanceOf.selector), abi.encode(1)
+    );
   }
 
   function test_constructor_thenSetsValues() external {
@@ -172,6 +177,15 @@ contract WrappedNFTHeroTest is BaseTest {
 
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NoFreeSlots.selector));
     underTest.wrap(tokenId);
+  }
+
+  function test_wrap_whenNotNFTPassHolder_thenReverts() external prankAs(user) {
+    vm.mockCall(
+      mockNFTPass, abi.encodeWithSelector(IERC721.balanceOf.selector, user), abi.encode(0)
+    );
+
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotNFTPassHolder.selector));
+    underTest.wrap(1);
   }
 
   function test_wrap_whenEmergencyWithdrawEnabled_thenReverts() external pranking {
