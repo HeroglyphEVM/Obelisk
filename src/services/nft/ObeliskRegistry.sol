@@ -97,6 +97,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
 
     if (contributionBalance > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       surplus = contributionBalance - REQUIRED_ETH_TO_ENABLE_COLLECTION;
+      sendingAmount -= surplus;
+      contributionBalance -= surplus;
     }
 
     if (!collection.allowed) revert CollectionNotAllowed();
@@ -105,8 +107,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     userSupportedCollections[msg.sender][_collection].deposit += uint128(sendingAmount);
 
     //Ignore the potential fee from drip_vault.
-    collection.contributionBalance =
-      Math.min(contributionBalance, REQUIRED_ETH_TO_ENABLE_COLLECTION);
+    collection.contributionBalance = contributionBalance;
 
     emit CollectionContributed(_collection, msg.sender, sendingAmount);
     if (contributionBalance < REQUIRED_ETH_TO_ENABLE_COLLECTION) return;
