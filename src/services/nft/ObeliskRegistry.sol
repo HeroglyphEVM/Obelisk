@@ -42,6 +42,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   mapping(address user => mapping(address collection => ContributionInfo)) internal
     userSupportedCollections;
   mapping(uint32 => Supporter) private supporters;
+  mapping(address => bool) public tickerCreationAccess;
 
   address public immutable HCT_ADDRESS;
   address public immutable NFT_PASS;
@@ -336,11 +337,16 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     bool isOwner = msg.sender == owner();
     _override = isOwner ? _override : false;
 
-    if (!isOwner && msg.sender != megapoolFactory) revert NoAccess();
+    if (!isOwner && !tickerCreationAccess[msg.sender]) revert NoAccess();
     if (!_override && tickersLogic[_ticker] != address(0)) revert TickerAlreadyExists();
 
     tickersLogic[_ticker] = _pool;
     emit TickerLogicSet(_ticker, _pool, _ticker);
+  }
+
+  function setTickerCreationAccess(address _to, bool _status) external onlyOwner {
+    tickerCreationAccess[_to] = _status;
+    emit TickerCreationAccessSet(_to, _status);
   }
 
   function setTreasury(address _treasury) external onlyOwner {
@@ -355,7 +361,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   }
 
   function setMegapoolFactory(address _megapoolFactory) external onlyOwner {
+    tickerCreationAccess[megapoolFactory] = false;
+
     megapoolFactory = _megapoolFactory;
+    tickerCreationAccess[_megapoolFactory] = true;
     emit MegapoolFactorySet(_megapoolFactory);
   }
 

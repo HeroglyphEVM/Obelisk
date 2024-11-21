@@ -26,7 +26,7 @@ interface IObeliskRegistry {
   event WrappedNFTEnabled(address indexed collection, address indexed wrappedNFT);
   event WrappedNFTDisabled(address indexed collection, address indexed wrappedNFT);
   event MegapoolFactorySet(address indexed megapoolFactory);
-
+  event TickerCreationAccessSet(address indexed to, bool status);
   event TickerLogicSet(string indexed ticker, address indexed pool, string readableName);
   event NewGenesisTickerCreated(string indexed ticker, address pool);
   event Supported(uint32 indexed supportId, address indexed supporter, uint256 amount);
