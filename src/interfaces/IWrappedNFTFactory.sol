@@ -4,6 +4,10 @@ pragma solidity ^0.8.25;
 interface IWrappedNFTFactory {
   error NotRegistry();
 
+  event WrappedNFTCreated(
+    uint256 indexed id, address indexed addr, address indexed collection
+  );
+
   function createWrappedNFT(
     address _collection,
     address _obeliskRegistry,

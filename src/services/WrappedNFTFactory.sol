@@ -10,7 +10,7 @@ contract WrappedNFTFactory is IWrappedNFTFactory {
 
   mapping(address => bool) public generators;
 
-  uint256 private counter;
+  uint256 public lastId;
 
   constructor(address _hctAddress, address _nftPass) {
     REGISTRY = msg.sender;
@@ -27,6 +27,8 @@ contract WrappedNFTFactory is IWrappedNFTFactory {
   ) external override returns (address addr_) {
     if (msg.sender != REGISTRY) revert NotRegistry();
 
+    uint256 id = ++lastId;
+
     addr_ = address(
       new WrappedNFTHero(
         HCT_ADDRESS,
@@ -36,9 +38,11 @@ contract WrappedNFTFactory is IWrappedNFTFactory {
         _totalSupply,
         _unixTimeCreation,
         _premium,
-        ++counter
+        id
       )
     );
+
+    emit WrappedNFTCreated(id, addr_, _collection);
 
     return addr_;
   }
