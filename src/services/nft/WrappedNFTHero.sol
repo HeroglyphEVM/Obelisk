@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-
-import { IHCT } from "src/interfaces/IHCT.sol";
 import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
 import { ObeliskNFT } from "./ObeliskNFT.sol";
-
+import { IHCT } from "src/interfaces/IHCT.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
+import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { strings } from "src/lib/strings.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 /**
  * @title WrappedNFTHero
@@ -30,18 +30,19 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
   uint256 public constant RATE_PER_YEAR = 0.43e18;
   uint256 public constant MAX_RATE = 3e18;
 
-  string public ipfsImage;
-
   IHCT public immutable HCT;
   ERC721 public immutable INPUT_COLLECTION;
 
   uint32 public immutable COLLECTION_STARTED_UNIX_TIME;
   bool public immutable FREE_SLOT_FOR_ODD;
   bool public immutable PREMIUM;
+  bool public emergencyWithdrawEnabled;
 
   uint256 public freeSlots;
 
   mapping(uint256 => NFTData) internal nftData;
+
+  uint256 public immutable ID;
 
   constructor(
     address _HCT,
@@ -50,7 +51,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     address _obeliskRegistry,
     uint256 _currentSupply,
     uint32 _collectionStartedUnixTime,
-    bool _premium
+    bool _premium,
+    uint256 _id
   ) ERC721("WrappedNFTHero", "WNH") ObeliskNFT(_obeliskRegistry, _nftPass) {
     HCT = IHCT(_HCT);
     INPUT_COLLECTION = ERC721(_inputCollection);
@@ -59,10 +61,14 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     FREE_SLOT_FOR_ODD = uint256(keccak256(abi.encode(_inputCollection))) % 2 == 1;
     COLLECTION_STARTED_UNIX_TIME = _collectionStartedUnixTime;
     PREMIUM = _premium;
+    ID = _id;
   }
 
   /// @inheritdoc IWrappedNFTHero
   function wrap(uint256 _inputCollectionNFTId) external payable override {
+    if (emergencyWithdrawEnabled) revert EmergencyModeIsActive();
+    if (IERC721(address(NFT_PASS)).balanceOf(msg.sender) == 0) revert NotNFTPassHolder();
+
     bool isIdOdd = _inputCollectionNFTId % 2 == 1;
     bool canHaveFreeSlot = freeSlots != 0 && FREE_SLOT_FOR_ODD == isIdOdd;
 
@@ -100,7 +106,10 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     if (nameBytesLength == 0 || nameBytesLength > MAX_NAME_BYTES_LENGTH) {
       revert InvalidNameLength();
     }
+
     _renameRequirements(_tokenId);
+    _updateMultiplier(_tokenId);
+
     bytes32 identity;
     address receiver;
 
@@ -112,7 +121,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     (identity, receiver) = _updateIdentity(_tokenId, _newName);
     _addNewTickers(identity, receiver, _tokenId, _newName);
 
-    emit NameChanged(_tokenId, _newName);
+    emit NameUpdated(_tokenId, _newName);
     names[_tokenId] = _newName;
   }
 
@@ -156,8 +165,10 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     if (!nftdata.isMinted) revert NotMinted();
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
-    (bytes32 identity, address receiver) = _getIdentityInformation(_tokenId);
-    _removeOldTickers(identity, receiver, _tokenId, false);
+    if (!emergencyWithdrawEnabled) {
+      (bytes32 identity, address receiver) = _getIdentityInformation(_tokenId);
+      _removeOldTickers(identity, receiver, _tokenId, false);
+    }
 
     _burn(_tokenId);
     delete names[_tokenId];
@@ -191,12 +202,14 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
       multiplier = 0;
     } else if (from == address(0)) {
       multiplier = getWrapperMultiplier();
-      HCT.addPower(to, multiplier);
+      HCT.addPower(to, multiplier, true);
     } else {
       revert CannotTransferUnwrapFirst();
     }
 
     nftdata.assignedMultiplier = multiplier;
+    emit MultiplierUpdated(tokenId, multiplier);
+
     return super._update(to, tokenId, auth);
   }
 
@@ -214,17 +227,31 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
   /// @inheritdoc IWrappedNFTHero
   function updateMultiplier(uint256 _tokenId) external override {
+    if (!_updateMultiplier(_tokenId)) revert SameMultiplier();
+  }
+
+  function _updateMultiplier(uint256 _tokenId) internal returns (bool) {
     NFTData storage nftdata = nftData[_tokenId];
     if (_ownerOf(_tokenId) != msg.sender) revert NotNFTHolder();
 
     uint128 newMultiplier = getWrapperMultiplier();
     uint128 multiplier = nftdata.assignedMultiplier;
 
-    if (newMultiplier == multiplier) revert SameMultiplier();
+    if (newMultiplier == multiplier) return false;
 
-    HCT.removePower(msg.sender, multiplier);
-    HCT.addPower(msg.sender, newMultiplier);
+    HCT.addPower(msg.sender, newMultiplier - multiplier, false);
     nftData[_tokenId].assignedMultiplier = newMultiplier;
+    emit MultiplierUpdated(_tokenId, newMultiplier);
+
+    return true;
+  }
+
+  /// @inheritdoc IWrappedNFTHero
+  function enableEmergencyWithdraw() external override {
+    if (msg.sender != address(obeliskRegistry)) revert NotObeliskRegistry();
+    emergencyWithdrawEnabled = true;
+
+    emit EmergencyWithdrawEnabled();
   }
 
   /// @inheritdoc IWrappedNFTHero
@@ -250,7 +277,6 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     return this.onERC721Received.selector;
   }
 
-  //TODO: Customize metadata -- This is a place holder
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     _requireOwned(tokenId);
 
@@ -263,7 +289,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
         '{"name":"',
         name,
         '","description":"Wrapped Version of an external collection","image":"',
-        "ipfs://QmdTq1vZ6cZ6mcJBfkG49FocwqTPFQ8duq6j2tL2rpzEWF",
+        IObeliskRegistry(obeliskRegistry).getCollectionImageIPFS(ID),
         '"}'
       )
     );

@@ -7,12 +7,14 @@ import {
   SafeERC20, IERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-abstract contract BaseDripVault is IDripVault, Ownable {
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+abstract contract BaseDripVault is IDripVault, Ownable, ReentrancyGuard {
   address public immutable INPUT_TOKEN;
 
   address public interestRateReceiver;
   address public obeliskRegistry;
-  uint256 private totalDeposit;
+  uint256 internal totalDeposit;
 
   modifier onlyObeliskRegistry() {
     if (msg.sender != obeliskRegistry) revert NotObeliskRegistry();
@@ -30,7 +32,14 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     INPUT_TOKEN = _inputToken;
   }
 
-  function deposit(uint256 _amount) external payable override onlyObeliskRegistry {
+  function deposit(uint256 _amount)
+    external
+    payable
+    override
+    nonReentrant
+    onlyObeliskRegistry
+    returns (uint256 depositAmount_)
+  {
     address cachedInputToken = INPUT_TOKEN;
     uint256 cachedTotalBalance = totalDeposit;
 
@@ -40,17 +49,31 @@ abstract contract BaseDripVault is IDripVault, Ownable {
     if (cachedInputToken != address(0) && msg.value != 0) revert NativeNotAccepted();
 
     totalDeposit = cachedTotalBalance + _amount;
-    _afterDeposit(_amount);
+    return _afterDeposit(_amount);
   }
 
-  function _afterDeposit(uint256 _amount) internal virtual;
+  function _afterDeposit(uint256 _amount)
+    internal
+    virtual
+    returns (uint256 depositAmount_);
 
-  function withdraw(address _to, uint256 _amount) external override onlyObeliskRegistry {
-    _beforeWithdrawal(_to, _amount);
+  function withdraw(address _to, uint256 _amount)
+    external
+    override
+    nonReentrant
+    onlyObeliskRegistry
+    returns (uint256 withdrawAmount_)
+  {
+    withdrawAmount_ = _beforeWithdrawal(_to, _amount);
     totalDeposit -= _amount;
+
+    return withdrawAmount_;
   }
 
-  function _beforeWithdrawal(address _to, uint256 _amount) internal virtual;
+  function _beforeWithdrawal(address _to, uint256 _amount)
+    internal
+    virtual
+    returns (uint256 withdrawalAmount_);
 
   function _transfer(address _asset, address _to, uint256 _amount) internal {
     if (_amount == 0) return;
@@ -64,11 +87,14 @@ abstract contract BaseDripVault is IDripVault, Ownable {
   }
 
   function setObeliskRegistry(address _obeliskRegistry) external onlyOwner {
+    if (_obeliskRegistry == address(0)) revert ZeroAddress();
+
     obeliskRegistry = _obeliskRegistry;
     emit ObeliskRegistryUpdated(_obeliskRegistry);
   }
 
   function setInterestRateReceiver(address _interestRateReceiver) external onlyOwner {
+    if (_interestRateReceiver == address(0)) revert ZeroAddress();
     interestRateReceiver = _interestRateReceiver;
     emit InterestRateReceiverUpdated(_interestRateReceiver);
   }
@@ -80,4 +106,6 @@ abstract contract BaseDripVault is IDripVault, Ownable {
   function getInputToken() external view returns (address) {
     return INPUT_TOKEN;
   }
+
+  function previewDeposit(uint256 _amount) external view virtual returns (uint256);
 }

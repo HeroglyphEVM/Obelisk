@@ -37,11 +37,6 @@ contract StreamingPoolTest is BaseTest {
     underTest = new StreamingPoolHarness(owner, interestManager, address(inputToken));
   }
 
-  function test_claim_asNotInterestManager_thenReverts() external {
-    vm.expectRevert(IStreamingPool.NotInterestManager.selector);
-    underTest.claim();
-  }
-
   function test_claim_whenNoPendingRewards_thenReturnZero()
     external
     prankAs(interestManager)
@@ -59,7 +54,7 @@ contract StreamingPoolTest is BaseTest {
     uint256 amount = 10e18;
     underTest.notifyRewardAmount(amount);
 
-    changePrank(interestManager);
+    changePrank(generateAddress("random"));
     skip(EPOCH_TIME + 1);
 
     assertEq(underTest.claim(), amount);

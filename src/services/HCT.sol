@@ -7,6 +7,7 @@ import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { ShareableMath } from "src/lib/ShareableMath.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title HCT
@@ -15,22 +16,32 @@ import { ShareableMath } from "src/lib/ShareableMath.sol";
  * Megapools share.
  * @custom:export abi
  */
-contract HCT is ERC20, IHCT {
+contract HCT is ERC20, IHCT, Ownable {
   uint128 public constant NAME_COST = 90e18;
-  uint256 public constant PRE_MINT_AMOUNT = 10_000e18;
+  uint256 public constant PRE_MINT_AMOUNT = 250_000e18;
 
   IObeliskRegistry public immutable obeliskRegistry;
   mapping(address => UserInfo) internal usersInfo;
 
-  uint256 public productionRate;
+  uint256 public inflationRate;
+  uint256 public baseRate;
+  uint256 public inflationThreshold;
+
   uint256 internal totalMultiplier;
   uint256 internal totalRewards;
   uint256 public yieldPerTokenInRay;
   uint32 internal lastUnixTimeRewards;
+  uint32 internal totalWrappedNFT;
 
-  constructor(address _treasury) ERC20("Heroglyph Name Change Token", "HCT") {
+  constructor(address _owner, address _treasury)
+    ERC20("Heroglyph Name Change Token", "HCT")
+    Ownable(_owner)
+  {
     obeliskRegistry = IObeliskRegistry(msg.sender);
-    productionRate = 1e18;
+    baseRate = 1e18;
+    inflationRate = 0.02 ether;
+
+    inflationThreshold = 1_000_000e18;
     _mint(_treasury, PRE_MINT_AMOUNT);
   }
 
@@ -39,7 +50,7 @@ contract HCT is ERC20, IHCT {
     _;
   }
 
-  function addPower(address _user, uint128 _addMultiplier)
+  function addPower(address _user, uint128 _addMultiplier, bool _newNFT)
     external
     override
     onlyHeroglyphWrappedNFT
@@ -60,6 +71,12 @@ contract HCT is ERC20, IHCT {
     userInfo.userRates += ShareableMath.rmulup(userMultiplier, yieldPerTokenInRay);
 
     emit PowerAdded(msg.sender, _user, _addMultiplier);
+
+    if (_newNFT) {
+      uint32 totalWrappedNFTCached = totalWrappedNFT + 1;
+      totalWrappedNFT = totalWrappedNFTCached;
+      emit TotalNFTWrapped(totalWrappedNFTCached);
+    }
   }
 
   function removePower(address _user, uint128 _removeMultiplier)
@@ -78,6 +95,10 @@ contract HCT is ERC20, IHCT {
     userInfo.userRates -= ShareableMath.rmulup(userMultiplier, yieldPerTokenInRay);
 
     emit PowerRemoved(msg.sender, _user, _removeMultiplier);
+
+    uint32 totalWrappedNFTCached = totalWrappedNFT - 1;
+    totalWrappedNFT = totalWrappedNFTCached;
+    emit TotalNFTWrapped(totalWrappedNFTCached);
   }
 
   function usesForRenaming(address _user) external override onlyHeroglyphWrappedNFT {
@@ -85,6 +106,11 @@ contract HCT is ERC20, IHCT {
     _burn(_user, NAME_COST);
 
     emit BurnedForRenaming(msg.sender, _user, NAME_COST);
+  }
+
+  function burn(address _user, uint256 _amount) external {
+    _spendAllowance(_user, msg.sender, _amount);
+    _burn(_user, _amount);
   }
 
   function claim() external {
@@ -131,8 +157,23 @@ contract HCT is ERC20, IHCT {
     return amount_;
   }
 
+  function setInflationRate(uint256 _inflationRate) external onlyOwner {
+    inflationRate = _inflationRate;
+    emit InflationRateSet(_inflationRate);
+  }
+
+  function setBaseRate(uint256 _baseRate) external onlyOwner {
+    baseRate = _baseRate;
+    emit BaseRateSet(_baseRate);
+  }
+
+  function setInflationThreshold(uint256 _inflationThreshold) external onlyOwner {
+    inflationThreshold = _inflationThreshold;
+    emit InflationThresholdSet(_inflationThreshold);
+  }
+
   function balanceOf(address _user) public view override returns (uint256) {
-    return super.balanceOf(_user) + _getUserPendingRewards(_user);
+    return super.balanceOf(_user);
   }
 
   function getUserPendingRewards(address _user) external view override returns (uint256) {
@@ -175,7 +216,10 @@ contract HCT is ERC20, IHCT {
     uint32 timePassed = _currentTime - lastUnixTimeRewards;
     if (timePassed == 0) return 0;
 
-    uint256 rateReward = Math.sqrt(totalMultiplier * productionRate) / 1 days;
+    bool isInflation = totalSupply() >= inflationThreshold;
+
+    uint256 rateReward =
+      (totalWrappedNFT * (isInflation ? inflationRate : baseRate)) / 1 days;
 
     return uint256(timePassed * rateReward);
   }

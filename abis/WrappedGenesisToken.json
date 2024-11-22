@@ -8,7 +8,17 @@
         "internalType": "address"
       },
       {
-        "name": "_treasury",
+        "name": "_originLzEndpoint",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "_lzEndpoint",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_genesisToken",
         "type": "address",
         "internalType": "address"
       }
@@ -17,52 +27,65 @@
   },
   {
     "type": "function",
-    "name": "NAME_COST",
+    "name": "MAINNET_LZ_ENDPOINT_ID",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "uint128",
-        "internalType": "uint128"
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "PRE_MINT_AMOUNT",
-    "inputs": [],
-    "outputs": [
+    "name": "addRewardOnMainnet",
+    "inputs": [
       {
-        "name": "",
+        "name": "_amount",
         "type": "uint256",
         "internalType": "uint256"
       }
     ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "payable"
   },
   {
     "type": "function",
-    "name": "addPower",
+    "name": "allowInitializePath",
     "inputs": [
       {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      },
+        "name": "origin",
+        "type": "tuple",
+        "internalType": "struct Origin",
+        "components": [
+          {
+            "name": "srcEid",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "sender",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "nonce",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "outputs": [
       {
-        "name": "_addMultiplier",
-        "type": "uint128",
-        "internalType": "uint128"
-      },
-      {
-        "name": "_newNFT",
+        "name": "",
         "type": "bool",
         "internalType": "bool"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -114,10 +137,23 @@
   },
   {
     "type": "function",
+    "name": "attachPool",
+    "inputs": [
+      {
+        "name": "_pool",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "balanceOf",
     "inputs": [
       {
-        "name": "_user",
+        "name": "account",
         "type": "address",
         "internalType": "address"
       }
@@ -130,44 +166,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "baseRate",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "burn",
-    "inputs": [
-      {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "claim",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -184,67 +182,105 @@
   },
   {
     "type": "function",
-    "name": "getSystemPendingRewards",
+    "name": "defaultLzOption",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "getTotalRewardsGenerated",
+    "name": "endpoint",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "address",
+        "internalType": "contract ILayerZeroEndpointV2"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "getUserInfo",
+    "name": "estimateFee",
     "inputs": [
       {
-        "name": "_user",
+        "name": "_dstEid",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "_to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "genesisToken",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
         "type": "address",
         "internalType": "address"
       }
     ],
-    "outputs": [
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isComposeMsgSender",
+    "inputs": [
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct IHCT.UserInfo",
+        "internalType": "struct Origin",
         "components": [
           {
-            "name": "multiplier",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "srcEid",
+            "type": "uint32",
+            "internalType": "uint32"
           },
           {
-            "name": "userRates",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "sender",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "nonce",
+            "type": "uint64",
+            "internalType": "uint64"
           }
         ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getUserPendingRewards",
-    "inputs": [
+      },
       {
-        "name": "_user",
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "_sender",
         "type": "address",
         "internalType": "address"
       }
@@ -252,37 +288,74 @@
     "outputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "inflationRate",
+    "name": "lzGasLimit",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "inflationThreshold",
-    "inputs": [],
-    "outputs": [
+    "name": "lzReceive",
+    "inputs": [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_origin",
+        "type": "tuple",
+        "internalType": "struct Origin",
+        "components": [
+          {
+            "name": "srcEid",
+            "type": "uint32",
+            "internalType": "uint32"
+          },
+          {
+            "name": "sender",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "nonce",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      },
+      {
+        "name": "_guid",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "_message",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "_executor",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_extraData",
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -299,13 +372,55 @@
   },
   {
     "type": "function",
-    "name": "obeliskRegistry",
+    "name": "nextNonce",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "nonce",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "oAppVersion",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "senderVersion",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "receiverVersion",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "originLzEndpoint",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "contract IObeliskRegistry"
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "stateMutability": "view"
@@ -325,21 +440,35 @@
   },
   {
     "type": "function",
-    "name": "removePower",
+    "name": "peers",
     "inputs": [
       {
-        "name": "_user",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "_removeMultiplier",
-        "type": "uint128",
-        "internalType": "uint128"
+        "name": "eid",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    "outputs": [
+      {
+        "name": "peer",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "pool",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IGenesisTokenPool"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -350,12 +479,12 @@
   },
   {
     "type": "function",
-    "name": "setBaseRate",
+    "name": "retrieveToken",
     "inputs": [
       {
-        "name": "_baseRate",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_token",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -363,12 +492,12 @@
   },
   {
     "type": "function",
-    "name": "setInflationRate",
+    "name": "setDelegate",
     "inputs": [
       {
-        "name": "_inflationRate",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_delegate",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -376,12 +505,17 @@
   },
   {
     "type": "function",
-    "name": "setInflationThreshold",
+    "name": "setPeer",
     "inputs": [
       {
-        "name": "_inflationThreshold",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_eid",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "_peer",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [],
@@ -481,12 +615,65 @@
   },
   {
     "type": "function",
-    "name": "usesForRenaming",
+    "name": "unwrap",
     "inputs": [
       {
-        "name": "_user",
+        "name": "_to",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "_amountIn",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "msgReceipt",
+        "type": "tuple",
+        "internalType": "struct MessagingReceipt",
+        "components": [
+          {
+            "name": "guid",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "nonce",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "fee",
+            "type": "tuple",
+            "internalType": "struct MessagingFee",
+            "components": [
+              {
+                "name": "nativeFee",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "lzTokenFee",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "updateLayerZeroGasLimit",
+    "inputs": [
+      {
+        "name": "_lzGasLimit",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
     "outputs": [],
@@ -494,16 +681,16 @@
   },
   {
     "type": "function",
-    "name": "yieldPerTokenInRay",
-    "inputs": [],
-    "outputs": [
+    "name": "updateOriginLzEndpoint",
+    "inputs": [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "_originLzEndpoint",
+        "type": "uint32",
+        "internalType": "uint32"
       }
     ],
-    "stateMutability": "view"
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "event",
@@ -532,35 +719,72 @@
   },
   {
     "type": "event",
-    "name": "BaseRateSet",
+    "name": "NewPoolAttached",
     "inputs": [
       {
-        "name": "baseRate",
-        "type": "uint256",
+        "name": "pool",
+        "type": "address",
         "indexed": false,
-        "internalType": "uint256"
+        "internalType": "address"
       }
     ],
     "anonymous": false
   },
   {
     "type": "event",
-    "name": "BurnedForRenaming",
+    "name": "OFTReceived",
     "inputs": [
       {
-        "name": "wrappedNFT",
+        "name": "guid",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "srcEid",
+        "type": "uint32",
+        "indexed": true,
+        "internalType": "uint32"
+      },
+      {
+        "name": "to",
         "type": "address",
         "indexed": true,
         "internalType": "address"
       },
       {
-        "name": "user",
+        "name": "amountOrId",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OFTSent",
+    "inputs": [
+      {
+        "name": "guid",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "dstEid",
+        "type": "uint32",
+        "indexed": true,
+        "internalType": "uint32"
+      },
+      {
+        "name": "to",
         "type": "address",
         "indexed": true,
         "internalType": "address"
       },
       {
-        "name": "amount",
+        "name": "amountOrId",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -570,45 +794,13 @@
   },
   {
     "type": "event",
-    "name": "Claimed",
+    "name": "OriginLzEndpointUpdated",
     "inputs": [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
+        "name": "originLzEndpoint",
+        "type": "uint32",
         "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "InflationRateSet",
-    "inputs": [
-      {
-        "name": "inflationRate",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "InflationThresholdSet",
-    "inputs": [
-      {
-        "name": "inflationThreshold",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        "internalType": "uint32"
       }
     ],
     "anonymous": false
@@ -634,63 +826,19 @@
   },
   {
     "type": "event",
-    "name": "PowerAdded",
+    "name": "PeerSet",
     "inputs": [
       {
-        "name": "wrappedNFT",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "multiplier",
-        "type": "uint128",
+        "name": "eid",
+        "type": "uint32",
         "indexed": false,
-        "internalType": "uint128"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "PowerRemoved",
-    "inputs": [
-      {
-        "name": "wrappedNFT",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        "internalType": "uint32"
       },
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "multiplier",
-        "type": "uint128",
+        "name": "peer",
+        "type": "bytes32",
         "indexed": false,
-        "internalType": "uint128"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "TotalNFTWrapped",
-    "inputs": [
-      {
-        "name": "totalWrappedNFT",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        "internalType": "bytes32"
       }
     ],
     "anonymous": false
@@ -721,35 +869,36 @@
     "anonymous": false
   },
   {
-    "type": "event",
-    "name": "Transferred",
+    "type": "error",
+    "name": "AddressEmptyCode",
     "inputs": [
       {
-        "name": "wrappedNFT",
+        "name": "target",
         "type": "address",
-        "indexed": true,
         "internalType": "address"
-      },
-      {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "to",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "multiplier",
-        "type": "uint128",
-        "indexed": false,
-        "internalType": "uint128"
       }
-    ],
-    "anonymous": false
+    ]
+  },
+  {
+    "type": "error",
+    "name": "AddressInsufficientBalance",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "CannotUnwrapOnMainnet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CannotWrapOnMainnet",
+    "inputs": []
   },
   {
     "type": "error",
@@ -839,13 +988,88 @@
   },
   {
     "type": "error",
-    "name": "NotWrappedNFT",
+    "name": "FailedInnerCall",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "NothingToClaim",
+    "name": "GasLimitCannotBeZero",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidDelegate",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidEndpointCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidOptionType",
+    "inputs": [
+      {
+        "name": "optionType",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "LzTokenUnavailable",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NoPeer",
+    "inputs": [
+      {
+        "name": "eid",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "NotEnoughNative",
+    "inputs": [
+      {
+        "name": "msgValue",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OnlyEndpoint",
+    "inputs": [
+      {
+        "name": "addr",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OnlyPeer",
+    "inputs": [
+      {
+        "name": "eid",
+        "type": "uint32",
+        "internalType": "uint32"
+      },
+      {
+        "name": "sender",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ]
   },
   {
     "type": "error",
@@ -868,5 +1092,37 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedUintDowncast",
+    "inputs": [
+      {
+        "name": "bits",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
   }
 ]

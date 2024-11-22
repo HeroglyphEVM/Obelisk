@@ -614,6 +614,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidEpochDuration",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidInputLength",
     "inputs": []
   },
@@ -648,5 +653,10 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
   }
 ]

@@ -15,3 +15,4 @@ solidity-bytes-utils/=node_modules/solidity-bytes-utils/
 @sablier/v2-core/=node_modules/@sablier/v2-core/
 @uniswap/v3-periphery/=node_modules/@layerzerolabs/toolbox-foundry/lib/v3-periphery/
 @uniswap/v3-core/=node_modules/@layerzerolabs/toolbox-foundry/lib/v3-core/
+atoumic/=node_modules/@layerzerolabs/toolbox-foundry/lib/atoumic/src/

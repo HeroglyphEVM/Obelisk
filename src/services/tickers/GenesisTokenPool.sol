@@ -168,8 +168,7 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     returns (uint256 reward_)
   {
     uint64 lastTimeRewardApplicable_ = lastTimeRewardApplicable();
-    uint256 rewardPerToken_ =
-      _rewardPerToken(totalSupply, lastTimeRewardApplicable_, rewardRatePerSecond);
+    uint256 rewardPerToken_ = _rewardPerToken(totalSupply, lastTimeRewardApplicable_);
 
     latestRewardPerTokenStored = rewardPerToken_;
     lastUpdateUnixTime = lastTimeRewardApplicable_;
@@ -184,15 +183,23 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
   }
 
   function rewardPerToken() external view override returns (uint256) {
-    return _rewardPerToken(totalSupply, lastTimeRewardApplicable(), rewardRatePerSecond);
+    return _rewardPerToken(totalSupply, lastTimeRewardApplicable());
   }
 
-  function earned(bytes32 _identity) external view override returns (uint256) {
-    return _earned(
-      _identity,
-      balanceOf[_identity],
-      _rewardPerToken(totalSupply, lastTimeRewardApplicable(), rewardRatePerSecond),
-      rewards[_identity]
+  function getClaimableRewards(bytes32 _identity, uint256)
+    external
+    view
+    override
+    returns (uint256 rewards_, address rewardsToken_)
+  {
+    return (
+      _earned(
+        _identity,
+        balanceOf[_identity],
+        _rewardPerToken(totalSupply, lastTimeRewardApplicable()),
+        rewards[_identity]
+      ),
+      address(REWARD_TOKEN)
     );
   }
 
@@ -209,20 +216,20 @@ contract GenesisTokenPool is IGenesisTokenPool, LiteTicker, Ownable {
     ) + accountRewards;
   }
 
-  function _rewardPerToken(
-    uint256 totalSupply_,
-    uint256 lastTimeRewardApplicable_,
-    uint256 rewardRate_
-  ) internal view returns (uint256) {
-    if (totalSupply_ == 0) {
+  function _rewardPerToken(uint256 _totalSupply, uint256 _lastTimeRewardApplicable)
+    internal
+    view
+    returns (uint256)
+  {
+    if (_totalSupply == 0) {
       return latestRewardPerTokenStored;
     }
 
     return latestRewardPerTokenStored
       + Math.mulDiv(
-        (lastTimeRewardApplicable_ - lastUpdateUnixTime) * rewardRate_,
+        (_lastTimeRewardApplicable - lastUpdateUnixTime) * rewardRatePerSecond,
         PRECISION,
-        totalSupply_
+        _totalSupply
       );
   }
 

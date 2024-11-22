@@ -60,7 +60,7 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
     address _receiver,
     uint256 _tokenId,
     string memory _name
-  ) internal virtual {
+  ) internal virtual nonReentrant {
     strings.slice memory nameSlice = _name.toSlice();
     strings.slice memory needle = TICKER_START_INDICE.toSlice();
     strings.slice memory substring =
@@ -88,18 +88,28 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
   }
 
   /// @inheritdoc IObeliskNFT
-  function claim(uint256 _tokenId) external {
+  function claim(uint256 _tokenId) external nonReentrant {
     address[] memory activePools = linkedTickers[_tokenId];
-    bool canClaim = _claimRequirements(_tokenId);
+    assert(_claimRequirements(_tokenId));
+
     (bytes32 identity, address identityReceiver) = _getIdentityInformation(_tokenId);
 
     for (uint256 i = 0; i < activePools.length; i++) {
-      ILiteTicker(activePools[i]).claim(identity, _tokenId, identityReceiver, !canClaim);
+      ILiteTicker(activePools[i]).claim(identity, _tokenId, identityReceiver, false);
       emit TickerClaimed(_tokenId, activePools[i]);
     }
   }
 
   function _claimRequirements(uint256 _tokenId) internal view virtual returns (bool);
+
+  function getIdentityInformation(uint256 _tokenId)
+    external
+    view
+    override
+    returns (bytes32 identityInTicker_, address rewardReceiver_)
+  {
+    return _getIdentityInformation(_tokenId);
+  }
 
   function _getIdentityInformation(uint256 _tokenId)
     internal
@@ -109,5 +119,30 @@ abstract contract ObeliskNFT is IObeliskNFT, ReentrancyGuard {
 
   function getLinkedTickers(uint256 _tokenId) external view returns (address[] memory) {
     return linkedTickers[_tokenId];
+  }
+
+  function getPendingRewards(uint256 _tokenId)
+    external
+    view
+    returns (uint256[] memory pendingRewards_, address[] memory pendingRewardsTokens_)
+  {
+    address[] memory activePools = linkedTickers[_tokenId];
+    (bytes32 identity,) = _getIdentityInformation(_tokenId);
+
+    pendingRewards_ = new uint256[](activePools.length);
+    pendingRewardsTokens_ = new address[](activePools.length);
+
+    uint256 pendingRewards;
+    address pendingRewardsToken;
+
+    for (uint256 i = 0; i < activePools.length; ++i) {
+      (pendingRewards, pendingRewardsToken) =
+        ILiteTicker(activePools[i]).getClaimableRewards(identity, 0);
+
+      pendingRewards_[i] = pendingRewards;
+      pendingRewardsTokens_[i] = pendingRewardsToken;
+    }
+
+    return (pendingRewards_, pendingRewardsTokens_);
   }
 }

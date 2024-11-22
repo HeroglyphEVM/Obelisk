@@ -17,11 +17,17 @@ interface IObeliskRegistry {
   error NotAuthorized();
   error OnlyOneValue();
   error AmountTooLow();
+  error ContributionBalanceTooLow();
   error ZeroAddress();
   error CollectionAlreadyAllowed();
+  error NoAccess();
 
   event WrappedNFTCreated(address indexed collection, address indexed wrappedNFT);
-  event TickerLogicSet(string indexed ticker, address pool);
+  event WrappedNFTEnabled(address indexed collection, address indexed wrappedNFT);
+  event WrappedNFTDisabled(address indexed collection, address indexed wrappedNFT);
+  event MegapoolFactorySet(address indexed megapoolFactory);
+  event TickerCreationAccessSet(address indexed to, bool status);
+  event TickerLogicSet(string indexed ticker, address indexed pool, string readableName);
   event NewGenesisTickerCreated(string indexed ticker, address pool);
   event Supported(uint32 indexed supportId, address indexed supporter, uint256 amount);
   event SupportRetrieved(
@@ -43,7 +49,7 @@ interface IObeliskRegistry {
   );
   event TreasurySet(address indexed treasury);
   event MaxRewardPerCollectionSet(uint256 maxRewardPerCollection);
-  event DataAsserterSet(address indexed dataAsserter);
+  event CollectionImageIPFSUpdated(uint256 indexed id, string ipfsImage);
 
   struct Collection {
     uint256 totalSupply;
@@ -103,6 +109,14 @@ interface IObeliskRegistry {
   function retrieveSupportToYieldPool(uint32 _id) external;
 
   /**
+   * @notice Set ticker logic
+   * @param _ticker Ticker
+   * @param _pool Pool address
+   * @param _override Override existing ticker logic. Only owner can override.
+   */
+  function setTickerLogic(string memory _ticker, address _pool, bool _override) external;
+
+  /**
    * @notice When a slot is bought from the wrapped NFT
    */
   function onSlotBought() external payable;
@@ -143,4 +157,6 @@ interface IObeliskRegistry {
    * @param _collection Collection address
    */
   function getCollection(address _collection) external view returns (Collection memory);
+
+  function getCollectionImageIPFS(uint256 _id) external view returns (string memory);
 }

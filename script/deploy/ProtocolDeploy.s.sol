@@ -3,15 +3,21 @@ pragma solidity ^0.8.0;
 
 import "../BaseScript.sol";
 import { ApxETHVault } from "src/services/liquidity/ApxETHVault.sol";
-import { ChaiMoneyVault } from "src/services/liquidity/ChaiMoney.sol";
+import { ChaiMoneyVault } from "src/services/liquidity/ChaiMoneyVault.sol";
 import { ObeliskRegistry } from "src/services/nft/ObeliskRegistry.sol";
 import { HCT } from "src/services/HCT.sol";
 import { NFTPass } from "src/services/nft/NFTPass.sol";
 import { ObeliskHashmask } from "src/services/nft/ObeliskHashmask.sol";
 import { StreamingPool } from "src/services/StreamingPool.sol";
 import { InterestManager } from "src/services/InterestManager.sol";
-import { Megapool } from "src/services/tickers/Megapool.sol";
+import { MegapoolFactory } from "src/services/MegapoolFactory.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { NameFilter } from "src/vendor/heroglyph/NameFilter.sol";
+import { TestnetERC20 } from "src/mocks/TestnetERC20.sol";
+import { MockDripVault } from "src/mocks/MockDripVault.sol";
+import { MockHashmask } from "src/mocks/MockHashmask.sol";
+import { TestnetERC721 } from "src/mocks/TestnetERC721.sol";
+import { Permission } from "atoumic/access/Permission.sol";
 
 contract ProtocolDeploy is BaseScript {
   struct Config {
@@ -20,12 +26,13 @@ contract ProtocolDeploy is BaseScript {
     address apxETH;
     address chaiMoney;
     address dai;
-    address nameFilter;
+    address gaugeController;
     address hashmask;
     address swapRouter;
     address weth;
     address chainlinkDaiETH;
     uint256 nftPassCost;
+    bytes32 merkleRoot;
   }
 
   string private constant CONFIG_NAME = "ProtocolConfig";
@@ -39,6 +46,7 @@ contract ProtocolDeploy is BaseScript {
   address private obeliskRegistry;
   address private streamingPool;
   address private obeliskHashmask;
+  address private megapoolFactory;
   bool private obeliskHashmaskExists;
 
   function run() external override {
@@ -48,31 +56,77 @@ contract ProtocolDeploy is BaseScript {
     bool apxVaultExists;
     bool daiVaultExists;
     bool streamingExists;
+    bool obeliskRegistryExists;
+    bool megapoolFactoryExists;
+    address testnetERC721;
+    address pending721;
 
     string memory file = _getConfig(CONFIG_NAME);
     config = abi.decode(vm.parseJson(file, string.concat(".", _getNetwork())), (Config));
+
+    if (_isTestnet()) {
+      (config.dai,) = _tryDeployContract(
+        "Mock Dai", 0, type(TestnetERC20).creationCode, abi.encode("Mock Dai", "MDAI")
+      );
+
+      (config.hashmask,) =
+        _tryDeployContract("MockHashmask", 0, type(MockHashmask).creationCode, "");
+
+      (config.apxETH,) = _tryDeployContract(
+        "Mock Apx ETH",
+        0,
+        type(TestnetERC20).creationCode,
+        abi.encode("Mock Apx ETH", "MAPXETH")
+      );
+
+      (testnetERC721,) = _tryDeployContract(
+        "Testnet ERC721",
+        0,
+        type(TestnetERC721).creationCode,
+        abi.encode("Testnet ERC721", "T721")
+      );
+
+      (pending721,) = _tryDeployContract(
+        "Pending ERC721",
+        0,
+        type(TestnetERC721).creationCode,
+        abi.encode("Pending ERC721", "TP721")
+      );
+    }
+
+    (address nameFilter,) =
+      _tryDeployContract("NameFilter", 0, type(NameFilter).creationCode, "");
 
     (address nftPass,) = _tryDeployContract(
       "NFT Pass",
       0,
       type(NFTPass).creationCode,
-      abi.encode(config.owner, config.treasury, config.nameFilter, config.nftPassCost)
+      abi.encode(
+        config.owner, config.treasury, nameFilter, config.nftPassCost, config.merkleRoot
+      )
     );
+
     (apxVault, apxVaultExists) = _tryDeployContract(
       "Apx ETH Vault",
       0,
-      type(ApxETHVault).creationCode,
-      abi.encode(deployerWallet, address(0), config.apxETH, address(0))
+      _isTestnet() ? type(MockDripVault).creationCode : type(ApxETHVault).creationCode,
+      _isTestnet()
+        ? abi.encode(deployerWallet, address(0), address(0), config.apxETH, config.treasury)
+        : abi.encode(deployerWallet, address(0), config.apxETH, config.treasury)
     );
 
     (daiVault, daiVaultExists) = _tryDeployContract(
       "Dai Vault",
       0,
-      type(ChaiMoneyVault).creationCode,
-      abi.encode(deployerWallet, address(0), config.chaiMoney, config.dai, address(0))
+      _isTestnet() ? type(MockDripVault).creationCode : type(ChaiMoneyVault).creationCode,
+      _isTestnet()
+        ? abi.encode(deployerWallet, address(0), config.dai, config.dai, config.treasury)
+        : abi.encode(
+          deployerWallet, address(0), config.chaiMoney, config.dai, config.treasury
+        )
     );
 
-    (obeliskRegistry,) = _tryDeployContract(
+    (obeliskRegistry, obeliskRegistryExists) = _tryDeployContract(
       "Obelisk Registry",
       0,
       type(ObeliskRegistry).creationCode,
@@ -96,7 +150,7 @@ contract ProtocolDeploy is BaseScript {
       type(InterestManager).creationCode,
       abi.encode(
         deployerWallet,
-        address(0),
+        config.gaugeController,
         apxVault,
         daiVault,
         config.swapRouter,
@@ -109,26 +163,46 @@ contract ProtocolDeploy is BaseScript {
       "Streaming Pool",
       0,
       type(StreamingPool).creationCode,
-      abi.encode(config.owner, config.treasury, config.dai, interestManager)
+      abi.encode(config.owner, interestManager, config.apxETH)
     );
 
-    _tryDeployContract(
-      "Megapool_01",
+    (megapoolFactory, megapoolFactoryExists) = _tryDeployContract(
+      "Megapool Factory",
       0,
-      type(Megapool).creationCode,
-      abi.encode(config.owner, obeliskRegistry, config.apxETH, interestManager)
+      type(MegapoolFactory).creationCode,
+      abi.encode(
+        deployerWallet, obeliskRegistry, contracts["HCT"], config.apxETH, interestManager
+      )
     );
+
+    if (!obeliskRegistryExists) {
+      vm.broadcast(_getDeployerPrivateKey());
+      ObeliskRegistry(payable(obeliskRegistry)).setMegapoolFactory(megapoolFactory);
+
+      if (_isTestnet()) {
+        vm.startBroadcast(_getDeployerPrivateKey());
+        ObeliskRegistry(payable(obeliskRegistry)).allowNewCollection(
+          testnetERC721, 10_000, uint32(block.timestamp - 375 days), false
+        );
+
+        ObeliskRegistry(payable(obeliskRegistry)).forceActiveCollection(testnetERC721);
+
+        ObeliskRegistry(payable(obeliskRegistry)).allowNewCollection(
+          pending721, 10_000, uint32(block.timestamp - 250 days), true
+        );
+
+        vm.stopBroadcast();
+      }
+    }
+
+    if (!megapoolFactoryExists) {
+      vm.broadcast(_getDeployerPrivateKey());
+      MegapoolFactory(payable(megapoolFactory)).createMegapool(new address[](0));
+    }
 
     if (!streamingExists) {
       vm.broadcast(_getDeployerPrivateKey());
       InterestManager(payable(interestManager)).setStreamingPool(streamingPool);
-    }
-
-    if (!daiVaultExists) {
-      vm.broadcast(_getDeployerPrivateKey());
-      ChaiMoneyVault(daiVault).setObeliskRegistry(obeliskRegistry);
-      vm.broadcast(_getDeployerPrivateKey());
-      ChaiMoneyVault(daiVault).setInterestRateReceiver(interestManager);
     }
 
     if (!apxVaultExists) {
@@ -136,6 +210,13 @@ contract ProtocolDeploy is BaseScript {
       ChaiMoneyVault(apxVault).setObeliskRegistry(obeliskRegistry);
       vm.broadcast(_getDeployerPrivateKey());
       ChaiMoneyVault(apxVault).setInterestRateReceiver(interestManager);
+    }
+
+    if (!daiVaultExists) {
+      vm.broadcast(_getDeployerPrivateKey());
+      ChaiMoneyVault(daiVault).setObeliskRegistry(obeliskRegistry);
+      vm.broadcast(_getDeployerPrivateKey());
+      ChaiMoneyVault(daiVault).setInterestRateReceiver(interestManager);
     }
 
     if (!obeliskHashmaskExists) {
@@ -154,19 +235,34 @@ contract ProtocolDeploy is BaseScript {
       Ownable(interestManager).transferOwnership(_owner);
     }
 
-    if (Ownable(daiVault).owner() == deployerWallet) {
-      vm.broadcast(_getDeployerPrivateKey());
-      Ownable(daiVault).transferOwnership(_owner);
-    }
-
     if (Ownable(apxVault).owner() == deployerWallet) {
       vm.broadcast(_getDeployerPrivateKey());
       Ownable(apxVault).transferOwnership(_owner);
     }
 
-    if (Ownable(obeliskRegistry).owner() == deployerWallet) {
+    if (Ownable(daiVault).owner() == deployerWallet) {
       vm.broadcast(_getDeployerPrivateKey());
-      Ownable(obeliskRegistry).transferOwnership(_owner);
+      Ownable(daiVault).transferOwnership(_owner);
+    }
+
+    if (Permission(obeliskRegistry).permissionAdmin() == deployerWallet) {
+      vm.broadcast(_getDeployerPrivateKey());
+      Permission(obeliskRegistry).transferPermissionAdmin(_owner);
+    }
+
+    if (Ownable(streamingPool).owner() == deployerWallet) {
+      vm.broadcast(_getDeployerPrivateKey());
+      Ownable(streamingPool).transferOwnership(_owner);
+    }
+
+    if (Ownable(obeliskHashmask).owner() == deployerWallet) {
+      vm.broadcast(_getDeployerPrivateKey());
+      Ownable(obeliskHashmask).transferOwnership(_owner);
+    }
+
+    if (Ownable(megapoolFactory).owner() == deployerWallet) {
+      vm.broadcast(_getDeployerPrivateKey());
+      Ownable(megapoolFactory).transferOwnership(_owner);
     }
   }
 }

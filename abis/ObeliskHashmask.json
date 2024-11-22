@@ -411,7 +411,7 @@
     "name": "NameUpdated",
     "inputs": [
       {
-        "name": "hashmaskId",
+        "name": "tokenId",
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"

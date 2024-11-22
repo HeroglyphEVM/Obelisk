@@ -10,6 +10,8 @@ import { ILiteTicker } from "src/interfaces/ILiteTicker.sol";
 import { MockERC721 } from "test/mock/contract/MockERC721.t.sol";
 import { WrappedNFTHero, IWrappedNFTHero } from "src/services/nft/WrappedNFTHero.sol";
 import { INFTPass } from "src/interfaces/INFTPass.sol";
+import { IObeliskNFT } from "src/interfaces/IObeliskNFT.sol";
+import { IERC721 } from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract WrappedNFTHeroTest is BaseTest {
   uint128 private constant ACTIVE_SUPPLY = 10_000e18;
@@ -62,7 +64,8 @@ contract WrappedNFTHeroTest is BaseTest {
       mockObeliskRegistry,
       ACTIVE_SUPPLY,
       uint32(block.timestamp) - YEAR_IN_SECONDS,
-      false
+      false,
+      22
     );
   }
 
@@ -108,6 +111,10 @@ contract WrappedNFTHeroTest is BaseTest {
       abi.encodeWithSelector(INFTPass.getMetadata.selector),
       abi.encode(EMPTY_NFT_METADATA)
     );
+
+    vm.mockCall(
+      mockNFTPass, abi.encodeWithSelector(IERC721.balanceOf.selector), abi.encode(1)
+    );
   }
 
   function test_constructor_thenSetsValues() external {
@@ -118,7 +125,8 @@ contract WrappedNFTHeroTest is BaseTest {
       mockObeliskRegistry,
       ACTIVE_SUPPLY,
       uint32(block.timestamp) - YEAR_IN_SECONDS,
-      false
+      false,
+      22
     );
 
     assertEq(address(underTest.HCT()), mockHCT);
@@ -134,6 +142,7 @@ contract WrappedNFTHeroTest is BaseTest {
       underTest.COLLECTION_STARTED_UNIX_TIME(), uint32(block.timestamp) - YEAR_IN_SECONDS
     );
     assertFalse(underTest.PREMIUM());
+    assertEq(underTest.ID(), 22);
 
     underTest = new WrappedNFTHeroHarness(
       mockHCT,
@@ -142,7 +151,8 @@ contract WrappedNFTHeroTest is BaseTest {
       mockObeliskRegistry,
       ACTIVE_SUPPLY,
       uint32(block.timestamp) - YEAR_IN_SECONDS,
-      true
+      true,
+      22
     );
 
     assertTrue(underTest.PREMIUM());
@@ -163,11 +173,34 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.wrap{ value: 1 }(tokenId);
   }
 
-  function test_givenNoEth_whenNoFreeSlotAvailable_thenReverts() external prankAs(user) {
+  function test_wrap_givenNoEth_whenNoFreeSlotAvailable_thenReverts()
+    external
+    prankAs(user)
+  {
     uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 2 : 1;
 
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NoFreeSlots.selector));
     underTest.wrap(tokenId);
+  }
+
+  function test_wrap_whenNotNFTPassHolder_thenReverts() external prankAs(user) {
+    vm.mockCall(
+      mockNFTPass, abi.encodeWithSelector(IERC721.balanceOf.selector, user), abi.encode(0)
+    );
+
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotNFTPassHolder.selector));
+    underTest.wrap(1);
+  }
+
+  function test_wrap_whenEmergencyWithdrawEnabled_thenReverts() external pranking {
+    changePrank(mockObeliskRegistry);
+    underTest.enableEmergencyWithdraw();
+
+    changePrank(user);
+    vm.expectRevert(
+      abi.encodeWithSelector(IWrappedNFTHero.EmergencyModeIsActive.selector)
+    );
+    underTest.wrap(1);
   }
 
   function test_wrap_whenBuyingSlot_thenCallsObeliskRegistryAndWraps()
@@ -254,7 +287,7 @@ contract WrappedNFTHeroTest is BaseTest {
     underTest.wrap(tokenId);
 
     expectExactEmit();
-    emit IWrappedNFTHero.NameChanged(tokenId, newName);
+    emit IObeliskNFT.NameUpdated(tokenId, newName);
     underTest.rename(tokenId, newName);
 
     assertEq(underTest.names(tokenId), newName);
@@ -440,6 +473,57 @@ contract WrappedNFTHeroTest is BaseTest {
     assertEq(underTest.getNFTData(tokenId).isMinted, false);
   }
 
+  function test_unwrap_whenHasTikcers_thenRemoveTickersAndUnwraps()
+    external
+    prankAs(user)
+  {
+    string memory newName = string.concat(START_NAME, TICKERS[0]);
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+
+    underTest.wrap(tokenId);
+    underTest.rename(tokenId, newName);
+
+    vm.expectCall(
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(
+        ILiteTicker.virtualWithdraw.selector,
+        IDENTITY,
+        tokenId,
+        mockNftPassMetadata.walletReceiver,
+        false
+      )
+    );
+
+    underTest.unwrap(tokenId);
+
+    assertEq(underTest.getLinkedTickers(tokenId).length, 0);
+  }
+
+  function test_unwrap_whenEmergencyWithdrawEnabled_thenIgnoresTickersAndUnwraps()
+    external
+    pranking
+  {
+    changePrank(user);
+    string memory newName = string.concat(START_NAME, TICKERS[0]);
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+
+    underTest.wrap(tokenId);
+    underTest.rename(tokenId, newName);
+
+    changePrank(mockObeliskRegistry);
+    underTest.enableEmergencyWithdraw();
+    changePrank(user);
+
+    vm.mockCallRevert(
+      POOL_TARGETS[0],
+      abi.encodeWithSelector(ILiteTicker.virtualWithdraw.selector),
+      "Should not be called"
+    );
+
+    underTest.unwrap(tokenId);
+    assertEq(mockInputCollection.ownerOf(tokenId), user);
+  }
+
   function test_renameRequirements_whenNotMinted_thenReverts() external prankAs(user) {
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotMinted.selector));
     underTest.exposed_renameRequirements(1);
@@ -475,7 +559,8 @@ contract WrappedNFTHeroTest is BaseTest {
       mockObeliskRegistry,
       ACTIVE_SUPPLY,
       uint32(block.timestamp) - YEAR_IN_SECONDS,
-      true
+      true,
+      1
     );
 
     uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
@@ -528,6 +613,39 @@ contract WrappedNFTHeroTest is BaseTest {
 
     vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.SameMultiplier.selector));
     underTest.updateMultiplier(tokenId);
+  }
+
+  function test_updateMultiplier_whenIncreased_thenAddsPower() external prankAs(user) {
+    uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
+    underTest.wrap(tokenId);
+
+    uint256 multiplier = underTest.getWrapperMultiplier();
+
+    skip(YEAR_IN_SECONDS + 1);
+
+    uint256 newMultiplier = underTest.getWrapperMultiplier();
+
+    vm.expectCall(
+      mockHCT,
+      abi.encodeWithSelector(IHCT.addPower.selector, user, newMultiplier - multiplier)
+    );
+    underTest.updateMultiplier(tokenId);
+  }
+
+  function test_enableEmergencyWithdraw_whenNotObeliskRegistry_thenReverts() external {
+    vm.expectRevert(abi.encodeWithSelector(IWrappedNFTHero.NotObeliskRegistry.selector));
+    underTest.enableEmergencyWithdraw();
+  }
+
+  function test_enableEmergencyWithdraw_thenEnables()
+    external
+    prankAs(mockObeliskRegistry)
+  {
+    expectExactEmit();
+    emit IWrappedNFTHero.EmergencyWithdrawEnabled();
+    underTest.enableEmergencyWithdraw();
+
+    assertTrue(underTest.emergencyWithdrawEnabled());
   }
 
   function test_mint_thenAddPower() external {
@@ -602,7 +720,8 @@ contract WrappedNFTHeroHarness is WrappedNFTHero {
     address _obeliskRegistry,
     uint256 _currentSupply,
     uint32 _collectionStartedUnixTime,
-    bool _premium
+    bool _premium,
+    uint256 _id
   )
     WrappedNFTHero(
       _HCT,
@@ -611,7 +730,8 @@ contract WrappedNFTHeroHarness is WrappedNFTHero {
       _obeliskRegistry,
       _currentSupply,
       _collectionStartedUnixTime,
-      _premium
+      _premium,
+      _id
     )
   { }
 

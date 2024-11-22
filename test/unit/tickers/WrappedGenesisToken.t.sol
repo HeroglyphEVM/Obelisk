@@ -125,6 +125,11 @@ contract WrappedGenesisTokenTest is BaseTest {
     underTest.addRewardOnMainnet{ value: LZ_FEE }(amount);
   }
 
+  function test_unwrap_whenToIsZero_thenReverts() external prankAs(user) {
+    vm.expectRevert(abi.encodeWithSelector(WrappedGenesisToken.ZeroAddress.selector));
+    underTest.unwrap(address(0), 1e18);
+  }
+
   function test_unwrap_thenUnwraps() external prankAs(user) {
     uint256 amount = 37.2e18;
 
@@ -167,7 +172,7 @@ contract WrappedGenesisTokenTest is BaseTest {
     uint256 amount = 37.2e18;
 
     vm.prank(owner);
-    underTest.attachPool(address(0));
+    underTest.exposed_removePool();
 
     uint256 balanceBefore = underTest.balanceOf(owner);
 
@@ -267,6 +272,10 @@ contract WrappedGnosisTokenHarness is WrappedGenesisToken {
     address _lzEndpoint,
     address _genesisToken
   ) WrappedGenesisToken(_owner, _originLzEndpoint, _lzEndpoint, _genesisToken) { }
+
+  function exposed_removePool() external {
+    pool = IGenesisTokenPool(address(0));
+  }
 
   function exposed_mint(address _to, uint256 _amount) external {
     _mint(_to, _amount);

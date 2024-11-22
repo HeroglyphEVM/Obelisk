@@ -108,12 +108,20 @@ contract BaseDripVaultHarness is BaseDripVault {
     address _rateReceiver
   ) BaseDripVault(_inputToken, _owner, _registry, _rateReceiver) { }
 
-  function _afterDeposit(uint256 _amount) internal override {
+  function _afterDeposit(uint256 _amount) internal override returns (uint256) {
     emit AfterDeposit(_amount);
+
+    return _amount;
   }
 
-  function _beforeWithdrawal(address _to, uint256 _amount) internal override {
+  function _beforeWithdrawal(address _to, uint256 _amount)
+    internal
+    override
+    returns (uint256)
+  {
     emit BeforeWithdrawal(_to, _amount);
+
+    return _amount;
   }
 
   function claim() external pure returns (uint256) {
@@ -122,5 +130,9 @@ contract BaseDripVaultHarness is BaseDripVault {
 
   function getOutputToken() external view override returns (address) {
     return INPUT_TOKEN;
+  }
+
+  function previewDeposit(uint256 _amount) external pure override returns (uint256) {
+    return _amount;
   }
 }

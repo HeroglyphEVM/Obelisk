@@ -34,7 +34,6 @@ contract StreamingPool is IStreamingPool, Ownable {
   }
 
   function claim() external override returns (uint256 amount_) {
-    if (msg.sender != interestManager) revert NotInterestManager();
     _updateRewards();
 
     amount_ = pendingToBeClaimed;
@@ -42,7 +41,7 @@ contract StreamingPool is IStreamingPool, Ownable {
 
     if (amount_ == 0) return 0;
 
-    IERC20(inputToken).transfer(msg.sender, amount_);
+    IERC20(inputToken).transfer(interestManager, amount_);
 
     emit Claimed(amount_);
   }

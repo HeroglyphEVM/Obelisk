@@ -187,6 +187,19 @@
   },
   {
     "type": "function",
+    "name": "endFreeClaimTimestamp",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint32",
+        "internalType": "uint32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getApproved",
     "inputs": [
       {
@@ -1000,6 +1013,11 @@
   {
     "type": "error",
     "name": "AlreadyClaimed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ClaimingEnded",
     "inputs": []
   },
   {

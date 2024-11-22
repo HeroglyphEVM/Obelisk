@@ -16,6 +16,8 @@ import { IWETH } from "src/interfaces/IWETH.sol";
 import { IPirexEth } from "src/vendor/dinero/IPirexEth.sol";
 import { IApxETH } from "src/vendor/dinero/IApxETH.sol";
 
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 interface IChainlinkOracle {
   function latestRoundData()
     external
@@ -35,10 +37,13 @@ interface IChainlinkOracle {
  * their HCT.
  * @custom:export abi
  */
-contract InterestManager is IInterestManager, Ownable {
+contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
+  uint32 private constant MINIMUM_EPOCH_DURATION = 7 days;
+  uint32 private constant MAXIMUM_EPOCH_DURATION = 30 days;
+
   uint256 public constant PRECISION = 1e18;
   uint256 public constant MINIMUM_SWAP_DAI = 100e18;
-  uint256 public constant ALLOWED_SLIPPAGE = 1000; // 10%
+  uint256 public constant ALLOWED_SLIPPAGE = 500; // 5%
   uint256 public constant BPS = 10_000;
   uint24 private constant DAI_POOL_FEE = 500;
 
@@ -49,6 +54,7 @@ contract InterestManager is IInterestManager, Ownable {
   uint64 public epochId;
   uint32 public override epochDuration;
   IStreamingPool public streamingPool;
+  uint256 private apxBalanceTracker;
 
   address public immutable SWAP_ROUTER;
   IDripVault public immutable DRIP_VAULT_ETH;
@@ -79,7 +85,7 @@ contract InterestManager is IInterestManager, Ownable {
     PIREX_ETH = IPirexEth(IApxETH(address(APX_ETH)).pirexEth());
     CHAINLINK_DAI_ETH = IChainlinkOracle(_chainlinkDaiETH);
 
-    epochDuration = 7 days;
+    epochDuration = MINIMUM_EPOCH_DURATION;
 
     TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, type(uint256).max);
   }
@@ -121,19 +127,24 @@ contract InterestManager is IInterestManager, Ownable {
 
     if (epoch.endOfEpoch > block.timestamp) revert EpochNotFinished();
 
-    epoch.totalRewards += uint128(_claimFromServices());
+    if (epoch.totalWeight != 0) {
+      epoch.totalRewards += uint128(_claimFromServices());
 
-    for (uint256 i = 0; i < epoch.megapools.length; ++i) {
-      _assignRewardToMegapool(epoch, epoch.megapools[i]);
+      for (uint256 i = 0; i < epoch.megapools.length; ++i) {
+        _assignRewardToMegapool(epoch, epoch.megapools[i]);
+      }
+
+      emit EpochEnded(currentEpoch);
     }
-
-    emit EpochEnded(currentEpoch);
     epochId = currentEpoch + 1;
   }
 
-  function claim() external override returns (uint256 rewards_) {
+  function claim() external override nonReentrant returns (uint256 rewards_) {
     Epoch storage epoch = epochs[epochId];
-    epoch.totalRewards += uint128(_claimFromServices());
+
+    if (epoch.totalWeight != 0) {
+      epoch.totalRewards += uint128(_claimFromServices());
+    }
 
     _assignRewardToMegapool(epoch, msg.sender);
 
@@ -144,16 +155,26 @@ contract InterestManager is IInterestManager, Ownable {
     pendingRewards[msg.sender] = 0;
     APX_ETH.transfer(msg.sender, rewards_);
 
+    apxBalanceTracker -= rewards_;
+
     emit RewardClaimed(msg.sender, rewards_);
 
     return rewards_;
   }
 
   function _claimFromServices() internal returns (uint256 rewards_) {
+    IStreamingPool cachedStreamingPool = streamingPool;
+
+    if (address(cachedStreamingPool) != address(0)) {
+      cachedStreamingPool.claim();
+    }
+
     DRIP_VAULT_ETH.claim();
-    rewards_ += APX_ETH.balanceOf(address(this));
-    rewards_ += address(streamingPool) != address(0) ? streamingPool.claim() : 0;
-    rewards_ += _claimDaiAndConvertToApxETH();
+    _claimDaiAndConvertToApxETH();
+
+    uint256 newApxBalance = APX_ETH.balanceOf(address(this));
+    rewards_ = newApxBalance - apxBalanceTracker;
+    apxBalanceTracker = newApxBalance;
 
     return rewards_;
   }
@@ -211,6 +232,12 @@ contract InterestManager is IInterestManager, Ownable {
   }
 
   function setEpochDuration(uint32 _epochDuration) external onlyOwner {
+    if (
+      _epochDuration < MINIMUM_EPOCH_DURATION || _epochDuration > MAXIMUM_EPOCH_DURATION
+    ) {
+      revert InvalidEpochDuration();
+    }
+
     epochDuration = _epochDuration;
     emit EpochDurationSet(_epochDuration);
   }

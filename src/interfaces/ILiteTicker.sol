@@ -43,4 +43,16 @@ interface ILiteTicker {
     address _receiver,
     bool _ignoreRewards
   ) external;
+
+  /**
+   * @dev Get the claimable rewards for a given identity.
+   * @param _identity The identity of the NFT.
+   * @param _extraRewards The extra rewards to add to the total for simulation purposes.
+   * @return rewards_ The amount of rewards.
+   * @return rewardsToken_ The address of the rewards token.
+   */
+  function getClaimableRewards(bytes32 _identity, uint256 _extraRewards)
+    external
+    view
+    returns (uint256 rewards_, address rewardsToken_);
 }

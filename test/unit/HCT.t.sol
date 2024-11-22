@@ -8,6 +8,7 @@ import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { strings } from "src/lib/strings.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract HCTTest is BaseTest {
   using strings for string;
@@ -19,6 +20,7 @@ contract HCTTest is BaseTest {
   address private obeliskRegistryMock;
   address private wrappedNFTMock_A;
   address private wrappedNFTMock_B;
+  address private owner;
   address private user;
   address private treasury;
   HCTHarness public underTest;
@@ -28,7 +30,7 @@ contract HCTTest is BaseTest {
     _setupMockCalls();
 
     vm.prank(obeliskRegistryMock);
-    underTest = new HCTHarness(treasury);
+    underTest = new HCTHarness(owner, treasury);
   }
 
   function _setupMocks() internal {
@@ -36,6 +38,7 @@ contract HCTTest is BaseTest {
     wrappedNFTMock_A = generateAddress("WrappedNFT_A");
     wrappedNFTMock_B = generateAddress("WrappedNFT_B");
     user = generateAddress("User");
+    owner = generateAddress("Owner");
     treasury = generateAddress("Treasury");
   }
 
@@ -58,7 +61,7 @@ contract HCTTest is BaseTest {
   }
 
   function test_constructor_thenPreMints() external prankAs(obeliskRegistryMock) {
-    underTest = new HCTHarness(treasury);
+    underTest = new HCTHarness(owner, treasury);
 
     assertEq(underTest.balanceOf(treasury), underTest.PRE_MINT_AMOUNT());
     assertEq(address(underTest.obeliskRegistry()), obeliskRegistryMock);
@@ -66,7 +69,7 @@ contract HCTTest is BaseTest {
 
   function test_addPower_asNonWrappedNFTSystem_thenReverts() external {
     vm.expectRevert(IHCT.NotWrappedNFT.selector);
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
   }
 
   function test_addPower_thenAddsPower() external pranking {
@@ -76,9 +79,9 @@ contract HCTTest is BaseTest {
     });
 
     changePrank(wrappedNFTMock_A);
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
     changePrank(wrappedNFTMock_A);
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_B);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_B, true);
 
     assertEq(underTest.balanceOf(user), 0);
     assertEq(abi.encode(underTest.getUserInfo(user)), abi.encode(expectedUserInfo));
@@ -88,11 +91,11 @@ contract HCTTest is BaseTest {
     external
     prankAs(wrappedNFTMock_A)
   {
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
     skip(30 days);
 
     uint256 userRatesBefore = underTest.getUserInfo(user).userRates;
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
 
     assertEq(underTest.getUserInfo(user).multiplier, MULTIPLIER_BY_NFT_MOCK_A * 2);
     assertGt(underTest.getUserInfo(user).userRates, userRatesBefore);
@@ -106,7 +109,7 @@ contract HCTTest is BaseTest {
   }
 
   function test_removePower_thenRemovesPower() external prankAs(wrappedNFTMock_A) {
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
     underTest.removePower(user, MULTIPLIER_BY_NFT_MOCK_A);
 
     IHCT.UserInfo memory expectedUserInfo = IHCT.UserInfo({ multiplier: 0, userRates: 0 });
@@ -119,9 +122,9 @@ contract HCTTest is BaseTest {
     external
     prankAs(wrappedNFTMock_A)
   {
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
     skip(30 days);
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
 
     uint256 userRatesBefore = underTest.getUserInfo(user).userRates;
     underTest.removePower(user, MULTIPLIER_BY_NFT_MOCK_A);
@@ -156,7 +159,7 @@ contract HCTTest is BaseTest {
     uint256 balance = underTest.balanceOf(user);
     uint128 cost = underTest.NAME_COST();
 
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
     skip(30 days);
 
     uint256 userRatesBefore = underTest.getUserInfo(user).userRates;
@@ -174,9 +177,9 @@ contract HCTTest is BaseTest {
 
   function test_claim_thenClaims() external pranking {
     changePrank(wrappedNFTMock_A);
-    underTest.addPower(user, 2e18);
+    underTest.addPower(user, 2e18, true);
 
-    uint256 expectingAfterADay = Math.sqrt(2e18 * 1e18) / 1 days;
+    uint256 expectingAfterADay = uint256(1) * 1e18 / 1 days;
 
     skip(3 days);
     assertEq(underTest.getUserPendingRewards(user), expectingAfterADay * 3 days);
@@ -192,31 +195,109 @@ contract HCTTest is BaseTest {
     uint256 preMint = 10_000e18;
     underTest.exposed_mint(user, preMint);
 
-    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A);
+    underTest.addPower(user, MULTIPLIER_BY_NFT_MOCK_A, true);
     assertEq(underTest.balanceOf(user), preMint);
     skip(30 days);
 
-    assertGt(underTest.balanceOf(user), preMint);
+    assertEq(underTest.balanceOf(user), preMint);
   }
 
   function test_getPendingToBeClaimed_thenReturnsPending() external pranking {
     changePrank(wrappedNFTMock_A);
-    underTest.addPower(user, 2e18);
+    underTest.addPower(user, 2e18, true);
 
-    uint256 expectingAfterADay = Math.sqrt(2e18 * 1e18) / 1 days;
+    uint256 expectingAfterADay = uint256(1) * 1e18 / 1 days;
 
     skip(1 days);
     assertEq(underTest.getUserPendingRewards(user), expectingAfterADay * 1 days);
     skip(2 days);
     assertEq(underTest.getUserPendingRewards(user), expectingAfterADay * 3 days);
   }
+
+  function test_getSystemPendingRewards_whenInflation_thenReturnsInflation()
+    external
+    pranking
+  {
+    underTest.exposed_mint(
+      treasury, underTest.inflationThreshold() - underTest.PRE_MINT_AMOUNT()
+    );
+
+    changePrank(wrappedNFTMock_A);
+    underTest.addPower(user, 2e18, true);
+
+    uint256 expectingAfterADayInflation = uint256(1) * underTest.inflationRate();
+    uint256 expectingAfterADayNoInflation = uint256(1) * underTest.baseRate();
+
+    skip(1 days);
+    assertEqTolerance(underTest.getSystemPendingRewards(), expectingAfterADayInflation, 1);
+
+    underTest.exposed_burn(treasury, 1e18);
+    assertEqTolerance(
+      underTest.getSystemPendingRewards(), expectingAfterADayNoInflation, 1
+    );
+  }
+
+  function test_setInflationRate_asNonOwner_thenReverts() external prankAs(user) {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
+    underTest.setInflationRate(100);
+  }
+
+  function test_setInflationRate_thenSetsInflationRate() external prankAs(owner) {
+    expectExactEmit();
+    emit IHCT.InflationRateSet(100);
+
+    underTest.setInflationRate(100);
+
+    assertEq(underTest.inflationRate(), 100);
+  }
+
+  function test_setBaseRate_asNonOwner_thenReverts() external prankAs(user) {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
+    underTest.setBaseRate(100);
+  }
+
+  function test_setBaseRate_thenSetsBaseRate() external prankAs(owner) {
+    expectExactEmit();
+    emit IHCT.BaseRateSet(2e18);
+
+    underTest.setBaseRate(2e18);
+
+    assertEq(underTest.baseRate(), 2e18);
+  }
+
+  function test_setInflationThreshold_asNonOwner_thenReverts() external prankAs(user) {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
+    underTest.setInflationThreshold(100);
+  }
+
+  function test_setInflationThreshold_thenSetsInflationThreshold()
+    external
+    prankAs(owner)
+  {
+    expectExactEmit();
+    emit IHCT.InflationThresholdSet(250_000e18);
+
+    underTest.setInflationThreshold(250_000e18);
+
+    assertEq(underTest.inflationThreshold(), 250_000e18);
+  }
 }
 
 contract HCTHarness is HCT {
-  constructor(address _treasury) HCT(_treasury) { }
+  constructor(address _owner, address _treasury) HCT(_owner, _treasury) { }
 
   function exposed_mint(address _user, uint256 _amount) external {
     _mint(_user, _amount);
+  }
+
+  function exposed_burn(address _user, uint256 _amount) external {
+    _burn(_user, _amount);
   }
 
   function exposed_setMultiplier(address _user, uint128 _multiplier) external {
