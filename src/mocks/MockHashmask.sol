@@ -12,6 +12,8 @@ contract MockHashmask is ERC721, IHashmask {
 
   mapping(uint256 => string) public tokenNames;
 
+  event NameChanged(uint256 indexed tokenId, string name);
+
   constructor() ERC721("Mockmask", "MHM") {
     nextIdToMint = 1;
   }
@@ -21,8 +23,9 @@ contract MockHashmask is ERC721, IHashmask {
     nextIdToMint++;
   }
 
-  function rename(uint256 _tokenId, string memory _name) external {
+  function changeName(uint256 _tokenId, string memory _name) external {
     tokenNames[_tokenId] = _name;
+    emit NameChanged(_tokenId, _name);
   }
 
   function tokenNameByIndex(uint256 _tokenId) external view returns (string memory) {

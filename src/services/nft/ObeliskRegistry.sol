@@ -3,7 +3,7 @@ pragma solidity ^0.8.25;
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Permission } from "atoumic/access/Permission.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -24,7 +24,7 @@ import { WrappedNFTFactory } from "src/services/WrappedNFTFactory.sol";
  * Collection access & unlocking.
  * @custom:export abi
  */
-contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
+contract ObeliskRegistry is IObeliskRegistry, Permission, ReentrancyGuard {
   uint256 public constant MINIMUM_SENDING_ETH = 0.005 ether;
   uint256 public constant MINIMUM_ETH_SUPPORT_AMOUNT = 1e18;
   uint256 public constant MINIMUM_DAI_SUPPORT_AMOUNT = 1000e18;
@@ -32,6 +32,9 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   uint32 public constant SUPPORT_LOCK_DURATION = 30 days;
   uint32 public constant COLLECTION_REWARD_PERCENT = 4000;
   uint32 public constant BPS = 10_000;
+  bytes1 public constant TICKER_ROLE = 0x01;
+  bytes1 public constant IPFS_ROLE = 0x02;
+  bytes1 public constant DATA_ASSERTER_ROLE = 0x04;
 
   mapping(address => Collection) internal supportedCollections;
   mapping(address wrappedCollection => CollectionRewards) internal
@@ -42,7 +45,6 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   mapping(address user => mapping(address collection => ContributionInfo)) internal
     userSupportedCollections;
   mapping(uint32 => Supporter) private supporters;
-  mapping(address => bool) public tickerCreationAccess;
 
   address public immutable HCT_ADDRESS;
   address public immutable NFT_PASS;
@@ -52,12 +54,12 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   IWrappedNFTFactory public immutable WRAPPED_NFT_FACTORY;
 
   address public treasury;
-  address public dataAsserter;
   address public megapoolFactory;
   uint32 public supportId;
   uint256 public maxRewardPerCollection;
 
-  string public override wrappedCollectionImageIPFS;
+  string public wrappedCollectionImageIPFS;
+  mapping(uint256 => string) public collectionImageIPFS;
 
   constructor(
     address _owner,
@@ -66,7 +68,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     address _dripVaultETH,
     address _dripVaultDAI,
     address _dai
-  ) Ownable(_owner) {
+  ) Permission(_owner) {
     maxRewardPerCollection = 250e18;
 
     treasury = _treasury;
@@ -126,7 +128,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     }
   }
 
-  function forceActiveCollection(address _collection) external onlyOwner {
+  function forceActiveCollection(address _collection) external onlyPermissionAdmin {
     Collection storage collection = supportedCollections[_collection];
     if (!collection.allowed) revert CollectionNotAllowed();
 
@@ -301,8 +303,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     uint32 _collectionStartedUnixTime,
     bool _premium
   ) external {
-    bool isOwner = msg.sender == owner();
-    if (!isOwner && msg.sender != dataAsserter) revert NotAuthorized();
+    bool isOwner = msg.sender == permissionAdmin();
+    if (!isOwner && !hasPermission(msg.sender, DATA_ASSERTER_ROLE)) {
+      revert NotAuthorized();
+    }
     if (supportedCollections[_collection].allowed) revert CollectionAlreadyAllowed();
 
     supportedCollections[_collection] = Collection({
@@ -323,7 +327,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     address _collection,
     address _wrappedVersion,
     bool _allowed
-  ) external onlyOwner {
+  ) external onlyPermissionAdmin {
     isWrappedNFT[_wrappedVersion] = _allowed;
 
     if (_allowed) {
@@ -334,41 +338,34 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
   }
 
   function setTickerLogic(string memory _ticker, address _pool, bool _override) external {
-    bool isOwner = msg.sender == owner();
+    bool isOwner = msg.sender == permissionAdmin();
     _override = isOwner ? _override : false;
 
-    if (!isOwner && !tickerCreationAccess[msg.sender]) revert NoAccess();
+    if (!isOwner && !hasPermission(msg.sender, TICKER_ROLE)) revert NoAccess();
     if (!_override && tickersLogic[_ticker] != address(0)) revert TickerAlreadyExists();
 
     tickersLogic[_ticker] = _pool;
     emit TickerLogicSet(_ticker, _pool, _ticker);
   }
 
-  function setTickerCreationAccess(address _to, bool _status) external onlyOwner {
-    tickerCreationAccess[_to] = _status;
-    emit TickerCreationAccessSet(_to, _status);
-  }
-
-  function setTreasury(address _treasury) external onlyOwner {
+  function setTreasury(address _treasury) external onlyPermissionAdmin {
     if (_treasury == address(0)) revert ZeroAddress();
     treasury = _treasury;
     emit TreasurySet(_treasury);
   }
 
-  function setDataAsserter(address _dataAsserter) external onlyOwner {
-    dataAsserter = _dataAsserter;
-    emit DataAsserterSet(_dataAsserter);
-  }
-
-  function setMegapoolFactory(address _megapoolFactory) external onlyOwner {
-    tickerCreationAccess[megapoolFactory] = false;
+  function setMegapoolFactory(address _megapoolFactory) external onlyPermissionAdmin {
+    _removePermission(_megapoolFactory, TICKER_ROLE);
+    _addPermission(_megapoolFactory, TICKER_ROLE);
 
     megapoolFactory = _megapoolFactory;
-    tickerCreationAccess[_megapoolFactory] = true;
     emit MegapoolFactorySet(_megapoolFactory);
   }
 
-  function setMaxRewardPerCollection(uint256 _maxRewardPerCollection) external onlyOwner {
+  function setMaxRewardPerCollection(uint256 _maxRewardPerCollection)
+    external
+    onlyPermissionAdmin
+  {
     maxRewardPerCollection = _maxRewardPerCollection;
     emit MaxRewardPerCollectionSet(_maxRewardPerCollection);
   }
@@ -393,13 +390,24 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
    */
   function enableEmergencyWithdrawForCollection(address _wrappedCollection)
     external
-    onlyOwner
+    onlyPermissionAdmin
   {
     IWrappedNFTHero(_wrappedCollection).enableEmergencyWithdraw();
   }
 
-  function setWrappedCollectionImageIPFS(string memory _ipfsImage) external onlyOwner {
+  function setWrappedCollectionImageIPFS(string memory _ipfsImage)
+    external
+    onlyPermissionAdmin
+  {
     wrappedCollectionImageIPFS = _ipfsImage;
+  }
+
+  function setCollectionImageIPFS(uint256 _id, string memory _ipfsImage)
+    external
+    onlyPermission(IPFS_ROLE)
+  {
+    collectionImageIPFS[_id] = _ipfsImage;
+    emit CollectionImageIPFSUpdated(_id, _ipfsImage);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -435,6 +443,18 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable, ReentrancyGuard {
     returns (Collection memory)
   {
     return supportedCollections[_collection];
+  }
+
+  function getCollectionImageIPFS(uint256 _id)
+    external
+    view
+    override
+    returns (string memory ipfs_)
+  {
+    ipfs_ = collectionImageIPFS[_id];
+    if (bytes(ipfs_).length != 0) return ipfs_;
+
+    return wrappedCollectionImageIPFS;
   }
 
   receive() external payable { }

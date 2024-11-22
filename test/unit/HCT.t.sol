@@ -199,7 +199,7 @@ contract HCTTest is BaseTest {
     assertEq(underTest.balanceOf(user), preMint);
     skip(30 days);
 
-    assertGt(underTest.balanceOf(user), preMint);
+    assertEq(underTest.balanceOf(user), preMint);
   }
 
   function test_getPendingToBeClaimed_thenReturnsPending() external pranking {

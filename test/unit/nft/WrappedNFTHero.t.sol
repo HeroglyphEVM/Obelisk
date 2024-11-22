@@ -64,7 +64,8 @@ contract WrappedNFTHeroTest is BaseTest {
       mockObeliskRegistry,
       ACTIVE_SUPPLY,
       uint32(block.timestamp) - YEAR_IN_SECONDS,
-      false
+      false,
+      22
     );
   }
 
@@ -124,7 +125,8 @@ contract WrappedNFTHeroTest is BaseTest {
       mockObeliskRegistry,
       ACTIVE_SUPPLY,
       uint32(block.timestamp) - YEAR_IN_SECONDS,
-      false
+      false,
+      22
     );
 
     assertEq(address(underTest.HCT()), mockHCT);
@@ -140,6 +142,7 @@ contract WrappedNFTHeroTest is BaseTest {
       underTest.COLLECTION_STARTED_UNIX_TIME(), uint32(block.timestamp) - YEAR_IN_SECONDS
     );
     assertFalse(underTest.PREMIUM());
+    assertEq(underTest.ID(), 22);
 
     underTest = new WrappedNFTHeroHarness(
       mockHCT,
@@ -148,7 +151,8 @@ contract WrappedNFTHeroTest is BaseTest {
       mockObeliskRegistry,
       ACTIVE_SUPPLY,
       uint32(block.timestamp) - YEAR_IN_SECONDS,
-      true
+      true,
+      22
     );
 
     assertTrue(underTest.PREMIUM());
@@ -555,7 +559,8 @@ contract WrappedNFTHeroTest is BaseTest {
       mockObeliskRegistry,
       ACTIVE_SUPPLY,
       uint32(block.timestamp) - YEAR_IN_SECONDS,
-      true
+      true,
+      1
     );
 
     uint256 tokenId = underTest.FREE_SLOT_FOR_ODD() ? 1 : 2;
@@ -715,7 +720,8 @@ contract WrappedNFTHeroHarness is WrappedNFTHero {
     address _obeliskRegistry,
     uint256 _currentSupply,
     uint32 _collectionStartedUnixTime,
-    bool _premium
+    bool _premium,
+    uint256 _id
   )
     WrappedNFTHero(
       _HCT,
@@ -724,7 +730,8 @@ contract WrappedNFTHeroHarness is WrappedNFTHero {
       _obeliskRegistry,
       _currentSupply,
       _collectionStartedUnixTime,
-      _premium
+      _premium,
+      _id
     )
   { }
 

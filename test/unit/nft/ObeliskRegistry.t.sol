@@ -7,7 +7,7 @@ import {
   ObeliskRegistry,
   IObeliskRegistry,
   IDripVault,
-  Ownable
+  Permission
 } from "src/services/nft/ObeliskRegistry.sol";
 
 import { WrappedNFTHero } from "src/services/nft/WrappedNFTHero.sol";
@@ -55,8 +55,9 @@ contract ObeliskRegistryTest is BaseTest {
       collectionMock, TOTAL_SUPPLY_MOCK_COLLECTION, UNIX_MOCK_COLLECTION_STARTED, false
     );
 
-    vm.prank(owner);
-    underTest.setDataAsserter(dataAsserterMock);
+    vm.startPrank(owner);
+    underTest.setPermission(dataAsserterMock, underTest.DATA_ASSERTER_ROLE());
+    vm.stopPrank();
 
     hct = underTest.HCT_ADDRESS();
   }
@@ -95,7 +96,7 @@ contract ObeliskRegistryTest is BaseTest {
       owner, treasury, nftPassMock, dripVaultETHMock, dripVaultDAIMock, address(DAI)
     );
 
-    assertEq(underTest.owner(), owner);
+    assertEq(underTest.permissionAdmin(), owner);
     assertTrue(underTest.HCT_ADDRESS() != address(0));
     assertEq(underTest.NFT_PASS(), nftPassMock);
     assertEq(
@@ -194,9 +195,7 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_forceActiveCollection_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Permission.InvalidPermission.selector, 0x00));
     underTest.forceActiveCollection(collectionMock);
   }
 
@@ -858,9 +857,7 @@ contract ObeliskRegistryTest is BaseTest {
   }
 
   function test_setTreasury_whenNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Permission.InvalidPermission.selector, 0x00));
     underTest.setTreasury(generateAddress("Treasury"));
   }
 
@@ -878,9 +875,7 @@ contract ObeliskRegistryTest is BaseTest {
     external
     prankAs(user)
   {
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Permission.InvalidPermission.selector, 0x00));
     underTest.setMaxRewardPerCollection(1e18);
   }
 
@@ -897,27 +892,8 @@ contract ObeliskRegistryTest is BaseTest {
     assertEq(underTest.maxRewardPerCollection(), newMaxReward);
   }
 
-  function test_setDataAsserter_asNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
-    );
-    underTest.setDataAsserter(address(0));
-  }
-
-  function test_setDataAsserter_thenUpdatesDataAsserter() external prankAs(owner) {
-    address newDataAsserter = generateAddress("DataAsserter");
-
-    expectExactEmit();
-    emit IObeliskRegistry.DataAsserterSet(newDataAsserter);
-    underTest.setDataAsserter(newDataAsserter);
-
-    assertEq(underTest.dataAsserter(), newDataAsserter);
-  }
-
   function test_setMegapoolFactory_whenNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Permission.InvalidPermission.selector, 0x00));
     underTest.setMegapoolFactory(generateAddress("MegapoolFactory"));
   }
 
@@ -927,12 +903,13 @@ contract ObeliskRegistryTest is BaseTest {
     expectExactEmit();
     emit IObeliskRegistry.MegapoolFactorySet(newMegapoolFactory);
     underTest.setMegapoolFactory(newMegapoolFactory);
+
+    assertEq(underTest.megapoolFactory(), newMegapoolFactory);
+    assertTrue(underTest.hasPermission(newMegapoolFactory, underTest.TICKER_ROLE()));
   }
 
   function test_toggleIsWrappedNFTFor_whenNotOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Permission.InvalidPermission.selector, 0x00));
     underTest.toggleIsWrappedNFTFor(collectionMock, generateAddress("WrappedNFT"), true);
   }
 
@@ -956,9 +933,7 @@ contract ObeliskRegistryTest is BaseTest {
     external
     prankAs(user)
   {
-    vm.expectRevert(
-      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
-    );
+    vm.expectRevert(abi.encodeWithSelector(Permission.InvalidPermission.selector, 0x00));
     underTest.enableEmergencyWithdrawForCollection(collectionMock);
   }
 

@@ -10,6 +10,8 @@ contract WrappedNFTFactory is IWrappedNFTFactory {
 
   mapping(address => bool) public generators;
 
+  uint256 private counter;
+
   constructor(address _hctAddress, address _nftPass) {
     REGISTRY = msg.sender;
     HCT_ADDRESS = _hctAddress;
@@ -33,7 +35,8 @@ contract WrappedNFTFactory is IWrappedNFTFactory {
         _obeliskRegistry,
         _totalSupply,
         _unixTimeCreation,
-        _premium
+        _premium,
+        ++counter
       )
     );
 

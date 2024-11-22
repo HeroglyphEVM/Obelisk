@@ -17,6 +17,7 @@ import { TestnetERC20 } from "src/mocks/TestnetERC20.sol";
 import { MockDripVault } from "src/mocks/MockDripVault.sol";
 import { MockHashmask } from "src/mocks/MockHashmask.sol";
 import { TestnetERC721 } from "src/mocks/TestnetERC721.sol";
+import { Permission } from "atoumic/access/Permission.sol";
 
 contract ProtocolDeploy is BaseScript {
   struct Config {
@@ -109,7 +110,9 @@ contract ProtocolDeploy is BaseScript {
       "Apx ETH Vault",
       0,
       _isTestnet() ? type(MockDripVault).creationCode : type(ApxETHVault).creationCode,
-      abi.encode(deployerWallet, address(0), config.apxETH, config.treasury)
+      _isTestnet()
+        ? abi.encode(deployerWallet, address(0), address(0), config.apxETH, config.treasury)
+        : abi.encode(deployerWallet, address(0), config.apxETH, config.treasury)
     );
 
     (daiVault, daiVaultExists) = _tryDeployContract(
@@ -117,7 +120,7 @@ contract ProtocolDeploy is BaseScript {
       0,
       _isTestnet() ? type(MockDripVault).creationCode : type(ChaiMoneyVault).creationCode,
       _isTestnet()
-        ? abi.encode(deployerWallet, address(0), config.dai, config.treasury)
+        ? abi.encode(deployerWallet, address(0), config.dai, config.dai, config.treasury)
         : abi.encode(
           deployerWallet, address(0), config.chaiMoney, config.dai, config.treasury
         )
@@ -242,9 +245,9 @@ contract ProtocolDeploy is BaseScript {
       Ownable(daiVault).transferOwnership(_owner);
     }
 
-    if (Ownable(obeliskRegistry).owner() == deployerWallet) {
+    if (Permission(obeliskRegistry).permissionAdmin() == deployerWallet) {
       vm.broadcast(_getDeployerPrivateKey());
-      Ownable(obeliskRegistry).transferOwnership(_owner);
+      Permission(obeliskRegistry).transferPermissionAdmin(_owner);
     }
 
     if (Ownable(streamingPool).owner() == deployerWallet) {

@@ -42,6 +42,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
 
   mapping(uint256 => NFTData) internal nftData;
 
+  uint256 public immutable ID;
+
   constructor(
     address _HCT,
     address _nftPass,
@@ -49,7 +51,8 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     address _obeliskRegistry,
     uint256 _currentSupply,
     uint32 _collectionStartedUnixTime,
-    bool _premium
+    bool _premium,
+    uint256 _id
   ) ERC721("WrappedNFTHero", "WNH") ObeliskNFT(_obeliskRegistry, _nftPass) {
     HCT = IHCT(_HCT);
     INPUT_COLLECTION = ERC721(_inputCollection);
@@ -58,6 +61,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
     FREE_SLOT_FOR_ODD = uint256(keccak256(abi.encode(_inputCollection))) % 2 == 1;
     COLLECTION_STARTED_UNIX_TIME = _collectionStartedUnixTime;
     PREMIUM = _premium;
+    ID = _id;
   }
 
   /// @inheritdoc IWrappedNFTHero
@@ -285,7 +289,7 @@ contract WrappedNFTHero is IWrappedNFTHero, ERC721, IERC721Receiver, ObeliskNFT 
         '{"name":"',
         name,
         '","description":"Wrapped Version of an external collection","image":"',
-        IObeliskRegistry(obeliskRegistry).wrappedCollectionImageIPFS(),
+        IObeliskRegistry(obeliskRegistry).getCollectionImageIPFS(ID),
         '"}'
       )
     );

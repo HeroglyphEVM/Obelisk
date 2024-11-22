@@ -49,7 +49,7 @@ interface IObeliskRegistry {
   );
   event TreasurySet(address indexed treasury);
   event MaxRewardPerCollectionSet(uint256 maxRewardPerCollection);
-  event DataAsserterSet(address indexed dataAsserter);
+  event CollectionImageIPFSUpdated(uint256 indexed id, string ipfsImage);
 
   struct Collection {
     uint256 totalSupply;
@@ -77,8 +77,6 @@ interface IObeliskRegistry {
     uint128 deposit;
     uint128 claimed;
   }
-
-  function wrappedCollectionImageIPFS() external view returns (string memory);
 
   function isWrappedNFT(address _collection) external view returns (bool);
 
@@ -159,4 +157,6 @@ interface IObeliskRegistry {
    * @param _collection Collection address
    */
   function getCollection(address _collection) external view returns (Collection memory);
+
+  function getCollectionImageIPFS(uint256 _id) external view returns (string memory);
 }

@@ -173,7 +173,7 @@ contract HCT is ERC20, IHCT, Ownable {
   }
 
   function balanceOf(address _user) public view override returns (uint256) {
-    return super.balanceOf(_user) + _getUserPendingRewards(_user);
+    return super.balanceOf(_user);
   }
 
   function getUserPendingRewards(address _user) external view override returns (uint256) {
