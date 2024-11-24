@@ -1,5 +1,17 @@
 [
   {
+    "contractAddress": "0x3c7EFf8fb329c5e2814AD2eDc87F563fa5fDCb4c",
+    "contractName": "Wrapped SCRIBES"
+  },
+  {
+    "contractAddress": "0x956294599365D2a405dAEed7354b0eABa0b8C908",
+    "contractName": "Wrapped FRXBULLAS"
+  },
+  {
+    "contractAddress": "0x531966EeA5d10c2Ca8736226F83776e76D3d0150",
+    "contractName": "Wrapped GNOBBY"
+  },
+  {
     "contractAddress": "0xFe55a10603c2eD1C848532a4f381925Dd8BC8eaD",
     "contractName": "Wrapped MOLANDAK"
   },
@@ -44,15 +56,99 @@
     "contractName": "Wrapped GARFELDO"
   },
   {
-    "contractAddress": "0x3c7EFf8fb329c5e2814AD2eDc87F563fa5fDCb4c",
-    "contractName": "Wrapped SCRIBES"
+    "contractAddress": "0xC07c742935c8c19ecBcEe3b3c0b992A96e069d14",
+    "contractName": "NameFilter"
   },
   {
-    "contractAddress": "0x956294599365D2a405dAEed7354b0eABa0b8C908",
-    "contractName": "Wrapped FRXBULLAS"
+    "contractAddress": "0xC88d37B7ae9b6d781678Cf12155A69d6d4Eb82F2",
+    "contractName": "NFT Pass"
   },
   {
-    "contractAddress": "0x531966EeA5d10c2Ca8736226F83776e76D3d0150",
-    "contractName": "Wrapped GNOBBY"
+    "contractAddress": "0xCb6DFd06973bF66C8bD2779538e5C8311B8070B8",
+    "contractName": "Apx ETH Vault"
+  },
+  {
+    "contractAddress": "0x90A8E18c1B382Fc59009c24081Ac58E28b86311b",
+    "contractName": "Dai Vault"
+  },
+  {
+    "contractAddress": "0x8416c04998F4bc5D34e3f817e1A581C8077d5A94",
+    "contractName": "Obelisk Registry"
+  },
+  {
+    "contractAddress": "0xc597a71A49C49b4A0554B3110bab25A51c76847b",
+    "contractName": "HCT"
+  },
+  {
+    "contractAddress": "0x59DeC9058e8c234cDf6FdAa9790C4BE813f02d25",
+    "contractName": "Obelisk Hashmask"
+  },
+  {
+    "contractAddress": "0xf2e6b4B317efdF3cD28Db6948DA6f492914Ec154",
+    "contractName": "Interest Manager"
+  },
+  {
+    "contractAddress": "0x010a91D235936D64BE6DcfB89803AeA071Ee6952",
+    "contractName": "Streaming Pool"
+  },
+  {
+    "contractAddress": "0x5c2804093283E77871bAA6F63E88692cDaB18C9b",
+    "contractName": "Megapool Factory"
+  },
+  {
+    "contractAddress": "0x1BB19f4663b54599197f15Bf2d6C3b051BE9F9De",
+    "contractName": "Wrapped MOLANDAK POOL"
+  },
+  {
+    "contractAddress": "0x3Aea42d64513cD3a3D592b5A3b6E64086d51b687",
+    "contractName": "Wrapped ARBINAUTS POOL"
+  },
+  {
+    "contractAddress": "0xaD9909B91A7966b5E321C3C1451a1C7c5920E1Ad",
+    "contractName": "Wrapped OOGABOOGA POOL"
+  },
+  {
+    "contractAddress": "0x73A0F0ECfeDE6E6bbE04909093Ee479750359529",
+    "contractName": "Wrapped LUEYGI POOL"
+  },
+  {
+    "contractAddress": "0x01A3aa2e61fa0CF5e24Bc611E764256601101C5C",
+    "contractName": "Wrapped PORIGON POOL"
+  },
+  {
+    "contractAddress": "0xDd23ec57F67aFFe67349388c7198F30A49c54141",
+    "contractName": "Wrapped OVERPOWERED POOL"
+  },
+  {
+    "contractAddress": "0xa98b3685320FeFF2AB6C584F8FDBB9c0938F04F3",
+    "contractName": "Wrapped 69 POOL"
+  },
+  {
+    "contractAddress": "0x7658E036d0a963725D6C7F693394C59Cccb2775c",
+    "contractName": "Wrapped ONEPUNCH POOL"
+  },
+  {
+    "contractAddress": "0x25732C84E6068238FC078D86dbFAf9ed0244eDdF",
+    "contractName": "Wrapped SANICSUPERSPEED POOL"
+  },
+  {
+    "contractAddress": "0x22bfa602CCaEfF1D734B807F21edaE7BD3dDE179",
+    "contractName": "Wrapped KABOSU POOL"
+  },
+  {
+    "contractAddress": "0x5e0956144a56c453220Da0DB8CA56b457200DeA3",
+    "contractName": "Wrapped GARFELDO POOL"
+  },
+  {
+    "contractAddress": "0x4B7CB1Ae3818614026321665ad72213A0627128b",
+    "contractName": "Wrapped SCRIBES POOL"
+  },
+  {
+    "contractAddress": "0xaa05c958B9eECc7bc929C237da3b54E2F3414310",
+    "contractName": "Wrapped FRXBULLAS POOL"
+  },
+  {
+    "contractAddress": "0x53D686879C24B6de4029fdB935b2269d8b086aDe",
+    "contractName": "Wrapped GNOBBY POOL"
   }
 ]
