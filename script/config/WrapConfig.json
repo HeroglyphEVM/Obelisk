@@ -1,0 +1,129 @@
+[
+    {
+        "00_chainId": 42161,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30110,
+        "03_genesisTokens": [
+            "0xA170Eaa9a74ab4b3218C736210b0421aF35C3c00",
+            "0x836975C507bfF631FCD7FBa875e9127C8A50dBa6",
+            "0x4e6b45BB1C7D11402faf72c2d59cAbC4085E36f2"
+        ],
+        "04_genesisNames": [
+            "MOLANDAK",
+            "ARBINAUTS",
+            "OOGABOOGA"
+        ]
+    },
+    {
+        "00_chainId": 43114,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30106,
+        "03_genesisTokens": [
+            "0xcCF580E697B8bBA73748BA881C1872DD4fB01cdA"
+        ],
+        "04_genesisNames": [
+            "LUEYGI"
+        ]
+    },
+    {
+        "00_chainId": 137,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30109,
+        "03_genesisTokens": [
+            "0xC3323b6e71925b25943fB7369EE6769837e9C676"
+        ],
+        "04_genesisNames": [
+            "PORIGON"
+        ]
+    },
+    {
+        "00_chainId": 10,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30111,
+        "03_genesisTokens": [
+            "0xfe5B10F053871e66a319a57a16CF4e709f51367F"
+        ],
+        "04_genesisNames": [
+            "OVERPOWERED"
+        ]
+    },
+    {
+        "00_chainId": 5000,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30181,
+        "03_genesisTokens": [
+            "0x74262b38609a4155EaB4eEcFDcD0E339Da2cF1b2"
+        ],
+        "04_genesisNames": [
+            "69"
+        ]
+    },
+    {
+        "00_chainId": 59144,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30183,
+        "03_genesisTokens": [
+            "0x1F63D0EC7193964142ef6B13d901462d0E5CbB50"
+        ],
+        "04_genesisNames": [
+            "ONEPUNCH"
+        ]
+    },
+    {
+        "00_chainId": 250,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30112,
+        "03_genesisTokens": [
+            "0xE2eca013A124FBcE7F7507a66FDf9Ad2e22d999B"
+        ],
+        "04_genesisNames": [
+            "SANICSUPERSPEED"
+        ]
+    },
+    {
+        "00_chainId": 8453,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30184,
+        "03_genesisTokens": [
+            "0x9e949461F9EC22C6032cE26Ea509824Fd2f6d98f",
+            "0x344C796cc2474e4b779D0e81765AFB91D7741a42"
+        ],
+        "04_genesisNames": [
+            "KABOSU",
+            "GARFELDO"
+        ]
+    },
+    {
+        "00_chainId": 534352,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30214,
+        "03_genesisTokens": [
+            "0x750351a9F75F98f2c2E91D4eDb3BeB14e719557E"
+        ],
+        "04_genesisNames": [
+            "SCRIBES"
+        ]
+    },
+    {
+        "00_chainId": 252,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30255,
+        "03_genesisTokens": [
+            "0x3Ec67133bB7d9D2d93D40FBD9238f1Fb085E01eE"
+        ],
+        "04_genesisNames": [
+            "FRXBULLAS"
+        ]
+    },
+    {
+        "00_chainId": 100,
+        "01_lzEndpoint": "0x1a44076050125825900e736c501f859c50fE728c",
+        "02_lzEID": 30145,
+        "03_genesisTokens": [
+            "0x1a8805194D0eF2F73045a00c70Da399d9E74221c"
+        ],
+        "04_genesisNames": [
+            "GNOBBY"
+        ]
+    }
+]

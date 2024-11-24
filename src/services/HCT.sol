@@ -68,7 +68,7 @@ contract HCT is ERC20, IHCT, Ownable {
     userInfo.multiplier = userMultiplier;
     totalMultiplier = totalMultiplierCached + _addMultiplier;
 
-    userInfo.userRates += ShareableMath.rmulup(userMultiplier, yieldPerTokenInRay);
+    userInfo.userRates = ShareableMath.rmulup(userMultiplier, yieldPerTokenInRay);
 
     emit PowerAdded(msg.sender, _user, _addMultiplier);
 
@@ -92,7 +92,7 @@ contract HCT is ERC20, IHCT, Ownable {
     userInfo.multiplier = userMultiplier;
     totalMultiplier -= _removeMultiplier;
 
-    userInfo.userRates -= ShareableMath.rmulup(userMultiplier, yieldPerTokenInRay);
+    userInfo.userRates = ShareableMath.rmulup(userMultiplier, yieldPerTokenInRay);
 
     emit PowerRemoved(msg.sender, _user, _removeMultiplier);
 

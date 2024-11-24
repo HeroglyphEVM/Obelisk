@@ -48,10 +48,12 @@ contract WrappedGenesisToken is ERC20, OApp {
 
   constructor(
     address _owner,
+    string memory _name,
+    string memory _symbol,
     uint32 _originLzEndpoint,
     address _lzEndpoint,
     address _genesisToken
-  ) ERC20("WrappedGenesisToken", "WGT") OApp(_lzEndpoint, _owner) Ownable(_owner) {
+  ) ERC20(_name, _symbol) OApp(_lzEndpoint, _owner) Ownable(_owner) {
     genesisToken = _genesisToken;
     originLzEndpoint = _originLzEndpoint;
     _updateLayerZeroGasLimit(200_000);
@@ -89,7 +91,7 @@ contract WrappedGenesisToken is ERC20, OApp {
    * wrapped version on mainnet
    * @param _amount The amount of GenesisToken to wrap.
    */
-  function addRewardOnMainnet(uint256 _amount) external payable {
+  function addRewardOnMainnet(uint256 _amount) external payable onlyOwner {
     if (block.chainid == 1) revert CannotWrapOnMainnet();
 
     ERC20(genesisToken).transferFrom(msg.sender, address(this), _amount);

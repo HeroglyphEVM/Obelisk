@@ -53,7 +53,7 @@ include_push_bytes = true
 
 [rpc_endpoints]
 localhost = "http://127.0.0.1:8545"
-mainnet = "${RPC_MAINNET}"
+ethereum = "${RPC_MAINNET}"
 sepolia = "${RPC_SEPOLIA}"
 forkSepolia = "${RPC_SEPOLIA_FORK}"
 arbitrum = "${RPC_ARBITRUM}"
@@ -70,9 +70,20 @@ fraxtal = "${RPC_FRAXTAL}"
 gnosis = "${RPC_GNOSIS}"
 
 [etherscan]
-mainnet = { key = "${ETHERSCAN_KEY}", chain = 1, url = "https://api.etherscan.io/api/"}
-sepolia = { key = "${ETHERSCAN_KEY}", chain = 11155111}
-
+ethereum = { key = "${ETHERSCAN_KEY}", chain = 1, url = "https://api.etherscan.io/api/"}
+sepolia = { key = "${TENDERLY_KEY}", chain = 11155111, url = "${RPC_SEPOLIA}/verify/etherscan" }
+arbitrum = { key = "${ARBISCAN_KEY}", chain = 42161, url = "https://api.arbiscan.io/api/"}
+arbitrumGoerli = { key = "${ARBISCAN_KEY}", chain = 421613, url = "https://api-sepolia.arbiscan.io/api/"}
+polygon = { key = "${POLYSCAN_KEY}", chain = 137, url = "https://api.polygonscan.com/api"}
+scroll = { key = "${SCROLLSCAN_KEY}", chain = 534352, url = "https://api.scrollscan.com/api"}
+avalanche = { key = "${AVAXSCAN_KEY}", chain = 43114, url = "https://api.snowscan.xyz/api"}
+optimism = { key = "${OPSCAN_KEY}", chain = 10, url = "https://api-optimistic.etherscan.io/api"}
+mantle = { key = "${MANTLESCAN_KEY}", chain = 5000, url = "https://api.mantlescan.xyz/api"}
+linea = { key = "${LINEASCAN_KEY}",  url = "https://api.lineascan.build/api"}
+fantom = { key = "${FANTOMSCAN_KEY}",  url = "https://api.ftmscan.com/api"}
+base = { key = "${BASESCAN_KEY}",  url = "https://api.basescan.org/api"}
+fraxtal = { key = "${FRAXTALSCAN_KEY}",  url = "https://api.fraxscan.com/api"}
+gnosis = { key = "${GNOSISSCAN_KEY}",  url = "https://api.gnosisscan.io/api"}
 
 [fmt]
 line_length = 90

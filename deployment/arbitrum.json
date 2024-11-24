@@ -1,0 +1,14 @@
+[
+  {
+    "contractAddress": "0xFe55a10603c2eD1C848532a4f381925Dd8BC8eaD",
+    "contractName": "Wrapped MOLANDAK"
+  },
+  {
+    "contractAddress": "0xB0f936Ef8200C325Fce19068dbaf04C2F4AdA235",
+    "contractName": "Wrapped ARBINAUTS"
+  },
+  {
+    "contractAddress": "0x930C037c1e11051bAC6b88147863400cE3dDD11b",
+    "contractName": "Wrapped OOGABOOGA"
+  }
+]
