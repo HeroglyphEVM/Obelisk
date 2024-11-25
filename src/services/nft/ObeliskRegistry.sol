@@ -2,29 +2,39 @@
 pragma solidity ^0.8.25;
 
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
-import { WrappedNFTHero } from "./WrappedNFTHero.sol";
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Permission } from "atoumic/access/Permission.sol";
 import { IDripVault } from "src/interfaces/IDripVault.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { IWrappedNFTFactory } from "src/interfaces/IWrappedNFTFactory.sol";
+import { IWrappedNFTHero } from "src/interfaces/IWrappedNFTHero.sol";
 
-import { Create } from "src/lib/Create.sol";
+import { HCT } from "src/services/HCT.sol";
+
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+import { WrappedNFTFactory } from "src/services/WrappedNFTFactory.sol";
 
 /**
  * @title ObeliskRegistry
  * @notice It can creates / allow / modify Tickers, have supporting option to boost yield
  * for 30 days and handle
  * Collection access & unlocking.
+ * @custom:export abi
  */
-contract ObeliskRegistry is IObeliskRegistry, Ownable {
-  uint256 private constant MINIMUM_SENDING_ETH = 0.005 ether;
-  uint256 public constant MIN_SUPPORT_AMOUNT = 1e18;
+contract ObeliskRegistry is IObeliskRegistry, Permission, ReentrancyGuard {
+  uint256 public constant MINIMUM_SENDING_ETH = 0.005 ether;
+  uint256 public constant MINIMUM_ETH_SUPPORT_AMOUNT = 1e18;
+  uint256 public constant MINIMUM_DAI_SUPPORT_AMOUNT = 1000e18;
   uint128 public constant REQUIRED_ETH_TO_ENABLE_COLLECTION = 100e18;
   uint32 public constant SUPPORT_LOCK_DURATION = 30 days;
   uint32 public constant COLLECTION_REWARD_PERCENT = 4000;
   uint32 public constant BPS = 10_000;
+  bytes1 public constant TICKER_ROLE = 0x01;
+  bytes1 public constant IPFS_ROLE = 0x02;
+  bytes1 public constant DATA_ASSERTER_ROLE = 0x04;
 
   mapping(address => Collection) internal supportedCollections;
   mapping(address wrappedCollection => CollectionRewards) internal
@@ -36,55 +46,74 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     userSupportedCollections;
   mapping(uint32 => Supporter) private supporters;
 
-  address public immutable HCT;
+  address public immutable HCT_ADDRESS;
   address public immutable NFT_PASS;
   IERC20 public immutable DAI;
   IDripVault public immutable DRIP_VAULT_ETH;
   IDripVault public immutable DRIP_VAULT_DAI;
+  IWrappedNFTFactory public immutable WRAPPED_NFT_FACTORY;
 
   address public treasury;
-  address public dataAsserter;
+  address public megapoolFactory;
   uint32 public supportId;
   uint256 public maxRewardPerCollection;
+
+  string public wrappedCollectionImageIPFS;
+  mapping(uint256 => string) public collectionImageIPFS;
 
   constructor(
     address _owner,
     address _treasury,
-    address _hct,
     address _nftPass,
     address _dripVaultETH,
     address _dripVaultDAI,
     address _dai
-  ) Ownable(_owner) {
+  ) Permission(_owner) {
     maxRewardPerCollection = 250e18;
 
     treasury = _treasury;
-    HCT = _hct;
+    HCT_ADDRESS = address(new HCT(_owner, _treasury));
     DRIP_VAULT_ETH = IDripVault(_dripVaultETH);
     DRIP_VAULT_DAI = IDripVault(_dripVaultDAI);
     NFT_PASS = _nftPass;
     DAI = IERC20(_dai);
+    WRAPPED_NFT_FACTORY =
+      IWrappedNFTFactory(new WrappedNFTFactory(address(HCT_ADDRESS), _nftPass));
+
+    wrappedCollectionImageIPFS = "ipfs://QmVLK98G9xCXKA3r1mAJ2ytJ7XVCfWBy4DfnHkXF2VWJ53";
   }
 
   /// @inheritdoc IObeliskRegistry
-  function addToCollection(address _collection) external payable override {
-    if (msg.value < MINIMUM_SENDING_ETH) revert AmountTooLow();
-
+  function addToCollection(address _collection) external payable override nonReentrant {
     Collection storage collection = supportedCollections[_collection];
-    uint256 newTotalContribution = collection.contributionBalance + msg.value;
+    uint256 sendingAmount = DRIP_VAULT_ETH.previewDeposit(msg.value);
+    uint256 contributionBalance = collection.contributionBalance;
+    uint256 surplus;
 
-    if (!collection.allowed) revert CollectionNotAllowed();
+    if (sendingAmount < MINIMUM_SENDING_ETH) revert AmountTooLow();
 
-    collection.contributionBalance = newTotalContribution;
-    userSupportedCollections[msg.sender][_collection].deposit += uint128(msg.value);
-    DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
-
-    if (newTotalContribution > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
+    if (contributionBalance >= REQUIRED_ETH_TO_ENABLE_COLLECTION) {
       revert TooManyEth();
     }
 
-    emit CollectionContributed(_collection, msg.sender, msg.value);
-    if (newTotalContribution != REQUIRED_ETH_TO_ENABLE_COLLECTION) return;
+    contributionBalance += sendingAmount;
+
+    if (contributionBalance > REQUIRED_ETH_TO_ENABLE_COLLECTION) {
+      surplus = contributionBalance - REQUIRED_ETH_TO_ENABLE_COLLECTION;
+      sendingAmount -= surplus;
+      contributionBalance -= surplus;
+    }
+
+    if (!collection.allowed) revert CollectionNotAllowed();
+
+    sendingAmount = DRIP_VAULT_ETH.deposit{ value: sendingAmount }(0);
+    userSupportedCollections[msg.sender][_collection].deposit += uint128(sendingAmount);
+
+    //Ignore the potential fee from drip_vault.
+    collection.contributionBalance = contributionBalance;
+
+    emit CollectionContributed(_collection, msg.sender, sendingAmount);
+    if (contributionBalance < REQUIRED_ETH_TO_ENABLE_COLLECTION) return;
 
     _createWrappedNFT(
       _collection,
@@ -92,9 +121,14 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
       collection.collectionStartedUnixTime,
       collection.premium
     );
+
+    if (surplus != 0) {
+      (bool success,) = msg.sender.call{ value: surplus }("");
+      if (!success) revert TransferFailed();
+    }
   }
 
-  function forceActiveCollection(address _collection) external onlyOwner {
+  function forceActiveCollection(address _collection) external onlyPermissionAdmin {
     Collection storage collection = supportedCollections[_collection];
     if (!collection.allowed) revert CollectionNotAllowed();
 
@@ -106,7 +140,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     uint256 missingEth = REQUIRED_ETH_TO_ENABLE_COLLECTION - currentBalance;
 
     collection.contributionBalance += missingEth;
-    userSupportedCollections[msg.sender][_collection].deposit += uint128(missingEth);
+    userSupportedCollections[treasury][_collection].deposit += uint128(missingEth);
 
     _createWrappedNFT(
       _collection,
@@ -122,19 +156,8 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     uint32 _unixTimeCreation,
     bool _premium
   ) internal returns (address addr_) {
-    addr_ = Create.createContract(
-      abi.encodePacked(
-        type(WrappedNFTHero).creationCode,
-        abi.encode(
-          HCT,
-          NFT_PASS,
-          _collection,
-          address(this),
-          _totalSupply,
-          _unixTimeCreation,
-          _premium
-        )
-      )
+    addr_ = WRAPPED_NFT_FACTORY.createWrappedNFT(
+      _collection, address(this), _totalSupply, _unixTimeCreation, _premium
     );
 
     isWrappedNFT[addr_] = true;
@@ -146,7 +169,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
   }
 
   /// @inheritdoc IObeliskRegistry
-  function removeFromCollection(address _collection, uint256 _amount) external override {
+  function removeFromCollection(address _collection, uint256 _amount)
+    external
+    override
+    nonReentrant
+  {
     Collection storage collection = supportedCollections[_collection];
     uint256 depositedAmount = userSupportedCollections[msg.sender][_collection].deposit;
     uint256 currentBalance = collection.contributionBalance;
@@ -161,7 +188,13 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     }
 
     collection.contributionBalance = currentBalance - _amount;
-    userSupportedCollections[msg.sender][_collection].deposit -= uint128(_amount);
+    depositedAmount -= _amount;
+
+    if (depositedAmount != 0 && depositedAmount < MINIMUM_SENDING_ETH) {
+      revert ContributionBalanceTooLow();
+    }
+
+    userSupportedCollections[msg.sender][_collection].deposit = uint128(depositedAmount);
     DRIP_VAULT_ETH.withdraw(msg.sender, _amount);
 
     emit CollectionContributionWithdrawn(_collection, msg.sender, _amount);
@@ -173,8 +206,17 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
 
     address token = msg.value != 0 ? address(0) : address(DAI);
     uint256 sanitizedAmount = msg.value != 0 ? msg.value : _amount;
+    uint256 minimumAmount =
+      token == address(0) ? MINIMUM_ETH_SUPPORT_AMOUNT : MINIMUM_DAI_SUPPORT_AMOUNT;
 
-    if (sanitizedAmount < MIN_SUPPORT_AMOUNT) revert AmountTooLow();
+    if (sanitizedAmount < minimumAmount) revert AmountTooLow();
+
+    if (token == address(0)) {
+      sanitizedAmount = DRIP_VAULT_ETH.deposit{ value: sanitizedAmount }(0);
+    } else {
+      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), sanitizedAmount);
+      sanitizedAmount = DRIP_VAULT_DAI.deposit(sanitizedAmount);
+    }
 
     supportId++;
     supporters[supportId] = Supporter({
@@ -185,18 +227,11 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
       removed: false
     });
 
-    if (token == address(0)) {
-      DRIP_VAULT_ETH.deposit{ value: msg.value }(0);
-    } else {
-      DAI.transferFrom(msg.sender, address(DRIP_VAULT_DAI), sanitizedAmount);
-      DRIP_VAULT_DAI.deposit(sanitizedAmount);
-    }
-
     emit Supported(supportId, msg.sender, sanitizedAmount);
   }
 
   /// @inheritdoc IObeliskRegistry
-  function retrieveSupportToYieldPool(uint32 _id) external override {
+  function retrieveSupportToYieldPool(uint32 _id) external override nonReentrant {
     Supporter storage supporter = supporters[_id];
     uint256 returningAmount = supporter.amount;
 
@@ -235,7 +270,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     emit SlotBought(msg.sender, toCollection, toTreasury);
   }
 
-  function claim(address _collection) external {
+  function claim(address _collection) external nonReentrant {
     Collection storage collection = supportedCollections[_collection];
     CollectionRewards storage collectionRewards =
       wrappedCollectionRewards[collection.wrappedVersion];
@@ -268,20 +303,10 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     uint32 _collectionStartedUnixTime,
     bool _premium
   ) external {
-    bool isOwner = msg.sender == owner();
-    if (!isOwner && msg.sender != dataAsserter) revert NotAuthorized();
-
-    _allowNewCollection(
-      _collection, _totalSupply, _collectionStartedUnixTime, isOwner ? _premium : false
-    );
-  }
-
-  function _allowNewCollection(
-    address _collection,
-    uint256 _totalSupply,
-    uint32 _collectionStartedUnixTime,
-    bool _premium
-  ) internal {
+    bool isOwner = msg.sender == permissionAdmin();
+    if (!isOwner && !hasPermission(msg.sender, DATA_ASSERTER_ROLE)) {
+      revert NotAuthorized();
+    }
     if (supportedCollections[_collection].allowed) revert CollectionAlreadyAllowed();
 
     supportedCollections[_collection] = Collection({
@@ -290,7 +315,7 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
       contributionBalance: 0,
       collectionStartedUnixTime: _collectionStartedUnixTime,
       allowed: true,
-      premium: _premium
+      premium: isOwner ? _premium : false
     });
 
     emit CollectionAllowed(
@@ -302,31 +327,87 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     address _collection,
     address _wrappedVersion,
     bool _allowed
-  ) external onlyOwner {
+  ) external onlyPermissionAdmin {
     isWrappedNFT[_wrappedVersion] = _allowed;
 
-    emit WrappedNFTCreated(_collection, _wrappedVersion);
+    if (_allowed) {
+      emit WrappedNFTEnabled(_collection, _wrappedVersion);
+    } else {
+      emit WrappedNFTDisabled(_collection, _wrappedVersion);
+    }
   }
 
-  function setTickerLogic(string memory _ticker, address _pool) external onlyOwner {
+  function setTickerLogic(string memory _ticker, address _pool, bool _override) external {
+    bool isOwner = msg.sender == permissionAdmin();
+    _override = isOwner ? _override : false;
+
+    if (!isOwner && !hasPermission(msg.sender, TICKER_ROLE)) revert NoAccess();
+    if (!_override && tickersLogic[_ticker] != address(0)) revert TickerAlreadyExists();
+
     tickersLogic[_ticker] = _pool;
-    emit TickerLogicSet(_ticker, _pool);
+    emit TickerLogicSet(_ticker, _pool, _ticker);
   }
 
-  function setTreasury(address _treasury) external onlyOwner {
+  function setTreasury(address _treasury) external onlyPermissionAdmin {
     if (_treasury == address(0)) revert ZeroAddress();
     treasury = _treasury;
     emit TreasurySet(_treasury);
   }
 
-  function setDataAsserter(address _dataAsserter) external onlyOwner {
-    dataAsserter = _dataAsserter;
-    emit DataAsserterSet(_dataAsserter);
+  function setMegapoolFactory(address _megapoolFactory) external onlyPermissionAdmin {
+    _removePermission(_megapoolFactory, TICKER_ROLE);
+    _addPermission(_megapoolFactory, TICKER_ROLE);
+
+    megapoolFactory = _megapoolFactory;
+    emit MegapoolFactorySet(_megapoolFactory);
   }
 
-  function setMaxRewardPerCollection(uint256 _maxRewardPerCollection) external onlyOwner {
+  function setMaxRewardPerCollection(uint256 _maxRewardPerCollection)
+    external
+    onlyPermissionAdmin
+  {
     maxRewardPerCollection = _maxRewardPerCollection;
     emit MaxRewardPerCollectionSet(_maxRewardPerCollection);
+  }
+
+  /**
+   * @notice Enable emergency withdraw for a wrapped collection
+   * @param _wrappedCollection Wrapped collection address
+   *
+   * @dev This function enables emergency withdrawal for users to retrieve their NFTs
+   * in case of external issues.
+   *
+   * Once activated, this action is irreversible, and the collection will be marked as
+   * "offline".
+   *
+   * This will result in "Ghost weight" in the Tickers, negatively impacting the pool's
+   * yield
+   * and locking the rewards of these "Ghosts".
+   *
+   * In such a scenario, a migration is recommended. Although we use a trusted third
+   * party,
+   * the possibility of this happening is low but not impossible.
+   */
+  function enableEmergencyWithdrawForCollection(address _wrappedCollection)
+    external
+    onlyPermissionAdmin
+  {
+    IWrappedNFTHero(_wrappedCollection).enableEmergencyWithdraw();
+  }
+
+  function setWrappedCollectionImageIPFS(string memory _ipfsImage)
+    external
+    onlyPermissionAdmin
+  {
+    wrappedCollectionImageIPFS = _ipfsImage;
+  }
+
+  function setCollectionImageIPFS(uint256 _id, string memory _ipfsImage)
+    external
+    onlyPermission(IPFS_ROLE)
+  {
+    collectionImageIPFS[_id] = _ipfsImage;
+    emit CollectionImageIPFSUpdated(_id, _ipfsImage);
   }
 
   /// @inheritdoc IObeliskRegistry
@@ -362,6 +443,18 @@ contract ObeliskRegistry is IObeliskRegistry, Ownable {
     returns (Collection memory)
   {
     return supportedCollections[_collection];
+  }
+
+  function getCollectionImageIPFS(uint256 _id)
+    external
+    view
+    override
+    returns (string memory ipfs_)
+  {
+    ipfs_ = collectionImageIPFS[_id];
+    if (bytes(ipfs_).length != 0) return ipfs_;
+
+    return wrappedCollectionImageIPFS;
   }
 
   receive() external payable { }

@@ -10,3 +10,6 @@
 [submodule "node_modules/@layerzerolabs/toolbox-foundry/lib/v3-core"]
 	path = node_modules/@layerzerolabs/toolbox-foundry/lib/v3-core
 	url = https://github.com/uniswap/v3-core
+[submodule "node_modules/@layerzerolabs/toolbox-foundry/lib/atoumic"]
+	path = node_modules/@layerzerolabs/toolbox-foundry/lib/atoumic
+	url = https://github.com/0xAtum/atoumic

@@ -12,7 +12,7 @@ abstract contract LiteTicker is ILiteTicker {
   uint256 internal constant DEPOSIT_AMOUNT = 1e18;
 
   IObeliskRegistry public immutable registry;
-  mapping(address service => mapping(uint256 tokenId => bool)) public isTokenDeposited;
+  mapping(address service => mapping(uint256 tokenId => bool)) public isDeposited;
 
   constructor(address _registry) {
     registry = IObeliskRegistry(_registry);
@@ -23,28 +23,53 @@ abstract contract LiteTicker is ILiteTicker {
     _;
   }
 
-  function virtualDeposit(uint256 _tokenId, address _holder) external override onlyWrappedNFT {
-    if (isTokenDeposited[msg.sender][_tokenId]) revert AlreadyDeposited();
-    isTokenDeposited[msg.sender][_tokenId] = true;
-    _afterVirtualDeposit(_holder);
+  function virtualDeposit(bytes32 _identity, uint256 _tokenId, address _receiver)
+    external
+    override
+    onlyWrappedNFT
+  {
+    if (isDeposited[msg.sender][_tokenId]) revert AlreadyDeposited();
+    isDeposited[msg.sender][_tokenId] = true;
 
-    emit Deposited(_holder, msg.sender, _tokenId);
+    _afterVirtualDeposit(_identity, _receiver);
+
+    emit Deposited(msg.sender, _tokenId);
   }
 
-  function virtualWithdraw(uint256 _tokenId, address _holder, bool _ignoreRewards) external override onlyWrappedNFT {
-    if (!isTokenDeposited[msg.sender][_tokenId]) revert NotDeposited();
-    isTokenDeposited[msg.sender][_tokenId] = false;
-    _afterVirtualWithdraw(_holder, _ignoreRewards);
+  function virtualWithdraw(
+    bytes32 _identity,
+    uint256 _tokenId,
+    address _receiver,
+    bool _ignoreRewards
+  ) external override onlyWrappedNFT {
+    if (!isDeposited[msg.sender][_tokenId]) revert NotDeposited();
+    isDeposited[msg.sender][_tokenId] = false;
 
-    emit Withdrawn(_holder, msg.sender, _tokenId);
+    _afterVirtualWithdraw(_identity, _receiver, _ignoreRewards);
+
+    emit Withdrawn(msg.sender, _tokenId);
   }
 
-  function claim(uint256 _tokenId, address _holder, bool _ignoreRewards) external override onlyWrappedNFT {
-    if (!isTokenDeposited[msg.sender][_tokenId]) revert NotDeposited();
-    _onClaimTriggered(_holder, _ignoreRewards);
+  function claim(
+    bytes32 _identity,
+    uint256 _tokenId,
+    address _receiver,
+    bool _ignoreRewards
+  ) external override onlyWrappedNFT {
+    if (!isDeposited[msg.sender][_tokenId]) revert NotDeposited();
+
+    _onClaimTriggered(_identity, _receiver, _ignoreRewards);
   }
 
-  function _afterVirtualDeposit(address _holder) internal virtual;
-  function _afterVirtualWithdraw(address _holder, bool _ignoreRewards) internal virtual;
-  function _onClaimTriggered(address _holder, bool _ignoreRewards) internal virtual;
+  function _afterVirtualDeposit(bytes32 _identity, address _receiver) internal virtual;
+
+  function _afterVirtualWithdraw(
+    bytes32 _identity,
+    address _receiver,
+    bool _ignoreRewards
+  ) internal virtual;
+
+  function _onClaimTriggered(bytes32 _identity, address _receiver, bool _ignoreRewards)
+    internal
+    virtual;
 }

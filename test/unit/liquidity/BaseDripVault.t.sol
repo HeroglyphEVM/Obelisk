@@ -63,7 +63,9 @@ contract BaseDripVaultTest is BaseTest {
   }
 
   function test_setObeliskRegistry_whenNotOwner_reverts() public prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setObeliskRegistry(generateAddress("newRegistry"));
   }
 
@@ -78,7 +80,9 @@ contract BaseDripVaultTest is BaseTest {
   }
 
   function test_setInterestRateReceiver_whenNotOwner_reverts() public prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.setInterestRateReceiver(generateAddress("newRateReceiver"));
   }
 
@@ -97,16 +101,27 @@ contract BaseDripVaultHarness is BaseDripVault {
   event AfterDeposit(uint256 amount);
   event BeforeWithdrawal(address to, uint256 amount);
 
-  constructor(address _inputToken, address _owner, address _registry, address _rateReceiver)
-    BaseDripVault(_inputToken, _owner, _registry, _rateReceiver)
-  { }
+  constructor(
+    address _inputToken,
+    address _owner,
+    address _registry,
+    address _rateReceiver
+  ) BaseDripVault(_inputToken, _owner, _registry, _rateReceiver) { }
 
-  function _afterDeposit(uint256 _amount) internal override {
+  function _afterDeposit(uint256 _amount) internal override returns (uint256) {
     emit AfterDeposit(_amount);
+
+    return _amount;
   }
 
-  function _beforeWithdrawal(address _to, uint256 _amount) internal override {
+  function _beforeWithdrawal(address _to, uint256 _amount)
+    internal
+    override
+    returns (uint256)
+  {
     emit BeforeWithdrawal(_to, _amount);
+
+    return _amount;
   }
 
   function claim() external pure returns (uint256) {
@@ -115,5 +130,9 @@ contract BaseDripVaultHarness is BaseDripVault {
 
   function getOutputToken() external view override returns (address) {
     return INPUT_TOKEN;
+  }
+
+  function previewDeposit(uint256 _amount) external pure override returns (uint256) {
+    return _amount;
   }
 }

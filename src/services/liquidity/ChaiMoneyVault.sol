@@ -24,16 +24,24 @@ contract ChaiMoneyVault is BaseDripVault {
     IERC20(INPUT_TOKEN).approve(address(CHAI_MONEY), type(uint256).max);
   }
 
-  function _afterDeposit(uint256 _amount) internal override {
+  function _afterDeposit(uint256 _amount) internal override returns (uint256) {
     CHAI_MONEY.join(address(this), _amount);
+
+    return _amount;
   }
 
-  function _beforeWithdrawal(address _to, uint256 _amount) internal override {
+  function _beforeWithdrawal(address _to, uint256 _amount)
+    internal
+    override
+    returns (uint256)
+  {
     CHAI_MONEY.draw(address(this), _amount);
     IERC20(INPUT_TOKEN).transfer(_to, _amount);
+
+    return _amount;
   }
 
-  function claim() external override returns (uint256 interest_) {
+  function claim() external override nonReentrant returns (uint256 interest_) {
     IChaiMoney cachedChaiMoney = CHAI_MONEY;
     IERC20 cachedDai = IERC20(INPUT_TOKEN);
 
@@ -61,5 +69,9 @@ contract ChaiMoneyVault is BaseDripVault {
 
   function getOutputToken() external view returns (address) {
     return INPUT_TOKEN;
+  }
+
+  function previewDeposit(uint256 _amount) external pure override returns (uint256) {
+    return _amount;
   }
 }

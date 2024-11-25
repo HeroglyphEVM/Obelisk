@@ -11,6 +11,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @title StreamingPool
  * @notice A way to boost APY for megapools by streaming donations rewards.
+ * @custom:export abi
  */
 contract StreamingPool is IStreamingPool, Ownable {
   uint256 private constant SCALED_PRECISION = 1e18;
@@ -25,13 +26,14 @@ contract StreamingPool is IStreamingPool, Ownable {
   uint256 public rewardBalance;
   uint256 public pendingToBeClaimed;
 
-  constructor(address _owner, address _interestManager, address _inputToken) Ownable(_owner) {
+  constructor(address _owner, address _interestManager, address _inputToken)
+    Ownable(_owner)
+  {
     interestManager = _interestManager;
     inputToken = _inputToken;
   }
 
   function claim() external override returns (uint256 amount_) {
-    if (msg.sender != interestManager) revert NotInterestManager();
     _updateRewards();
 
     amount_ = pendingToBeClaimed;
@@ -39,7 +41,7 @@ contract StreamingPool is IStreamingPool, Ownable {
 
     if (amount_ == 0) return 0;
 
-    IERC20(inputToken).transfer(msg.sender, amount_);
+    IERC20(inputToken).transfer(interestManager, amount_);
 
     emit Claimed(amount_);
   }
@@ -64,7 +66,8 @@ contract StreamingPool is IStreamingPool, Ownable {
     uint32 currentUnix = uint32(block.timestamp);
     uint32 secondsSinceLastClaim = currentUnix - lastClaimedUnix;
 
-    uint256 rewardsSinceLastClaim = Math.mulDiv(ratePerSecondInRay, secondsSinceLastClaim, SCALED_PRECISION);
+    uint256 rewardsSinceLastClaim =
+      Math.mulDiv(ratePerSecondInRay, secondsSinceLastClaim, SCALED_PRECISION);
     rewardsSinceLastClaim = Math.min(rewardsSinceLastClaim, rewardBalance);
 
     pendingToBeClaimed += rewardsSinceLastClaim;

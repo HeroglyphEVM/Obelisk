@@ -6,4 +6,6 @@ interface IPirexEth {
     external
     payable
     returns (uint256 postFeeAmount, uint256 feeAmount);
+
+  function fees(uint8 _feeType) external view returns (uint32);
 }

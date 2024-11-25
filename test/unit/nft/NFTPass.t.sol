@@ -8,6 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { INameFilter } from "src/vendor/heroglyph/INameFilter.sol";
 import { IIdentityERC721 } from "src/vendor/heroglyph/IIdentityERC721.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract NFTPassTest is BaseTest {
   uint256 public constant MAX_BPS = 10_000;
@@ -21,20 +22,50 @@ contract NFTPassTest is BaseTest {
 
   NFTPassHarness private underTest;
 
+  bytes32 private MERKLE_ROOT =
+    bytes32(hex"0b1dac9cedfcfd7cfe059834cbc7bac5fe17b62583d07f1d6b12232e11e80084");
+  address private PROOF_USER = 0xf94a9145600140A27f3E3122AD4d1f0FA4320664;
+  bytes32[] private PROOF = [
+    bytes32(hex"aee0596b7414d00c1199f50e5a8c1e592713ee3db57f30b0be6d48d17a16be55"),
+    hex"87705553de17763c7c946b944568d00767977ea60bd6eeaf8240729890a0c899",
+    hex"71c2b5f904a0fff51644bc53f44b5060e1ff1e37c846fc57416c984ebf2263f3",
+    hex"dd92259d01d48318916d0a7d02a2653a0dcd21f3edd44c6ca4c071ea7a80e70d",
+    hex"dac5855b5b0cd44dd57f54be3906ab6ef69fabe17310e07e0b278905442acb42",
+    hex"2ed384ec21181feaf5da117e7ffca60bea86cb83b93b3a78fa22e12538f7d7ea",
+    hex"550d391446ca85aaa6550eaddf9e49df4d29919dad5619372a5ee6da9cb51399",
+    hex"f5b7b1aac70ff4062e0a34b232b98a811903210688c8e3e55ed5b61aa1ac10b3",
+    hex"88b868a542d524a173e4c703578aaebd0ca4ee38725e7f260a22f3d4f894c1d2",
+    hex"f5d91a9590209f7d7841cca74dee1f1b169da4adb3652f54b105eaaf1971023b",
+    hex"f52f709b9bcecbd67b39b299d6b46eee06a019e3314672651fc2a1f742ee446d",
+    hex"570b872fa96e710e16f7fd68df4127168b10bc69c57aa0a2a3be681c217ab428",
+    hex"bcf4ef158948faaf536d9097449a0d2a36097d499f2d834aa7757563ba151ac8",
+    hex"1f18ace9983416ee25c783bcace482569695f63042bcf89e2125567c56bcbbf9"
+  ];
+
   function setUp() public pranking {
     _generateAddresses();
     vm.deal(user, 1000e18);
 
     changePrank(owner);
 
-    underTest = new NFTPassHarness(owner, treasury, mockNameFilter, COST);
+    underTest = new NFTPassHarness(owner, treasury, mockNameFilter, COST, MERKLE_ROOT);
 
     vm.mockCall(
-      mockNameFilter, abi.encodeWithSelector(INameFilter.isNameValidWithIndexError.selector), abi.encode(true, 0)
+      mockNameFilter,
+      abi.encodeWithSelector(INameFilter.isNameValidWithIndexError.selector),
+      abi.encode(true, 0)
     );
-    vm.mockCall(mockNameFilter, abi.encodeWithSelector(INameFilter.isNameValid.selector), abi.encode(true));
+    vm.mockCall(
+      mockNameFilter,
+      abi.encodeWithSelector(INameFilter.isNameValid.selector),
+      abi.encode(true)
+    );
 
-    vm.mockCall(oldIdentity, abi.encodeWithSelector(IIdentityERC721.getIdentityNFTId.selector), abi.encode(0));
+    vm.mockCall(
+      oldIdentity,
+      abi.encodeWithSelector(IIdentityERC721.getIdentityNFTId.selector),
+      abi.encode(0)
+    );
 
     skip(1 weeks);
   }
@@ -48,12 +79,52 @@ contract NFTPassTest is BaseTest {
   }
 
   function test_constructor_thenContractWellConfigured() external {
-    underTest = new NFTPassHarness(owner, treasury, mockNameFilter, COST);
+    underTest = new NFTPassHarness(owner, treasury, mockNameFilter, COST, MERKLE_ROOT);
 
     assertEq(underTest.owner(), owner);
     assertEq(address(underTest.nameFilter()), mockNameFilter);
     assertEq(underTest.treasury(), treasury);
     assertEq(underTest.cost(), COST);
+    assertEq(underTest.merkleRoot(), MERKLE_ROOT);
+  }
+
+  function test_claimPass_whenClaimingEnded_thenReverts() external pranking {
+    skip(31 days);
+
+    changePrank(PROOF_USER);
+    vm.expectRevert(INFTPass.ClaimingEnded.selector);
+    underTest.claimPass("!", PROOF_USER, PROOF);
+  }
+
+  function test_claimPass_whenNameTooLong_thenReverts() external pranking {
+    changePrank(PROOF_USER);
+    bytes memory tooLongName = new bytes(underTest.MAX_NAME_BYTES() + 1);
+
+    vm.expectRevert(INFTPass.NameTooLong.selector);
+    underTest.claimPass(string(tooLongName), PROOF_USER, PROOF);
+  }
+
+  function test_claimPass_whenAlreadyClaimed_thenReverts() external pranking {
+    changePrank(PROOF_USER);
+    underTest.claimPass("L", PROOF_USER, PROOF);
+
+    vm.expectRevert(INFTPass.AlreadyClaimed.selector);
+    underTest.claimPass("!", PROOF_USER, PROOF);
+  }
+
+  function test_claimPass_whenInvalidProof_thenReverts() external pranking {
+    changePrank(generateAddress());
+    vm.expectRevert(INFTPass.InvalidProof.selector);
+    underTest.claimPass("!", PROOF_USER, PROOF);
+  }
+
+  function test_claimPass_thenCreatesAndAssigns() external pranking {
+    changePrank(PROOF_USER);
+    expectExactEmit();
+    emit INFTPass.NFTPassCreated(1, "!", PROOF_USER, 0);
+    underTest.claimPass("!", PROOF_USER, PROOF);
+
+    assertEq(underTest.getMetadata(0, "!").walletReceiver, PROOF_USER);
   }
 
   function test_create_givenMsgValue_whenCostIsZero_thenReverts() external pranking {
@@ -84,7 +155,10 @@ contract NFTPassTest is BaseTest {
     assertEq(address(treasury).balance, COST);
   }
 
-  function test_create_givenWalletReceiver_thenCreatesAndAssignWalletReceiver() external pranking {
+  function test_create_givenWalletReceiver_thenCreatesAndAssignWalletReceiver()
+    external
+    pranking
+  {
     string memory name = "!";
     address receiver = generateAddress();
 
@@ -184,7 +258,9 @@ contract NFTPassTest is BaseTest {
     assertEq(underTest.exposed_updateCost(), expectedCost);
 
     underTest.exposed_addBoughtToday(priceIncreaseThreshold - 2);
-    console.log("Next: (MaxPerDay + threshold * 2 - 1) | Current:", underTest.boughtToday());
+    console.log(
+      "Next: (MaxPerDay + threshold * 2 - 1) | Current:", underTest.boughtToday()
+    );
     assertEq(underTest.exposed_updateCost(), expectedCost);
 
     expectedCost += COST / 2;
@@ -192,7 +268,8 @@ contract NFTPassTest is BaseTest {
     assertEq(underTest.exposed_updateCost(), expectedCost);
 
     skip(1 days);
-    uint256 actualPrice = Math.max(COST, expectedCost - (expectedCost * underTest.priceDecayBPS() / MAX_BPS));
+    uint256 actualPrice =
+      Math.max(COST, expectedCost - (expectedCost * underTest.priceDecayBPS() / MAX_BPS));
 
     expectedCost = COST;
     assertEq(underTest.getCost(), expectedCost);
@@ -222,7 +299,7 @@ contract NFTPassTest is BaseTest {
       id++;
 
       assertEq(underTest.getCost(), expectedCost);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+      underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
     }
 
     expectedCost += COST / 2;
@@ -234,8 +311,8 @@ contract NFTPassTest is BaseTest {
       assertEq(underTest.getCost(), expectedCost);
 
       expectExactEmit();
-      emit INFTPass.NFTPassCreated(id, string(abi.encode(id)), user, expectedCost);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+      emit INFTPass.NFTPassCreated(id, Strings.toString(id), user, expectedCost);
+      underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
     }
 
     assertEq(underTest.getCost(), expectedCost + COST / 2);
@@ -246,23 +323,25 @@ contract NFTPassTest is BaseTest {
       id++;
 
       assertEq(underTest.getCost(), COST);
-      underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+      underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
     }
 
-    expectedCost = Math.max(COST, expectedCost - Math.mulDiv(expectedCost, underTest.priceDecayBPS(), MAX_BPS));
+    expectedCost = Math.max(
+      COST, expectedCost - Math.mulDiv(expectedCost, underTest.priceDecayBPS(), MAX_BPS)
+    );
     assertEq(underTest.getCost(), expectedCost);
 
     id++;
     expectExactEmit();
-    emit INFTPass.NFTPassCreated(id, string(abi.encode(id)), user, expectedCost);
-    underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+    emit INFTPass.NFTPassCreated(id, Strings.toString(id), user, expectedCost);
+    underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
 
     expectedCost = COST;
 
     skip(10 days);
     for (uint32 i = 0; i <= maxIdentityPerDay + (priceIncreaseThreshold * 10); ++i) {
       id++;
-      underTest.create{ value: 2e18 }(string(abi.encode(id)), address(0));
+      underTest.create{ value: 2e18 }(Strings.toString(id), address(0));
     }
 
     expectedCost += (COST / 2) * 10;
@@ -271,21 +350,29 @@ contract NFTPassTest is BaseTest {
     skip(60 days);
     for (uint32 i = 0; i <= maxIdentityPerDay; ++i) {
       id++;
-      underTest.create{ value: 2e18 }(string(abi.encode(id)), address(0));
+      underTest.create{ value: 2e18 }(Strings.toString(id), address(0));
     }
 
     id++;
-    underTest.create{ value: expectedCost }(string(abi.encode(id)), address(0));
+    underTest.create{ value: expectedCost }(Strings.toString(id), address(0));
 
     assertEq(underTest.currentPrice(), COST);
   }
 
-  function test_updateMaxIdentityPerDayAtInitialPrice_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+  function test_updateMaxIdentityPerDayAtInitialPrice_asNonOwner_thenReverts()
+    external
+    prankAs(user)
+  {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.updateMaxIdentityPerDayAtInitialPrice(30);
   }
 
-  function test_updateMaxIdentityPerDayAtInitialPrice_thenUpdates() external prankAs(owner) {
+  function test_updateMaxIdentityPerDayAtInitialPrice_thenUpdates()
+    external
+    prankAs(owner)
+  {
     uint32 newMaxIdentityPerDay = 30;
 
     expectExactEmit();
@@ -295,8 +382,13 @@ contract NFTPassTest is BaseTest {
     assertEq(underTest.maxIdentityPerDayAtInitialPrice(), newMaxIdentityPerDay);
   }
 
-  function test_updatePriceIncreaseThreshold_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+  function test_updatePriceIncreaseThreshold_asNonOwner_thenReverts()
+    external
+    prankAs(user)
+  {
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.updatePriceIncreaseThreshold(30);
   }
 
@@ -311,7 +403,9 @@ contract NFTPassTest is BaseTest {
   }
 
   function test_updatePriceDecayBPS_asNonOwner_thenReverts() external prankAs(user) {
-    vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user));
+    vm.expectRevert(
+      abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, user)
+    );
     underTest.updatePriceDecayBPS(30);
   }
 
@@ -332,9 +426,13 @@ contract NFTPassTest is BaseTest {
 }
 
 contract NFTPassHarness is NFTPass {
-  constructor(address _owner, address _treasury, address _nameFilter, uint256 _cost)
-    NFTPass(_owner, _treasury, _nameFilter, _cost)
-  { }
+  constructor(
+    address _owner,
+    address _treasury,
+    address _nameFilter,
+    uint256 _cost,
+    bytes32 _proofRoot
+  ) NFTPass(_owner, _treasury, _nameFilter, _cost, _proofRoot) { }
 
   function exposed_addBoughtToday(uint32 _amount) external {
     boughtToday += _amount;

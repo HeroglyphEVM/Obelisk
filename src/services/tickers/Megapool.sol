@@ -8,95 +8,144 @@ import { ShareableMath } from "src/lib/ShareableMath.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
+import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
 /**
  * @title Megapool
  * @notice It receives yield from the deposited ETH from unlocking a collection.
  * @dev Megapool has a max entry limit.
+ * @custom:export abi
  */
 contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
   error MaxEntryExceeded();
+  error NotAllowedCollection();
+  error InvalidWrappedCollection(address collection);
 
   event MaxEntryUpdated(uint256 newMaxEntry);
 
+  IInterestManager public immutable INTEREST_MANAGER;
   ERC20 public immutable REWARD_TOKEN;
+
+  bool public hasReservedCollections;
 
   uint256 public yieldPerTokenInRay;
   uint256 public yieldBalance;
   uint256 public totalVirtualBalance;
   uint256 public maxEntry;
 
-  IInterestManager public immutable INTEREST_MANAGER;
+  mapping(bytes32 => uint256) public virtualBalances;
+  mapping(bytes32 => uint256) public userYieldSnapshot;
+  mapping(address => bool) public allowedWrappedCollections;
+  address[] public allowedWrappedCollectionsList;
 
-  mapping(address => uint256) internal userYieldSnapshot;
-  mapping(address => uint256) private virtualBalances;
-
-  constructor(address _owner, address _registry, address _tokenReward, address _interestManager)
-    LiteTicker(_registry)
-    Ownable(_owner)
-  {
+  constructor(
+    address _owner,
+    address _registry,
+    address _tokenReward,
+    address _interestManager,
+    address[] memory _allowedWrappedCollections
+  ) LiteTicker(_registry) Ownable(_owner) {
     REWARD_TOKEN = ERC20(_tokenReward);
     INTEREST_MANAGER = IInterestManager(_interestManager);
     maxEntry = 1000e18;
+
+    uint256 collectionCount = _allowedWrappedCollections.length;
+    if (collectionCount == 0) return;
+
+    hasReservedCollections = true;
+    allowedWrappedCollectionsList = _allowedWrappedCollections;
+
+    address collection;
+    for (uint256 i = 0; i < collectionCount; ++i) {
+      collection = _allowedWrappedCollections[i];
+
+      if (!IObeliskRegistry(_registry).isWrappedNFT(collection)) {
+        revert InvalidWrappedCollection(collection);
+      }
+
+      allowedWrappedCollections[collection] = true;
+    }
   }
 
-  function _afterVirtualDeposit(address _holder) internal override {
-    _claim(_holder, false);
+  function _afterVirtualDeposit(bytes32 _identity, address _receiver) internal override {
+    if (hasReservedCollections && !allowedWrappedCollections[msg.sender]) {
+      revert NotAllowedCollection();
+    }
 
-    uint256 userVirtualBalance = virtualBalances[_holder] + DEPOSIT_AMOUNT;
+    _claim(_identity, _receiver, false);
 
-    virtualBalances[_holder] = userVirtualBalance;
+    uint256 userVirtualBalance = virtualBalances[_identity] + DEPOSIT_AMOUNT;
 
+    virtualBalances[_identity] = userVirtualBalance;
     totalVirtualBalance += DEPOSIT_AMOUNT;
 
     if (totalVirtualBalance > maxEntry) {
       revert MaxEntryExceeded();
     }
 
-    userYieldSnapshot[_holder] = ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
+    userYieldSnapshot[_identity] =
+      ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
   }
 
-  function _afterVirtualWithdraw(address _holder, bool _ignoreRewards) internal override {
-    _claim(_holder, _ignoreRewards);
+  function _afterVirtualWithdraw(
+    bytes32 _identity,
+    address _receiver,
+    bool _ignoreRewards
+  ) internal override {
+    _claim(_identity, _receiver, _ignoreRewards);
 
-    uint256 userVirtualBalance = virtualBalances[_holder] - DEPOSIT_AMOUNT;
-    virtualBalances[_holder] = userVirtualBalance;
+    uint256 userVirtualBalance = virtualBalances[_identity] - DEPOSIT_AMOUNT;
+    virtualBalances[_identity] = userVirtualBalance;
 
     totalVirtualBalance -= DEPOSIT_AMOUNT;
-    userYieldSnapshot[_holder] = ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
+    userYieldSnapshot[_identity] =
+      ShareableMath.rmulup(userVirtualBalance, yieldPerTokenInRay);
   }
 
-  function _getNewYield() internal view returns (uint256) {
-    return REWARD_TOKEN.balanceOf(address(this)) - yieldBalance;
+  function _onClaimTriggered(bytes32 _identity, address _receiver, bool _ignoreRewards)
+    internal
+    override
+  {
+    _claim(_identity, _receiver, _ignoreRewards);
+
+    userYieldSnapshot[_identity] =
+      ShareableMath.rmulup(virtualBalances[_identity], yieldPerTokenInRay);
   }
 
-  function _onClaimTriggered(address _holder, bool _ignoreRewards) internal override {
-    _claim(_holder, _ignoreRewards);
-  }
-
-  function _claim(address _holder, bool _ignoreRewards) internal nonReentrant {
+  function _claim(bytes32 _identity, address _receiver, bool _ignoreRewards)
+    internal
+    nonReentrant
+  {
     INTEREST_MANAGER.claim();
+
     uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this));
-    uint256 holderVirtualBalance = virtualBalances[_holder];
+    uint256 queued = 0;
+
+    uint256 holderVirtualBalance = virtualBalances[_identity];
     uint256 yieldPerTokenInRayCached = yieldPerTokenInRay;
     uint256 totalVirtualBalanceCached = totalVirtualBalance;
 
     if (totalVirtualBalanceCached > 0) {
-      yieldPerTokenInRayCached += ShareableMath.rdiv(_getNewYield(), totalVirtualBalanceCached);
+      yieldPerTokenInRayCached +=
+        ShareableMath.rdiv(currentYieldBalance - yieldBalance, totalVirtualBalanceCached);
     } else if (currentYieldBalance != 0) {
       REWARD_TOKEN.transfer(owner(), currentYieldBalance);
     }
 
-    uint256 last = userYieldSnapshot[_holder];
+    uint256 last = userYieldSnapshot[_identity];
     uint256 curr = ShareableMath.rmul(holderVirtualBalance, yieldPerTokenInRayCached);
 
-    if (curr > last && !_ignoreRewards) {
+    if (curr > last) {
       uint256 sendingReward = curr - last;
-      REWARD_TOKEN.transfer(_holder, sendingReward);
+
+      if (!_ignoreRewards) {
+        REWARD_TOKEN.transfer(_receiver, sendingReward);
+      } else {
+        queued += sendingReward;
+      }
     }
 
-    yieldBalance = REWARD_TOKEN.balanceOf(address(this));
-    userYieldSnapshot[_holder] = ShareableMath.rmulup(holderVirtualBalance, yieldPerTokenInRayCached);
+    yieldBalance = REWARD_TOKEN.balanceOf(address(this)) - queued;
     yieldPerTokenInRay = yieldPerTokenInRayCached;
   }
 
@@ -105,11 +154,30 @@ contract Megapool is LiteTicker, Ownable, ReentrancyGuard {
     emit MaxEntryUpdated(_newMaxEntry);
   }
 
-  function getVirtualBalanceOf(address _holder) external view returns (uint256) {
-    return virtualBalances[_holder];
-  }
+  function getClaimableRewards(bytes32 _identity, uint256 _extraRewards)
+    external
+    view
+    override
+    returns (uint256 rewards_, address rewardsToken_)
+  {
+    uint256 currentYieldBalance = REWARD_TOKEN.balanceOf(address(this)) + _extraRewards;
 
-  function getYieldSnapshotOf(address _target) external view returns (uint256) {
-    return userYieldSnapshot[_target];
+    uint256 holderVirtualBalance = virtualBalances[_identity];
+    uint256 yieldPerTokenInRayCached = yieldPerTokenInRay;
+    uint256 totalVirtualBalanceCached = totalVirtualBalance;
+
+    if (totalVirtualBalanceCached > 0) {
+      yieldPerTokenInRayCached +=
+        ShareableMath.rdiv(currentYieldBalance - yieldBalance, totalVirtualBalanceCached);
+    }
+
+    uint256 last = userYieldSnapshot[_identity];
+    uint256 curr = ShareableMath.rmul(holderVirtualBalance, yieldPerTokenInRayCached);
+
+    if (curr > last) {
+      rewards_ = curr - last;
+    }
+
+    return (rewards_, address(REWARD_TOKEN));
   }
 }

@@ -10,7 +10,8 @@ import { INameFilter } from "./INameFilter.sol";
 
 /**
  * @title IdentityERC721
- * @notice The base of Ticker & ValidatorIdentity. It handles name verification, id tracking and the payment
+ * @notice The base of Ticker & ValidatorIdentity. It handles name verification, id
+ * tracking and the payment
  */
 abstract contract IdentityERC721 is IIdentityERC721, ERC721, Ownable {
   address public treasury;
@@ -21,7 +22,8 @@ abstract contract IdentityERC721 is IIdentityERC721, ERC721, Ownable {
   uint256 private nextIdToMint;
 
   /**
-   * @dev Important, id starts at 1. When creating an Identity, call _create to validate and mint
+   * @dev Important, id starts at 1. When creating an Identity, call _create to validate
+   * and mint
    */
   constructor(
     address _owner,
@@ -39,11 +41,17 @@ abstract contract IdentityERC721 is IIdentityERC721, ERC721, Ownable {
     cost = _cost;
   }
 
-  function _create(string memory _name, uint256 _expectingCost) internal returns (uint256 mintedId_) {
-    if (_expectingCost != 0 && msg.value != _expectingCost) revert ValueIsNotEqualsToCost();
+  function _create(string memory _name, uint256 _expectingCost)
+    internal
+    returns (uint256 mintedId_)
+  {
+    if (_expectingCost != 0 && msg.value != _expectingCost) {
+      revert ValueIsNotEqualsToCost();
+    }
     if (identityIds[_name] != 0) revert NameAlreadyTaken();
 
-    (bool isNameHealthy, uint256 characterIndex) = nameFilter.isNameValidWithIndexError(_name);
+    (bool isNameHealthy, uint256 characterIndex) =
+      nameFilter.isNameValidWithIndexError(_name);
     if (!isNameHealthy) revert InvalidCharacter(characterIndex);
 
     mintedId_ = nextIdToMint;
@@ -62,16 +70,29 @@ abstract contract IdentityERC721 is IIdentityERC721, ERC721, Ownable {
     return mintedId_;
   }
 
-  function _update(address to, uint256 tokenId, address auth) internal override returns (address) {
+  function _update(address to, uint256 tokenId, address auth)
+    internal
+    override
+    returns (address)
+  {
     if (tokenId == 0) revert InvalidIdZero();
     return super._update(to, tokenId, auth);
   }
 
-  function isNameAvailable(string calldata _name) external view returns (bool success_, int32 failedAt_) {
+  function isNameAvailable(string calldata _name)
+    external
+    view
+    returns (bool success_, int32 failedAt_)
+  {
     return _isNameAvailable(_name);
   }
 
-  function _isNameAvailable(string calldata _name) internal view virtual returns (bool success_, int32 failedAt_) {
+  function _isNameAvailable(string calldata _name)
+    internal
+    view
+    virtual
+    returns (bool success_, int32 failedAt_)
+  {
     if (identityIds[_name] != 0) return (false, -1);
 
     uint256 characterIndex;
@@ -80,7 +101,12 @@ abstract contract IdentityERC721 is IIdentityERC721, ERC721, Ownable {
     return (success_, int32(uint32(characterIndex)));
   }
 
-  function getIdentityNFTId(string calldata _name) external view override returns (uint256) {
+  function getIdentityNFTId(string calldata _name)
+    external
+    view
+    override
+    returns (uint256)
+  {
     return identityIds[_name];
   }
 
