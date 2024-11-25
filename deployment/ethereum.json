@@ -84,18 +84,6 @@
     "contractName": "Obelisk Hashmask"
   },
   {
-    "contractAddress": "0xf2e6b4B317efdF3cD28Db6948DA6f492914Ec154",
-    "contractName": "Interest Manager"
-  },
-  {
-    "contractAddress": "0x010a91D235936D64BE6DcfB89803AeA071Ee6952",
-    "contractName": "Streaming Pool"
-  },
-  {
-    "contractAddress": "0x5c2804093283E77871bAA6F63E88692cDaB18C9b",
-    "contractName": "Megapool Factory"
-  },
-  {
     "contractAddress": "0x1BB19f4663b54599197f15Bf2d6C3b051BE9F9De",
     "contractName": "Wrapped MOLANDAK POOL"
   },
@@ -150,5 +138,17 @@
   {
     "contractAddress": "0x53D686879C24B6de4029fdB935b2269d8b086aDe",
     "contractName": "Wrapped GNOBBY POOL"
+  },
+  {
+    "contractAddress": "0x47EA2161BD39bB5A61F47620779E899d47d90674",
+    "contractName": "Interest Manager"
+  },
+  {
+    "contractAddress": "0x6175F028c38DF7FAf32CD3fD15EC02aBFC51bF5f",
+    "contractName": "Streaming Pool"
+  },
+  {
+    "contractAddress": "0xf6072A990c55e8104034cFB3E163962f9bA77D84",
+    "contractName": "Megapool Factory"
   }
 ]
