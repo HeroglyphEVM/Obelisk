@@ -15,7 +15,7 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
  * @custom:export abi
  */
 contract MegapoolFactory is Ownable {
-  string public constant PREFIX = "MEGAPOOL_";
+  string public constant PREFIX = "MEGAPOOL";
   uint256 public hctCreationgCost;
 
   address public immutable OBELISK_REGISTRY;
