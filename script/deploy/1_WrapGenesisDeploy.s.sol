@@ -109,7 +109,7 @@ contract WrapGenesisDeploy is BaseScript {
           );
         }
 
-        sendToPool(ETHEREUM_ID, wrap, realGenesisToken);
+        // sendToPool(ETHEREUM_ID, wrap, realGenesisToken);
       }
     }
   }
