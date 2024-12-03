@@ -199,7 +199,9 @@ contract ProtocolDeploy is BaseScript {
 
     if (!megapoolFactoryExists) {
       vm.broadcast(_getDeployerPrivateKey());
-      MegapoolFactory(payable(megapoolFactory)).createMegapool(new address[](0));
+      MegapoolFactory(payable(megapoolFactory)).createMegapool(
+        "Senusret", new address[](0)
+      );
     }
 
     if (!streamingExists) {

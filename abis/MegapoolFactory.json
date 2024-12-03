@@ -84,21 +84,13 @@
   },
   {
     "type": "function",
-    "name": "PREFIX",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "createMegapool",
     "inputs": [
+      {
+        "name": "_megapoolName",
+        "type": "string",
+        "internalType": "string"
+      },
       {
         "name": "_allowedWrappedCollections",
         "type": "address[]",
@@ -106,11 +98,6 @@
       }
     ],
     "outputs": [
-      {
-        "name": "name_",
-        "type": "string",
-        "internalType": "string"
-      },
       {
         "name": "pool_",
         "type": "address",

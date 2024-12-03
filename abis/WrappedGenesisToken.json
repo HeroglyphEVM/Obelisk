@@ -8,6 +8,16 @@
         "internalType": "address"
       },
       {
+        "name": "_name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_symbol",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
         "name": "_originLzEndpoint",
         "type": "uint32",
         "internalType": "uint32"

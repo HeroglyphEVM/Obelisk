@@ -140,15 +140,15 @@
     "contractName": "Wrapped GNOBBY POOL"
   },
   {
-    "contractAddress": "0x47EA2161BD39bB5A61F47620779E899d47d90674",
+    "contractAddress": "0xd2B6d1F0d5671E21aeE69F87BcF56eb26F6C6F68",
     "contractName": "Interest Manager"
   },
   {
-    "contractAddress": "0x6175F028c38DF7FAf32CD3fD15EC02aBFC51bF5f",
+    "contractAddress": "0xee81a629A6b52Fa0aFb85cBa3273e5cB832A4051",
     "contractName": "Streaming Pool"
   },
   {
-    "contractAddress": "0xf6072A990c55e8104034cFB3E163962f9bA77D84",
+    "contractAddress": "0x90F8F3c2D55dff183b8904F23a3AC8e59AD5b24c",
     "contractName": "Megapool Factory"
   }
 ]

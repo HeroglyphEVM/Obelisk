@@ -113,19 +113,29 @@
   },
   {
     "type": "function",
-    "name": "earned",
+    "name": "getClaimableRewards",
     "inputs": [
       {
         "name": "_identity",
         "type": "bytes32",
         "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
+      },
       {
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "rewards_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "rewardsToken_",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"

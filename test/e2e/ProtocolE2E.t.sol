@@ -110,7 +110,7 @@ contract ProtocolE2E is BaseTest {
     obeliskRegistry.toggleIsWrappedNFTFor(hashmask, address(obeliskHashmask), true);
     obeliskRegistry.setMegapoolFactory(address(megapoolFactory));
 
-    megapoolFactory.createMegapool(new address[](0));
+    megapoolFactory.createMegapool("MEGAPOOL_001", new address[](0));
 
     vm.stopPrank();
 

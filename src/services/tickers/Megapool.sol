@@ -10,6 +10,9 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IInterestManager } from "src/interfaces/IInterestManager.sol";
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
+import { Initializable } from
+  "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
 /**
  * @title Megapool
  * @notice It receives yield from the deposited ETH from unlocking a collection.

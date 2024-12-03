@@ -6,8 +6,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IHCT } from "src/interfaces/IHCT.sol";
 import { IObeliskRegistry } from "src/interfaces/IObeliskRegistry.sol";
 
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
-
 /**
  * @title MegapoolFactory
  * @author Heroglyph
@@ -15,7 +13,9 @@ import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
  * @custom:export abi
  */
 contract MegapoolFactory is Ownable {
-  string public constant PREFIX = "MEGAPOOL";
+  error NameTooShort();
+
+  string public constant FIRST_MEGAPOOL_NAME = "Senusret";
   uint256 public hctCreationgCost;
 
   address public immutable OBELISK_REGISTRY;
@@ -45,25 +45,18 @@ contract MegapoolFactory is Ownable {
     HCT = IHCT(_hct);
     APX_ETH = _apxETH;
     INTEREST_MANAGER = _interestManager;
-
     hctCreationgCost = 1000e18;
   }
 
-  function createMegapool(address[] memory _allowedWrappedCollections)
-    external
-    returns (string memory name_, address pool_)
-  {
+  function createMegapool(
+    string calldata _megapoolName,
+    address[] memory _allowedWrappedCollections
+  ) external returns (address pool_) {
     address owner = owner();
-    name_ = PREFIX;
-    megapoolCount++;
 
-    if (megapoolCount < 10) {
-      name_ = string.concat(name_, "00");
-    } else if (megapoolCount < 100) {
-      name_ = string.concat(name_, "0");
+    if (bytes(_megapoolName).length < bytes(FIRST_MEGAPOOL_NAME).length) {
+      revert NameTooShort();
     }
-
-    name_ = string.concat(name_, Strings.toString(megapoolCount));
 
     if (msg.sender != owner) {
       HCT.burn(msg.sender, hctCreationgCost);
@@ -75,11 +68,12 @@ contract MegapoolFactory is Ownable {
       )
     );
 
-    IObeliskRegistry(OBELISK_REGISTRY).setTickerLogic(name_, pool_, false);
+    IObeliskRegistry(OBELISK_REGISTRY).setTickerLogic(_megapoolName, pool_, false);
     megapools[megapoolCount] = pool_;
-    emit MegapoolCreated(pool_, msg.sender, name_, _allowedWrappedCollections);
+    megapoolCount++;
+    emit MegapoolCreated(pool_, msg.sender, _megapoolName, _allowedWrappedCollections);
 
-    return (name_, pool_);
+    return pool_;
   }
 
   function updateHctCreationCost(uint256 _cost) external onlyOwner {

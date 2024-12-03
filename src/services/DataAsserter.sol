@@ -93,6 +93,7 @@ contract DataAsserter is Ownable {
     bytes32 data = bytes32(
       abi.encode(
         CollectionAssertionData({
+          collection: _collection,
           deploymentTimestamp: _deploymentTimestamp,
           currentSupply: _currentSupply
         })

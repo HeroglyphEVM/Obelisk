@@ -8,7 +8,7 @@
         "05_dai": "0x6B175474E89094C44Da98b954EedeAC495271d0F",
         "06_gaugeController": "0x4B4cd9807BF3de891cDF57C54B264be462d779F8",
         "07_hashmask": "0xc2c747e0f7004f9e8817db2ca4997657a7746928",
-        "08_swapRouter": "0xC2e9F25Be6257c210d7Adf0D4Cd6E3E881ba25f8",
+        "08_swapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
         "09_weth": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
         "10_chainlinkDaiETH": "0x773616E4d11A78F511299002da57A0a94577F1f4",
         "11_nftPassCost": 50000000000000000,

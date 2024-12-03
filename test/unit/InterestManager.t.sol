@@ -304,7 +304,7 @@ contract InterestManagerTest is BaseTest {
     underTest.applyGauges(ADDRESSES, WEIGHTS);
 
     uint256 minimumOut = daiReward * uint256(DAI_ETH_RATION) / 1e18;
-    minimumOut -= minimumOut * underTest.ALLOWED_SLIPPAGE() / 10_000;
+    minimumOut -= minimumOut * underTest.allowedSlippage() / 10_000;
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
       tokenIn: address(dai),

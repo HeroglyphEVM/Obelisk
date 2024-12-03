@@ -43,7 +43,6 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
 
   uint256 public constant PRECISION = 1e18;
   uint256 public constant MINIMUM_SWAP_DAI = 100e18;
-  uint256 public constant ALLOWED_SLIPPAGE = 500; // 5%
   uint256 public constant BPS = 10_000;
   uint24 private constant DAI_POOL_FEE = 500;
 
@@ -55,6 +54,7 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
   uint32 public override epochDuration;
   IStreamingPool public streamingPool;
   uint256 private apxBalanceTracker;
+  uint256 public allowedSlippage;
 
   address public immutable SWAP_ROUTER;
   IDripVault public immutable DRIP_VAULT_ETH;
@@ -85,6 +85,7 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
     PIREX_ETH = IPirexEth(IApxETH(address(APX_ETH)).pirexEth());
     CHAINLINK_DAI_ETH = IChainlinkOracle(_chainlinkDaiETH);
 
+    allowedSlippage = 500; // 5%
     epochDuration = MINIMUM_EPOCH_DURATION;
 
     TransferHelper.safeApprove(address(DAI), SWAP_ROUTER, type(uint256).max);
@@ -195,7 +196,7 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
     ) = CHAINLINK_DAI_ETH.latestRoundData();
 
     uint256 minimumOut = daiBalance * uint256(answer) / PRECISION;
-    minimumOut -= minimumOut * ALLOWED_SLIPPAGE / BPS;
+    minimumOut -= minimumOut * allowedSlippage / BPS;
 
     ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams({
       tokenIn: address(DAI),
@@ -224,6 +225,10 @@ contract InterestManager is IInterestManager, Ownable, ReentrancyGuard {
     pendingRewards[_megapool] = totalRewards;
 
     emit RewardAssigned(_megapool, addedRewards, totalRewards);
+  }
+
+  function setAllowedSlippage(uint256 _allowedSlippage) external onlyOwner {
+    allowedSlippage = _allowedSlippage;
   }
 
   function setGaugeController(address _gaugeController) external onlyOwner {
