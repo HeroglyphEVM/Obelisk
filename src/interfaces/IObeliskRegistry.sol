@@ -109,6 +109,20 @@ interface IObeliskRegistry {
   function retrieveSupportToYieldPool(uint32 _id) external;
 
   /**
+   * @notice Allow new collection
+   * @param _collection Collection address
+   * @param _currentSupply current supply
+   * @param _collectionStartedUnixTime Collection started unix time
+   * @param _premium Premium - Only Owner can set this to true
+   */
+  function allowNewCollection(
+    address _collection,
+    uint256 _currentSupply,
+    uint32 _collectionStartedUnixTime,
+    bool _premium
+  ) external;
+
+  /**
    * @notice Set ticker logic
    * @param _ticker Ticker
    * @param _pool Pool address
