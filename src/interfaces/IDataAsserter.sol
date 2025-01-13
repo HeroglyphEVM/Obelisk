@@ -22,6 +22,7 @@ interface IDataAsserter {
   error NothingToRetry();
   error AssertionNotResolved();
   error NotOptimisticOracle();
+  error AssertionLivenessTooShort();
 
   event DataAsserted(
     bytes32 indexed dataId,
@@ -38,8 +39,44 @@ interface IDataAsserter {
   );
 
   event TreasuryUpdated(address indexed treasury);
-  event AssertingPriceUpdated(uint256 price);
+  event SecurityDepositUpdated(uint256 price);
+  event AssertionLivenessUpdated(uint64 assertionLiveness);
 
+  /**
+   * @notice Assert data for a collection.
+   * @param _collection The collection to assert data for.
+   * @param _deploymentTimestamp The deployment timestamp of the collection.
+   * @param _currentSupply The current supply of the collection.
+   * @return assertionId The assertion ID.
+   * @dev This function requires the caller to deposit a security deposit. To punish the
+   * user if they are trying to exploit the UMA with bad data.
+   */
+  function assertDataFor(
+    address _collection,
+    uint32 _deploymentTimestamp,
+    uint128 _currentSupply
+  ) external returns (bytes32 assertionId);
+
+  /**
+   * @notice Callback function for the OptimisticOracleV3.
+   * @param assertionId The assertion ID.
+   * @param assertedTruthfully Whether the assertion was asserted truthfully.
+   */
+  function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully)
+    external;
+
+  /**
+   * @notice Retry calling the ObeliskRegistry to get the data.
+   * @param assertionId The assertion ID.
+   */
+  function retryCallingObeliskRegistry(bytes32 assertionId) external;
+
+  /**
+   * @notice Get the assertion data and collection assertion data.
+   * @param assertionId The assertion ID.
+   * @return assertionData The assertion data.
+   * @return collectionAssertionData The collection assertion data.
+   */
   function getData(bytes32 assertionId)
     external
     view

@@ -10,21 +10,15 @@ import { AncillaryData as ClaimData } from "src/vendor/UMA/AncillaryData.sol";
 import { OptimisticOracleV3Interface } from
   "src/vendor/UMA/OptimisticOracleV3Interface.sol";
 
-import {
-  SafeERC20, IERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 contract DataAsserter is Ownable, IDataAsserter {
-  using SafeERC20 for IERC20;
-
-  uint64 public constant assertionLiveness = 259_200; // 3 days
+  uint64 public assertionLiveness;
 
   IWETH public immutable defaultCurrency;
   OptimisticOracleV3Interface public immutable oo;
   IObeliskRegistry public immutable obeliskRegistry;
   bytes32 public immutable defaultIdentifier;
 
-  uint256 public assertingPrice;
+  uint256 public securityDeposit;
   address public treasury;
 
   mapping(bytes32 dataId => CollectionAssertionData) public collectionAssertionsData;
@@ -42,15 +36,17 @@ contract DataAsserter is Ownable, IDataAsserter {
     oo = OptimisticOracleV3Interface(_optimisticOracleV3);
     defaultIdentifier = oo.defaultIdentifier();
     obeliskRegistry = IObeliskRegistry(_obeliskRegistry);
-    assertingPrice = 0.5 ether;
+    securityDeposit = 0.5 ether;
     defaultCurrency.approve(address(oo), type(uint256).max);
+
+    assertionLiveness = 259_200; // 3 days
   }
 
   function assertDataFor(
     address _collection,
     uint32 _deploymentTimestamp,
     uint128 _currentSupply
-  ) public returns (bytes32 assertionId) {
+  ) external override returns (bytes32 assertionId) {
     if (obeliskRegistry.getCollection(_collection).allowed) {
       revert CollectionIsAlreadyAllowed();
     }
@@ -60,25 +56,17 @@ contract DataAsserter is Ownable, IDataAsserter {
     bytes32 dataId = bytes32(abi.encode(_collection, msg.sender, block.timestamp));
 
     uint256 bond = oo.getMinimumBond(address(defaultCurrency));
-    defaultCurrency.transferFrom(msg.sender, address(this), bond + assertingPrice);
+    defaultCurrency.transferFrom(msg.sender, address(this), bond + securityDeposit);
 
     assertionId = oo.assertTruth(
       abi.encodePacked(
-        "Requesting new collection to the Obelisk: 0x",
+        "NFT contract: 0x",
         ClaimData.toUtf8BytesAddress(_collection),
-        " Contract Deployement Timestamp: ",
+        " on Ethereum mainnet was deployed at timestamp: ",
         ClaimData.toUtf8BytesUint(_deploymentTimestamp),
-        " Current Supply at the time of the assertion: ",
+        " and has a total supply of: ",
         ClaimData.toUtf8BytesUint(_currentSupply),
-        " requested by: 0x",
-        ClaimData.toUtf8BytesAddress(msg.sender),
-        " dataId: 0x",
-        ClaimData.toUtf8Bytes(dataId),
-        " at timestamp: ",
-        ClaimData.toUtf8BytesUint(block.timestamp),
-        " in the DataAsserter contract at 0x",
-        ClaimData.toUtf8BytesAddress(address(this)),
-        " is valid."
+        " at the time of assertion."
       ),
       msg.sender,
       address(this),
@@ -91,7 +79,7 @@ contract DataAsserter is Ownable, IDataAsserter {
     );
 
     assertionsData[assertionId] =
-      AssertionData(dataId, assertingPrice, msg.sender, false, false, false);
+      AssertionData(dataId, securityDeposit, msg.sender, false, false, false);
     collectionAssertionsData[dataId] = collectionAssertionData;
 
     emit DataAsserted(dataId, assertionId, msg.sender, collectionAssertionData);
@@ -100,6 +88,7 @@ contract DataAsserter is Ownable, IDataAsserter {
   // OptimisticOracleV3 resolve callback.
   function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully)
     external
+    override
   {
     if (msg.sender != address(oo)) revert NotOptimisticOracle();
 
@@ -157,9 +146,9 @@ contract DataAsserter is Ownable, IDataAsserter {
     assertionData.failedToCallObeliskRegistry = false;
   }
 
-  function updateAssertingPrice(uint256 price) external onlyOwner {
-    assertingPrice = price;
-    emit AssertingPriceUpdated(price);
+  function updateSecurityDeposit(uint256 price) external onlyOwner {
+    securityDeposit = price;
+    emit SecurityDepositUpdated(price);
   }
 
   function updateTreasury(address _treasury) external onlyOwner {
@@ -167,8 +156,23 @@ contract DataAsserter is Ownable, IDataAsserter {
     emit TreasuryUpdated(_treasury);
   }
 
+  function updateAssertionLiveness(uint64 _assertionLiveness) external onlyOwner {
+    if (_assertionLiveness < 1 days) revert AssertionLivenessTooShort();
+
+    assertionLiveness = _assertionLiveness;
+    emit AssertionLivenessUpdated(_assertionLiveness);
+  }
+
   function getAssertionCost() external view returns (uint256) {
-    return assertingPrice + oo.getMinimumBond(address(defaultCurrency));
+    return securityDeposit + oo.getMinimumBond(address(defaultCurrency));
+  }
+
+  function getAssertionData(bytes32 assertionId)
+    external
+    view
+    returns (AssertionData memory)
+  {
+    return assertionsData[assertionId];
   }
 
   function getData(bytes32 assertionId)
