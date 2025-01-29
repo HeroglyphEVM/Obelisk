@@ -1,0 +1,18 @@
+{
+    "ethereum":
+    {
+        "01_owner": "0x888D768764A2E304215247F0bA3457cCb0f0ab4f",
+        "02_treasury": "0x888D768764A2E304215247F0bA3457cCb0f0ab4f",
+        "03_defaultCurrency": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+        "04_optimisticOracleV3": "0xfb55F43fB9F48F63f9269DB7Dde3BbBe1ebDC0dE",
+        "05_obeliskRegistry": "0x8416c04998F4bc5D34e3f817e1A581C8077d5A94"
+    },
+    "sepolia":
+    {
+        "01_owner": "0x835E072530503DddA07B2F35e05DD3e647a0D9F2",
+        "02_treasury": "0x835E072530503DddA07B2F35e05DD3e647a0D9F2",
+        "03_defaultCurrency": "0x0000000000000000000000000000000000000000",
+        "04_optimisticOracleV3": "0x0000000000000000000000000000000000000000",
+        "05_obeliskRegistry": "0x0000000000000000000000000000000000000000"
+    }
+}

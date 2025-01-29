@@ -45,6 +45,19 @@
   },
   {
     "type": "function",
+    "name": "FIRST_MEGAPOOL_NAME",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "HCT",
     "inputs": [],
     "outputs": [
@@ -246,6 +259,11 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "NameTooShort",
+    "inputs": []
   },
   {
     "type": "error",

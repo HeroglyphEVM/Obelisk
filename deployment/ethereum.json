@@ -150,5 +150,9 @@
   {
     "contractAddress": "0x90F8F3c2D55dff183b8904F23a3AC8e59AD5b24c",
     "contractName": "Megapool Factory"
+  },
+  {
+    "contractAddress": "0xae45CBc72d0fD8DA2700691e1e63C2Cc8e356722",
+    "contractName": "DataAsserter"
   }
 ]

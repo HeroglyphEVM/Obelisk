@@ -10,6 +10,12 @@ import { AncillaryData as ClaimData } from "src/vendor/UMA/AncillaryData.sol";
 import { OptimisticOracleV3Interface } from
   "src/vendor/UMA/OptimisticOracleV3Interface.sol";
 
+/**
+ * @title DataAsserter (UMA Powered)
+ * @notice Add new Collection into Obelisks
+ *
+ * @custom:export abi
+ */
 contract DataAsserter is Ownable, IDataAsserter {
   uint64 public assertionLiveness;
 
@@ -39,7 +45,7 @@ contract DataAsserter is Ownable, IDataAsserter {
     securityDeposit = 0.5 ether;
     defaultCurrency.approve(address(oo), type(uint256).max);
 
-    assertionLiveness = 259_200; // 3 days
+    assertionLiveness = 3 days;
   }
 
   function assertDataFor(
