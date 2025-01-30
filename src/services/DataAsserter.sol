@@ -56,6 +56,7 @@ contract DataAsserter is Ownable, IDataAsserter {
     if (obeliskRegistry.getCollection(_collection).allowed) {
       revert CollectionIsAlreadyAllowed();
     }
+    uint64 assertionLivenessCached = assertionLiveness;
 
     CollectionAssertionData memory collectionAssertionData =
       CollectionAssertionData(_collection, _deploymentTimestamp, _currentSupply);
@@ -77,7 +78,7 @@ contract DataAsserter is Ownable, IDataAsserter {
       msg.sender,
       address(this),
       address(0), // No sovereign security.
-      assertionLiveness,
+      assertionLivenessCached,
       defaultCurrency,
       bond,
       defaultIdentifier,
@@ -88,7 +89,9 @@ contract DataAsserter is Ownable, IDataAsserter {
       AssertionData(dataId, securityDeposit, msg.sender, false, false, false);
     collectionAssertionsData[dataId] = collectionAssertionData;
 
-    emit DataAsserted(dataId, assertionId, msg.sender, collectionAssertionData);
+    emit DataAsserted(
+      dataId, assertionId, msg.sender, assertionLivenessCached, collectionAssertionData
+    );
   }
 
   // OptimisticOracleV3 resolve callback.
@@ -98,6 +101,7 @@ contract DataAsserter is Ownable, IDataAsserter {
   {
     if (msg.sender != address(oo)) revert NotOptimisticOracle();
 
+    bool callFailed;
     AssertionData storage assertionData = assertionsData[assertionId];
     CollectionAssertionData memory collectionAssertionData =
       collectionAssertionsData[assertionData.dataId];
@@ -120,20 +124,23 @@ contract DataAsserter is Ownable, IDataAsserter {
         collectionAssertionData.deploymentTimestamp,
         false
       ) { } catch {
-        assertionData.failedToCallObeliskRegistry = true;
+        callFailed = true;
       }
     }
+
+    assertionData.failedToCallObeliskRegistry = callFailed;
 
     emit DataAssertionResolved(
       assertionData.dataId,
       assertionId,
       assertedTruthfully,
+      callFailed,
       collectionAssertionsData[assertionData.dataId]
     );
   }
 
-  function retryCallingObeliskRegistry(bytes32 assertionId) external {
-    AssertionData storage assertionData = assertionsData[assertionId];
+  function retryCallingObeliskRegistry(bytes32 _assertionId) external {
+    AssertionData storage assertionData = assertionsData[_assertionId];
     CollectionAssertionData memory collectionAssertionData =
       collectionAssertionsData[assertionData.dataId];
 
@@ -150,6 +157,8 @@ contract DataAsserter is Ownable, IDataAsserter {
     );
 
     assertionData.failedToCallObeliskRegistry = false;
+
+    emit DataAssertionRetryExecuted(_assertionId);
   }
 
   function updateSecurityDeposit(uint256 price) external onlyOwner {

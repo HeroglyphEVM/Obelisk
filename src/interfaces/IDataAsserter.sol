@@ -28,6 +28,7 @@ interface IDataAsserter {
     bytes32 indexed dataId,
     bytes32 indexed assertionId,
     address indexed asserter,
+    uint64 liveness,
     CollectionAssertionData collectionAssertionData
   );
 
@@ -35,8 +36,11 @@ interface IDataAsserter {
     bytes32 indexed dataId,
     bytes32 indexed assertionId,
     bool assertedTruthfully,
+    bool failedToExecute,
     CollectionAssertionData collectionAssertionData
   );
+
+  event DataAssertionRetryExecuted(bytes32 indexed assertionId);
 
   event TreasuryUpdated(address indexed treasury);
   event SecurityDepositUpdated(uint256 price);

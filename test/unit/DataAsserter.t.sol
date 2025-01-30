@@ -147,6 +147,7 @@ contract DataAsserterTest is BaseTest {
       dataId,
       assertionId,
       user,
+      assertionLiveness,
       IDataAsserter.CollectionAssertionData(
         collection, deploymentTimestamp, currentSupply
       )
@@ -302,6 +303,9 @@ contract DataAsserterTest is BaseTest {
     underTest.assertionResolvedCallback(assertionId, true);
 
     mockCall_allowNewCollection(false);
+
+    expectExactEmit();
+    emit IDataAsserter.DataAssertionRetryExecuted(assertionId);
     underTest.retryCallingObeliskRegistry(assertionId);
 
     assertFalse(underTest.getAssertionData(assertionId).failedToCallObeliskRegistry);

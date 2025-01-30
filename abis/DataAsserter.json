@@ -390,7 +390,7 @@
     "name": "retryCallingObeliskRegistry",
     "inputs": [
       {
-        "name": "assertionId",
+        "name": "_assertionId",
         "type": "bytes32",
         "internalType": "bytes32"
       }
@@ -512,6 +512,12 @@
         "internalType": "address"
       },
       {
+        "name": "liveness",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
         "name": "collectionAssertionData",
         "type": "tuple",
         "indexed": false,
@@ -560,6 +566,12 @@
         "internalType": "bool"
       },
       {
+        "name": "failedToExecute",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
         "name": "collectionAssertionData",
         "type": "tuple",
         "indexed": false,
@@ -581,6 +593,19 @@
             "internalType": "uint128"
           }
         ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DataAssertionRetryExecuted",
+    "inputs": [
+      {
+        "name": "assertionId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
       }
     ],
     "anonymous": false
